@@ -12,8 +12,9 @@
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,sans-serif; }
   main { max-width:900px; margin:0 auto; padding:24px 16px 64px; }
-  h1 { margin:0 0 4px; font-size:1.6rem; }
-  p.sub { margin:0 0 20px; color:var(--muted); }
+  h1 { margin:0; font-size:1.6rem; }
+  header.top { display:flex; align-items:center; justify-content:space-between; margin:0 0 8px; }
+  #status { min-height:1.2em; margin:0 0 12px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
   textarea { width:100%; min-height:70px; font:12px monospace; padding:8px; border:1px solid var(--line);
              border-radius:6px; background:var(--bg); color:var(--fg); resize:vertical; }
@@ -94,10 +95,13 @@
 </head>
 <body>
 <main>
-  <h1>iNat Viewer</h1>
-  <p class="sub">Your iNaturalist observations, grouped by how closely related the species are.</p>
+  <header class="top">
+    <h1>iNat Viewer</h1>
+    <button class="ib" id="acct" aria-label="Account and sync" title="Account &amp; sync" aria-expanded="false">⚙</button>
+  </header>
+  <div id="status" class="status" role="status"></div>
 
-  <div class="card" id="login">
+  <div class="card" id="login" hidden>
     <div id="oauthbox">
       <button id="oauth" style="width:100%;padding:12px;font-size:16px">Log in with iNaturalist</button>
       <p class="status" id="whoami" style="margin:6px 0 0"></p>
@@ -122,7 +126,6 @@
       <button id="load" title="Fetch only observations newer than the cache; reuses cached taxonomy">Check for new observations</button>
       <button id="forget" class="secondary">Log out</button>
       <button id="full" class="secondary" title="Re-download all observations (picks up edits, new IDs and extra photos). Cached taxonomy is reused, so only observations are fetched.">Re-download observations</button>
-      <span id="status" class="status"></span>
     </div>
     <details style="margin:10px 0 0;padding:0;border:0" id="logwrap">
       <summary class="status">Debug log</summary>
@@ -144,8 +147,6 @@
       <span id="summary" class="status" style="align-self:center"></span>
     </div>
     <div id="locTools" class="row" style="margin:0 0 10px" hidden>
-      <label class="status" for="locmode">Group by</label>
-      <select id="locmode"><option value="place">Place names (country, state, …)</option><option value="coords">Coordinate ranges</option></select>
       <span id="locnote" class="status"></span>
     </div>
     <div class="card" id="tree"></div>
@@ -358,7 +359,13 @@ async function saveCache() {
 function status(msg, err) {
   $('status').textContent = msg;
   $('status').className = 'status' + (err ? ' error' : '');
+  if (err) setPanel(true); // surface the account/sync controls when something needs attention
 }
+function setPanel(open) {
+  $('login').hidden = !open;
+  $('acct').setAttribute('aria-expanded', String(open));
+}
+$('acct').onclick = () => setPanel($('login').hidden);
 
 // ---------- API ----------
 async function api(path, token) {
@@ -402,7 +409,6 @@ function slim(o) {
     name: t.name,
     common: t.preferred_common_name || '',
     date: o.observed_on || '',
-    loc: o.location || '',
     pids: o.place_ids || [],
     photos: (o.photos || []).map(p => p.url).filter(Boolean),
     photo: o.photos?.[0]?.url || t.default_photo?.square_url || '',
@@ -734,9 +740,6 @@ function render(root, names, meta = TAXON_META(names)) {
 }
 
 // ---------- location grouping ----------
-const LOC_KEY = 'inat_locmode';
-let locMode = 'place';
-try { locMode = localStorage.getItem(LOC_KEY) === 'coords' ? 'coords' : 'place'; } catch {}
 const UNKNOWN_LOC = -1;
 
 // iNat admin_level: -10 continent, 0 country, 10 state/province, 20 county, 30 town/city.
@@ -753,36 +756,6 @@ function placeChain(o) {
 const PLACE_META = {
   get: id => id === UNKNOWN_LOC ? { name: 'Unknown location', rank: 'area' }
     : state.places[id] && !state.places[id].missing ? { name: state.places[id].name, rank: placeRank(state.places[id]) } : { name: `place #${id}`, rank: 'area' },
-  shown: () => true,
-};
-
-// Coordinate grid: 10° zones → 1° cells → 0.1° cells.
-const GRID = [{ step: 10, rank: 'zone 10°', dp: 0 }, { step: 1, rank: 'grid 1°', dp: 0 }, { step: 0.1, rank: 'cell 0.1°', dp: 1 }];
-function parseLoc(o) {
-  const m = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/.exec(o.loc || '');
-  return m ? [parseFloat(m[1]), parseFloat(m[2])] : null;
-}
-function coordChain(o) {
-  const ll = parseLoc(o);
-  if (!ll) return [UNKNOWN_LOC];
-  return GRID.map(g => {
-    const la = Math.floor(ll[0] / g.step + 1e-9), lo = Math.floor(ll[1] / g.step + 1e-9);
-    return `c${g.step}:${la},${lo}`;
-  });
-}
-const COORD_META = {
-  get(id) {
-    if (id === UNKNOWN_LOC) return { name: 'No coordinates', rank: 'area' };
-    const m = /^c([\d.]+):(-?\d+),(-?\d+)$/.exec(id);
-    const g = GRID.find(x => x.step === parseFloat(m[1]));
-    const fmt = (i, pos, neg) => {
-      const a = i * g.step, b = (i + 1) * g.step;
-      const s = v => Math.abs(v).toFixed(g.dp);
-      const hemi = a >= 0 ? pos : neg;
-      return a >= 0 ? `${s(a)}–${s(b)}°${hemi}` : `${s(b)}–${s(a)}°${hemi}`;
-    };
-    return { name: `${fmt(+m[2], 'N', 'S')}, ${fmt(+m[3], 'E', 'W')}`, rank: g.rank };
-  },
   shown: () => true,
 };
 
@@ -922,11 +895,6 @@ function setView(v) {
 $('tabTree').onclick = () => setView('tree');
 $('tabPlace').onclick = () => setView('place');
 $('tabRecent').onclick = () => setView('recent');
-$('locmode').onchange = e => {
-  locMode = e.target.value;
-  try { localStorage.setItem(LOC_KEY, locMode); } catch {}
-  show();
-};
 
 function show(keepStatus) {
   if (!state.obs.length) return;
@@ -936,14 +904,12 @@ function show(keepStatus) {
     renderRecent();
     species = new Set(state.obs.map(o => o.tid)).size;
   } else if (view === 'place') {
-    $('locmode').value = locMode;
-    const coords = locMode === 'coords';
-    species = render(buildTree(state.obs, coords ? coordChain : placeChain), state.names, coords ? COORD_META : PLACE_META);
-    const without = state.obs.filter(o => coords ? !parseLoc(o) : !(o.pids && o.pids.length)).length;
+    species = render(buildTree(state.obs, placeChain), state.names, PLACE_META);
+    const without = state.obs.filter(o => !(o.pids && o.pids.length)).length;
     $('locnote').textContent = without
-      ? `${without} observation${without > 1 ? 's' : ''} without ${coords ? 'coordinates' : 'place data'} (private, or cached before location support — use "Re-download observations")`
+      ? `${without} observation${without > 1 ? 's' : ''} without place data (private, or cached before location support — use "Re-download observations")`
       : '';
-    if (!coords && !keepStatus) ensurePlaces();
+    if (!keepStatus) ensurePlaces();
   } else species = render(buildTree(state.obs), state.names);
   $('results').hidden = false;
   $('summary').textContent = `${state.user.login}: ${species} species · ${state.obs.length} identified observations` +
@@ -1007,7 +973,7 @@ $('clearcache').onclick = async () => {
 $('copylog').onclick = () => navigator.clipboard?.writeText($('log').innerText).then(() => status('Log copied.'));
 // Hold a group heading: collapse every group of the same rank (or expand them all if it was already collapsed).
 const PLURAL = { kingdom: 'kingdoms', phylum: 'phyla', class: 'classes', order: 'orders', family: 'families', genus: 'genera',
-  continent: 'continents', country: 'countries', county: 'counties', city: 'cities', area: 'areas', 'grid 1°': 'grid cells (1°)', 'cell 0.1°': 'cells (0.1°)', 'zone 10°': 'zones (10°)' };
+  continent: 'continents', country: 'countries', county: 'counties', city: 'cities', area: 'areas' };
 let toastTimer;
 function toast(msg) {
   $('toast').textContent = msg; $('toast').classList.add('show');
@@ -1060,6 +1026,7 @@ setView(view);
   if (cached) $('token').value = cached;
   authLabel();
   let hasOauth = false; try { hasOauth = !!localStorage.getItem(OAUTH_KEY); } catch {}
+  setPanel(!(cached || hasOauth)); // collapsed once signed in
   if (cached || hasOauth) refresh().then(authLabel);
   else if (state.obs.length) status('Showing cached data. Log in to refresh.');
 })();
