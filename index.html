@@ -143,7 +143,7 @@
 
   <div id="results" hidden>
     <div class="filters">
-      <input type="search" id="q" placeholder="Search species, family, place, date…" autocomplete="off" spellcheck="false">
+      <input type="search" id="q" placeholder="Search common species name…" autocomplete="off" spellcheck="false">
       <button class="ib" id="areabtn" aria-label="Filter by map area" title="Filter by map area" aria-expanded="false">📍</button>
     </div>
     <div id="chips"></div>
@@ -921,24 +921,10 @@ function distM(lat1, lng1, lat2, lng2) { // haversine
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 const fold = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-let hay = new WeakMap(), haySig = '';
-function haystack(o) {
-  let s = hay.get(o);
-  if (s === undefined) {
-    const parts = [o.common, o.name, o.date];
-    for (const id of o.anc) { const t = state.names[id]; if (t) parts.push(t.name, t.common); }
-    for (const id of o.pids || []) { const p = state.places[id]; if (p && !p.missing && p.level != null) parts.push(p.name); }
-    s = fold(parts.filter(Boolean).join(' '));
-    hay.set(o, s);
-  }
-  return s;
-}
-// Observations passing the text search (before the area filter).
+// Text search matches the common species name only.
 function textFiltered() {
-  const sig = Object.keys(state.names).length + ':' + Object.keys(state.places).length;
-  if (sig !== haySig) { hay = new WeakMap(); haySig = sig; }
   const terms = fold($('q').value).split(/\s+/).filter(Boolean);
-  return terms.length ? state.obs.filter(o => { const s = haystack(o); return terms.every(t => s.includes(t)); }) : state.obs;
+  return terms.length ? state.obs.filter(o => { const s = fold(o.common || ''); return terms.every(t => s.includes(t)); }) : state.obs;
 }
 function filteredObs() {
   const t = textFiltered();
