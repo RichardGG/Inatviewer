@@ -89,9 +89,9 @@
     </p>
     <textarea id="token" placeholder="eyJhbGciOi..." spellcheck="false"></textarea>
     <div class="row">
-      <button id="load">Load observations</button>
+      <button id="load" title="Fetch only observations newer than the cache; reuses cached taxonomy">Check for new observations</button>
       <button id="forget" class="secondary">Forget token</button>
-      <button id="full" class="secondary" title="Discard cached observations and re-download everything">Full refresh</button>
+      <button id="full" class="secondary" title="Re-download all observations (picks up edits, new IDs and extra photos). Cached taxonomy is reused, so only observations are fetched.">Re-download observations</button>
       <span id="status" class="status"></span>
     </div>
     <details style="margin:10px 0 0;padding:0;border:0" id="logwrap">
