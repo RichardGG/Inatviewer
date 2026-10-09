@@ -80,6 +80,10 @@
   .chip { display:inline-flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--accent); color:var(--fg);
           border-radius:16px; padding:3px 6px 3px 12px; font-size:13px; margin:0 0 8px; }
   .chip button { padding:0 6px; background:none; color:var(--muted); font-size:16px; }
+  #expmap { height:280px; border-radius:8px; z-index:0; }
+  #expsug button { display:flex; flex-direction:column; align-items:flex-start; width:100%; text-align:left; background:var(--card); color:var(--fg);
+                   border:1px solid var(--line); border-top:0; border-radius:0; padding:8px 12px; font-size:14px; }
+  #expsug button small { color:var(--muted); }
   .pill { display:inline-flex; flex-direction:column; align-items:flex-start; margin:0 6px 6px 0; padding:5px 10px; border-radius:10px;
           border:1px solid var(--line); background:var(--card); color:var(--fg); font-size:13px; line-height:1.25; }
   .pill small { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.04em; }
@@ -220,10 +224,18 @@
     <div class="card" id="tree"></div>
     <div class="card" id="recent" hidden></div>
     <div class="card" id="explore" hidden>
-      <div class="row" style="margin:0 0 10px">
-        <button id="expgps">📍 Use my location</button>
-        <select id="expplace" style="flex:1;min-width:0"><option value="">Or pick a place from my observations…</option></select>
+      <div class="row" style="margin:0 0 8px">
+        <button id="expgps">📍 My location</button>
+        <button id="expmapbtn" class="secondary" aria-expanded="false">🗺 Pick on map</button>
       </div>
+      <input type="search" id="expq" placeholder="Type a place name (e.g. Surrey, Kakadu, Tasmania)…" autocomplete="off" spellcheck="false"
+             style="width:100%;padding:9px 12px;font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)">
+      <div id="expsug" hidden></div>
+      <div id="expmapwrap" hidden>
+        <p class="status" style="margin:8px 0">Tap the map to choose a spot; the places that contain it will appear below.</p>
+        <div id="expmap"></div>
+      </div>
+      <select id="expplace" style="width:100%;margin:8px 0 10px"><option value="">Or pick a place from my observations…</option></select>
       <div id="exppills"></div>
       <div class="row" style="margin:6px 0 4px">
         <label class="status"><input type="checkbox" id="expres" checked> Research grade only</label>
@@ -1445,32 +1457,112 @@ async function exploreFromObs(o) {
   setExplore(chain, []);
 }
 
+let expMapObj, expMarker;
+function markPoint(lat, lng, zoom) {
+  if (!expMapObj) return;
+  if (!expMarker) expMarker = L.circleMarker([lat, lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#d9480f', fillOpacity: 0.95 }).addTo(expMapObj);
+  else expMarker.setLatLng([lat, lng]);
+  if (zoom) expMapObj.setView([lat, lng], zoom);
+}
+// Find the iNaturalist places that contain a point and select the default level.
+async function lookupPoint(lat, lng) {
+  status('Looking up places…');
+  markPoint(lat, lng);
+  try {
+    const d = 0.002; // ~200 m box around the point
+    const r = (await api(`/places/nearby?nelat=${lat + d}&nelng=${lng + d}&swlat=${lat - d}&swlng=${lng - d}&per_page=50`)).results;
+    const standard = Array.isArray(r) ? r : (r.standard || []), community = Array.isArray(r) ? [] : (r.community || []);
+    for (const p of [...standard, ...community]) {
+      state.places[p.id] = { id: p.id, name: p.name || p.display_name, level: p.admin_level ?? null, type: p.place_type ?? null };
+    }
+    const mk = p => ({ id: p.id, name: p.name || p.display_name, rank: placeRank({ level: p.admin_level ?? null }), level: p.admin_level ?? null });
+    const chain = standard.filter(p => p.admin_level != null).sort((a, b) => a.admin_level - b.admin_level).map(mk);
+    const extra = [...standard.filter(p => p.admin_level == null), ...community].slice(0, 12).map(mk);
+    log(`places/nearby: ${standard.length} standard, ${community.length} community → ${chain.length} admin levels`);
+    if (!chain.length && !extra.length) return status('No iNaturalist places found at that spot.', true);
+    status('');
+    setExplore(chain, extra, pickDefaultLevel(chain) || extra[0]?.id);
+  } catch (e) { log(`nearby lookup failed: ${e.stack || e}`, 'e'); status(e.message, true); }
+}
+
 function useMyLocation() {
   if (!navigator.geolocation) return status('Geolocation is not available in this browser.', true);
   status('Getting your location…');
-  navigator.geolocation.getCurrentPosition(async pos => {
+  navigator.geolocation.getCurrentPosition(pos => {
     const { latitude: lat, longitude: lng, accuracy } = pos.coords;
     log(`geolocation: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${Math.round(accuracy)} m)`);
-    try {
-      const d = 0.002; // ~200 m box around the point
-      const r = (await api(`/places/nearby?nelat=${lat + d}&nelng=${lng + d}&swlat=${lat - d}&swlng=${lng - d}&per_page=50`)).results;
-      const standard = Array.isArray(r) ? r : (r.standard || []), community = Array.isArray(r) ? [] : (r.community || []);
-      for (const p of [...standard, ...community]) {
-        state.places[p.id] = { id: p.id, name: p.name || p.display_name, level: p.admin_level ?? null, type: p.place_type ?? null };
-      }
-      const mk = p => ({ id: p.id, name: p.name || p.display_name, rank: placeRank({ level: p.admin_level ?? null }), level: p.admin_level ?? null });
-      const chain = standard.filter(p => p.admin_level != null).sort((a, b) => a.admin_level - b.admin_level).map(mk);
-      const extra = [...standard.filter(p => p.admin_level == null), ...community].slice(0, 12).map(mk);
-      log(`places/nearby: ${standard.length} standard, ${community.length} community → ${chain.length} admin levels`);
-      if (!chain.length && !extra.length) return status('No iNaturalist places found at your location.', true);
-      status('');
-      setExplore(chain, extra, pickDefaultLevel(chain) || extra[0]?.id);
-    } catch (e) { log(`nearby lookup failed: ${e.stack || e}`, 'e'); status(e.message, true); }
+    markPoint(lat, lng, 9);
+    lookupPoint(lat, lng);
   }, err => {
     log(`geolocation error ${err.code}: ${err.message}`, 'e');
-    status(err.code === 1 ? 'Location permission denied. Pick a place from your observations instead.' : `Could not get your location (${err.message}).`, true);
+    status(err.code === 1 ? 'Location permission denied. Type a place name or pick on the map instead.' : `Could not get your location (${err.message}).`, true);
   }, { timeout: 15000, maximumAge: 60000 });
 }
+
+// ---- type a place name (iNaturalist place autocomplete) ----
+let sugTimer, sugSeq = 0;
+$('expq').addEventListener('input', () => {
+  clearTimeout(sugTimer);
+  const q = $('expq').value.trim();
+  if (q.length < 2) { $('expsug').hidden = true; return; }
+  sugTimer = setTimeout(async () => {
+    const seq = ++sugSeq;
+    try {
+      const d = await api(`/places/autocomplete?q=${encodeURIComponent(q)}&per_page=8`);
+      if (seq !== sugSeq) return;
+      const box = $('expsug');
+      box.replaceChildren();
+      if (!d.results.length) { box.textContent = 'No matching places.'; box.className = 'status'; box.hidden = false; return; }
+      box.className = '';
+      for (const p of d.results) {
+        const b = document.createElement('button'); b.type = 'button';
+        b.append(p.name || p.display_name);
+        const sm = document.createElement('small');
+        sm.textContent = [p.display_name !== p.name ? p.display_name : '', placeRank({ level: p.admin_level ?? null })].filter(Boolean).join(' · ');
+        b.append(sm);
+        b.onclick = () => { box.hidden = true; $('expq').value = p.name || p.display_name; pickPlace(p); };
+        box.append(b);
+      }
+      box.hidden = false;
+    } catch (e) { log(`place autocomplete failed: ${e.message}`, 'e'); }
+  }, 300);
+});
+async function pickPlace(p) {
+  status('Looking up place…');
+  try {
+    const full = (await api(`/places/${p.id}`)).results[0];
+    const anc = full.ancestor_place_ids || [];
+    const ancestors = anc.length ? (await api(`/places/${anc.join(',')}?per_page=50`)).results : [];
+    const all = [...ancestors, full];
+    for (const x of all) state.places[x.id] = { id: x.id, name: x.name || x.display_name, level: x.admin_level ?? null, type: x.place_type ?? null };
+    const mk = x => ({ id: x.id, name: x.name || x.display_name, rank: placeRank({ level: x.admin_level ?? null }), level: x.admin_level ?? null });
+    const chain = all.filter(x => x.admin_level != null).sort((a, b) => a.admin_level - b.admin_level).map(mk);
+    const extra = full.admin_level == null ? [mk(full)] : [];
+    status('');
+    setExplore(chain, extra, full.id);
+    if (full.location) { const [la, lo] = String(full.location).split(',').map(Number); if (isFinite(la) && isFinite(lo)) markPoint(la, lo, 8); }
+  } catch (e) { log(`place lookup failed: ${e.stack || e}`, 'e'); status(e.message, true); }
+}
+
+// ---- pick on a map ----
+async function toggleExpMap() {
+  const open = $('expmapwrap').hidden;
+  $('expmapwrap').hidden = !open;
+  $('expmapbtn').setAttribute('aria-expanded', String(open));
+  if (!open) return;
+  try { await ensureLeaflet(); } catch (e) { log(String(e), 'e'); return status(`Map library failed to load: ${e.message}`, true); }
+  if (!expMapObj) {
+    expMapObj = L.map('expmap', { worldCopyJump: true });
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(expMapObj);
+    expMapObj.on('click', e => lookupPoint(e.latlng.lat, e.latlng.lng));
+    const pts = state.obs.map(parseLoc).filter(Boolean);
+    if (pts.length) expMapObj.fitBounds(L.latLngBounds(pts).pad(0.1), { maxZoom: 10 }); else expMapObj.setView([20, 0], 2);
+  }
+  expMapObj.invalidateSize();
+}
+$('expmapbtn').onclick = toggleExpMap;
 
 async function loadExplore(more = false) {
   if (!explore.selected) return renderExplore();
