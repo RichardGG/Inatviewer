@@ -55,6 +55,14 @@
   .alt .ib { position:absolute; top:6px; width:30px; height:30px; font-size:16px; background:rgba(0,0,0,.55); border-color:transparent; color:#fff; }
   .alt .ib.star { left:6px; } .alt .ib.ext { right:6px; }
   .alt .badge { pointer-events:none; }
+  details.g { scroll-margin-top:calc(var(--d) * 30px); }
+  details.g > summary { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
+  .pv { display:flex; gap:4px; align-items:center; padding:4px 0 6px 3px; border-left:2px solid var(--line); cursor:pointer; overflow:hidden; }
+  .pv img { width:56px; height:56px; flex:none; border-radius:6px; object-fit:cover; background:var(--line); }
+  .pv .more-n { flex:none; color:var(--muted); font-size:12px; padding:0 6px; }
+  #toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:rgba(0,0,0,.8); color:#fff;
+           padding:8px 14px; border-radius:20px; font-size:13px; z-index:2000; opacity:0; pointer-events:none; transition:opacity .2s; }
+  #toast.show { opacity:1; }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   /* full-screen viewer */
   #viewer { position:fixed; inset:0; z-index:1000; background:#000; color:#fff; display:none; flex-direction:column; }
@@ -111,6 +119,8 @@
     <div class="card" id="tree"></div>
   </div>
 </main>
+
+<div id="toast"></div>
 
 <div id="viewer" role="dialog" aria-modal="true" aria-label="Photo viewer">
   <div class="bar">
@@ -525,6 +535,7 @@ function render(root, names) {
     const t = names[node.id];
     const det = document.createElement('details');
     det.className = 'g'; det.open = true;
+    det.dataset.rank = rank;
     det.style.setProperty('--d', depth);
     const sum = document.createElement('summary');
     const r = document.createElement('span'); r.className = 'rank'; r.textContent = rank;
@@ -537,7 +548,44 @@ function render(root, names) {
     sum.append(r, nm, c);
     det.append(sum);
     fill(node, det, depth + 1);
-    return det;
+
+    // When collapsed, show a strip of thumbnails sampled evenly across the group's species.
+    const pv = document.createElement('div');
+    pv.className = 'pv'; pv.hidden = true;
+    pv.onclick = () => { det.open = true; };
+    det.addEventListener('toggle', () => {
+      if (det.open) { pv.hidden = true; pv.replaceChildren(); return; }
+      pv.hidden = false;
+      fillPreview(node, pv);
+    });
+    const both = document.createDocumentFragment();
+    both.append(det, pv);
+    return both;
+  }
+  function rowsInOrder(node, acc = []) {
+    acc.push(...speciesRows(node.species));
+    for (const ch of sortedChildren(node)) rowsInOrder(ch, acc);
+    return acc;
+  }
+  function fillPreview(node, pv) {
+    const rows = rowsInOrder(node).filter(r => photosOf(preferred(r)).length);
+    const max = Math.max(4, Math.min(12, Math.floor((pv.clientWidth || 300) / 60)));
+    const n = Math.min(max, rows.length);
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < n; i++) {
+      const row = rows[Math.floor(i * rows.length / n)];
+      const url = photosOf(preferred(row))[0];
+      const im = document.createElement('img');
+      im.alt = row.common || row.name; im.title = row.common || row.name; im.loading = 'lazy';
+      im.src = sized(url, 'medium');
+      im.onerror = () => { if (im.src !== url) im.src = url; };
+      frag.append(im);
+    }
+    if (rows.length > n) {
+      const m = document.createElement('span'); m.className = 'more-n'; m.textContent = `+${rows.length - n}`;
+      frag.append(m);
+    }
+    pv.replaceChildren(frag);
   }
   function fill(node, parentEl, depth) {
     for (const row of speciesRows(node.species)) parentEl.append(speciesEl(row));
@@ -603,6 +651,47 @@ $('clearcache').onclick = async () => {
   $('results').hidden = true; log('all cached data cleared'); status('Cache cleared.');
 };
 $('copylog').onclick = () => navigator.clipboard?.writeText($('log').innerText).then(() => status('Log copied.'));
+// Hold a group heading: collapse every group of the same rank (or expand them all if it was already collapsed).
+const PLURAL = { kingdom: 'kingdoms', phylum: 'phyla', class: 'classes', order: 'orders', family: 'families', genus: 'genera' };
+let toastTimer;
+function toast(msg) {
+  $('toast').textContent = msg; $('toast').classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('show'), 1800);
+}
+(() => {
+  const tree = $('tree');
+  let timer, startX, startY, held = false;
+  const cancel = () => clearTimeout(timer);
+  tree.addEventListener('pointerdown', e => {
+    const sum = e.target.closest('summary');
+    held = false; cancel();
+    if (!sum || e.button > 0) return;
+    startX = e.clientX; startY = e.clientY;
+    timer = setTimeout(() => {
+      const det = sum.parentElement, rank = det.dataset.rank;
+      held = true;
+      const same = [...tree.querySelectorAll(`details.g[data-rank="${rank}"]`)];
+      const collapse = det.open;
+      same.forEach(d => { d.open = !collapse; });
+      log(`hold: ${collapse ? 'collapsed' : 'expanded'} ${same.length} ${rank} groups`);
+      toast(`${collapse ? 'Collapsed' : 'Expanded'} all ${same.length} ${PLURAL[rank] || rank}`);
+      if (navigator.vibrate) navigator.vibrate(15);
+      requestAnimationFrame(() => det.scrollIntoView({ block: 'nearest' }));
+    }, 500);
+  });
+  tree.addEventListener('pointermove', e => {
+    if (timer && Math.hypot(e.clientX - startX, e.clientY - startY) > 10) cancel();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => tree.addEventListener(t, cancel));
+  window.addEventListener('scroll', cancel, { passive: true });
+  // swallow the click that follows a hold so the heading doesn't toggle again
+  tree.addEventListener('click', e => {
+    if (held && e.target.closest('summary')) { e.preventDefault(); e.stopPropagation(); }
+    held = false;
+  }, true);
+  tree.addEventListener('contextmenu', e => { if (e.target.closest('summary')) e.preventDefault(); });
+})();
+
 $('expand').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = true);
 $('collapse').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = false);
 
