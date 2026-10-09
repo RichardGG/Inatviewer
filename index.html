@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iNat Viewer</title>
+<style>
+  :root { --bg:#fafaf7; --fg:#1d2a1f; --muted:#6b7a6d; --accent:#4a8a2a; --line:#dde3d8; --card:#fff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14181a; --fg:#e6ece6; --muted:#8c9a8e; --accent:#7fc45a; --line:#2a3330; --card:#1b2124; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,sans-serif; }
+  main { max-width:900px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { margin:0 0 4px; font-size:1.6rem; }
+  p.sub { margin:0 0 20px; color:var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+  textarea { width:100%; min-height:70px; font:12px monospace; padding:8px; border:1px solid var(--line);
+             border-radius:6px; background:var(--bg); color:var(--fg); resize:vertical; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:8px 14px; font-size:14px; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--muted); border:1px solid var(--line); }
+  .row { display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+  .status { color:var(--muted); font-size:13px; }
+  .error { color:#c0392b; }
+  details { margin-left:14px; border-left:1px solid var(--line); padding-left:10px; }
+  #tree > details { margin-left:0; border-left:0; padding-left:0; }
+  summary { cursor:pointer; padding:3px 0; }
+  .rank { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; margin-right:6px; }
+  .count { color:var(--muted); font-size:12px; margin-left:6px; }
+  .sci { font-style:italic; }
+  .species { margin-left:14px; padding:2px 0 2px 10px; border-left:1px solid var(--line); display:flex; gap:8px; align-items:center; }
+  .species img { width:28px; height:28px; border-radius:4px; object-fit:cover; }
+  .species a { color:var(--fg); text-decoration:none; }
+  .species a:hover { text-decoration:underline; }
+  .toolbar { display:flex; gap:8px; margin:0 0 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>iNat Viewer</h1>
+  <p class="sub">Your iNaturalist observations, grouped by how closely related the species are.</p>
+
+  <div class="card" id="login">
+    <label for="token"><strong>iNaturalist API token</strong></label>
+    <p class="status" style="margin:4px 0 8px">
+      Log in to iNaturalist, then open
+      <a href="https://www.inaturalist.org/users/api_token" target="_blank" rel="noopener">inaturalist.org/users/api_token</a>
+      and paste the token below. Tokens expire after 24 hours. It is stored only in this browser's localStorage.
+    </p>
+    <textarea id="token" placeholder="eyJhbGciOi..." spellcheck="false"></textarea>
+    <div class="row">
+      <button id="load">Load observations</button>
+      <button id="forget" class="secondary">Forget token</button>
+      <span id="status" class="status"></span>
+    </div>
+  </div>
+
+  <div id="results" hidden>
+    <div class="toolbar">
+      <button class="secondary" id="expand">Expand all</button>
+      <button class="secondary" id="collapse">Collapse all</button>
+      <span id="summary" class="status" style="align-self:center"></span>
+    </div>
+    <div class="card" id="tree"></div>
+  </div>
+</main>
+
+<script>
+const API = 'https://api.inaturalist.org/v1';
+const KEY = 'inat_token';
+const SHOWN_RANKS = new Set(['kingdom','phylum','class','order','family','genus']);
+const $ = id => document.getElementById(id);
+
+const store = {
+  get() { try { return localStorage.getItem(KEY) || ''; } catch { return ''; } },
+  set(v) { try { localStorage.setItem(KEY, v); } catch {} },
+  del() { try { localStorage.removeItem(KEY); } catch {} },
+};
+
+function status(msg, err) {
+  $('status').textContent = msg;
+  $('status').className = 'status' + (err ? ' error' : '');
+}
+
+async function api(path, token) {
+  const res = await fetch(API + path, { headers: token ? { Authorization: token } : {} });
+  if (res.status === 401) throw new Error('Token rejected or expired. Get a fresh one and paste it again.');
+  if (res.status === 429) throw new Error('Rate limited by iNaturalist. Wait a minute and retry.');
+  if (!res.ok) throw new Error(`iNaturalist API error ${res.status}`);
+  return res.json();
+}
+
+async function fetchObservations(token, userId) {
+  const perPage = 200, all = [];
+  let page = 1, total = Infinity;
+  while (all.length < total && all.length < 10000) {
+    const d = await api(`/observations?user_id=${userId}&per_page=${perPage}&page=${page}&order_by=id&order=asc&only_id=false`, token);
+    total = d.total_results;
+    if (!d.results.length) break;
+    all.push(...d.results);
+    status(`Fetched ${all.length} of ${total} observations…`);
+    page++;
+    await new Promise(r => setTimeout(r, 700)); // be polite: ~1 req/sec
+  }
+  return all;
+}
+
+async function fetchTaxonNames(ids) {
+  const out = {};
+  const list = [...ids];
+  for (let i = 0; i < list.length; i += 30) {
+    const batch = list.slice(i, i + 30);
+    status(`Looking up taxonomy… ${Math.min(i + 30, list.length)}/${list.length}`);
+    const d = await api(`/taxa/${batch.join(',')}?per_page=30`);
+    for (const t of d.results) out[t.id] = t;
+    await new Promise(r => setTimeout(r, 700));
+  }
+  return out;
+}
+
+// Build a nested tree from each taxon's ancestor_ids (root → taxon).
+function buildTree(taxaObs) {
+  const root = { id: 0, children: new Map(), species: [], count: 0 };
+  for (const o of taxaObs) {
+    const chain = o.taxon.ancestor_ids;
+    let node = root;
+    node.count++;
+    for (const id of chain.slice(0, -1)) {
+      if (!node.children.has(id)) node.children.set(id, { id, children: new Map(), species: [], count: 0 });
+      node = node.children.get(id);
+      node.count++;
+    }
+    node.species.push(o);
+  }
+  return root;
+}
+
+// Collapse the tree so only major ranks appear; distinct species grouped under their nearest shown ancestor.
+function render(root, names) {
+  const frag = document.createDocumentFragment();
+
+  function speciesRows(obs) {
+    const byTaxon = new Map();
+    for (const o of obs) {
+      const k = o.taxon.id;
+      if (!byTaxon.has(k)) byTaxon.set(k, { taxon: o.taxon, n: 0 });
+      byTaxon.get(k).n++;
+    }
+    return [...byTaxon.values()].sort((a, b) => (a.taxon.name || '').localeCompare(b.taxon.name || ''));
+  }
+
+  function speciesEl({ taxon, n }) {
+    const d = document.createElement('div');
+    d.className = 'species';
+    if (taxon.default_photo?.square_url) {
+      const img = document.createElement('img');
+      img.src = taxon.default_photo.square_url; img.alt = ''; img.loading = 'lazy';
+      d.append(img);
+    }
+    const a = document.createElement('a');
+    a.href = `https://www.inaturalist.org/taxa/${taxon.id}`; a.target = '_blank'; a.rel = 'noopener';
+    const common = taxon.preferred_common_name;
+    a.innerHTML = '';
+    if (common) a.append(common + ' ');
+    const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = taxon.name;
+    a.append(sci);
+    const c = document.createElement('span'); c.className = 'count'; c.textContent = `${n} obs`;
+    d.append(a, c);
+    return d;
+  }
+
+  // Gather all species rows beneath a node (flattened), in tree order.
+  function collect(node, acc = []) {
+    acc.push(...speciesRows(node.species));
+    for (const ch of sortedChildren(node)) collect(ch, acc);
+    return acc;
+  }
+  function sortedChildren(node) {
+    return [...node.children.values()].sort((a, b) => b.count - a.count);
+  }
+  function countSpecies(node) { return new Set(collect(node).map(r => r.taxon.id)).size; }
+
+  function groupEl(node, shownRank) {
+    const t = names[node.id];
+    const det = document.createElement('details');
+    const sum = document.createElement('summary');
+    const r = document.createElement('span'); r.className = 'rank'; r.textContent = shownRank;
+    const nm = document.createElement('span');
+    const label = t?.preferred_common_name ? `${t.preferred_common_name} ` : '';
+    nm.append(label);
+    const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = t?.name || `#${node.id}`;
+    nm.append(sci);
+    const c = document.createElement('span'); c.className = 'count';
+    c.textContent = `${countSpecies(node)} taxa · ${node.count} obs`;
+    sum.append(r, nm, c);
+    det.append(sum);
+    fill(node, det);
+    return det;
+  }
+
+  // Descend through unranked/minor nodes without creating a group for them.
+  function fill(node, parentEl) {
+    for (const row of speciesRows(node.species)) parentEl.append(speciesEl(row));
+    for (const ch of sortedChildren(node)) {
+      const rank = names[ch.id]?.rank;
+      if (SHOWN_RANKS.has(rank)) parentEl.append(groupEl(ch, rank));
+      else fill(ch, parentEl);
+    }
+  }
+
+  fill(root, frag);
+  $('tree').replaceChildren(frag);
+  // Open first level.
+  document.querySelectorAll('#tree > details').forEach(d => d.open = true);
+}
+
+async function run() {
+  const token = $('token').value.trim().replace(/^Bearer\s+/i, '');
+  if (!token) return status('Paste a token first.', true);
+  store.set(token);
+  $('load').disabled = true;
+  try {
+    status('Checking token…');
+    const me = (await api('/users/me', token)).results[0];
+    const obs = await fetchObservations(token, me.id);
+    const withTaxon = obs.filter(o => o.taxon?.ancestor_ids?.length);
+    const ids = new Set();
+    withTaxon.forEach(o => o.taxon.ancestor_ids.forEach(i => ids.add(i)));
+    const names = await fetchTaxonNames(ids);
+    const root = buildTree(withTaxon);
+    render(root, names);
+    $('results').hidden = false;
+    const species = new Set(withTaxon.map(o => o.taxon.id)).size;
+    $('summary').textContent = `${me.login}: ${obs.length} observations, ${species} distinct taxa` +
+      (obs.length - withTaxon.length ? `, ${obs.length - withTaxon.length} unidentified` : '');
+    status('Done.');
+  } catch (e) {
+    status(e.message, true);
+  } finally {
+    $('load').disabled = false;
+  }
+}
+
+$('load').onclick = run;
+$('forget').onclick = () => { store.del(); $('token').value = ''; $('results').hidden = true; status('Token removed.'); };
+$('expand').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = true);
+$('collapse').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = false);
+
+const cached = store.get();
+if (cached) { $('token').value = cached; run(); }
+</script>
+</body>
+</html>
