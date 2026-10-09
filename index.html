@@ -73,12 +73,14 @@
   #recent .sp { border-left:0; padding-left:0; }
   [hidden] { display:none !important; }
   select { font:inherit; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--card); color:var(--fg); }
-  #mapcanvas { height:70vh; min-height:360px; border-radius:8px; z-index:0; }
-  .pm img { width:40px; height:40px; border-radius:50%; border:2px solid #fff; object-fit:cover; background:#9aa; box-shadow:0 1px 4px rgba(0,0,0,.5); display:block; }
-  .pm.nophoto { width:16px; height:16px; border-radius:50%; background:#4a8a2a; border:2px solid #fff; }
-  .mp { width:200px; } .mp img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; display:block; cursor:zoom-in; }
-  .mp .t { font-weight:600; margin:6px 0 0; } .mp .d { color:#666; font-size:12px; }
-  .mp .acts { margin-top:6px; }
+  #areamap { height:55vh; min-height:300px; border-radius:8px; z-index:0; }
+  .cpin { width:22px; height:22px; border-radius:50%; background:#d9480f; border:3px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.6); }
+  .filters { display:flex; gap:8px; align-items:center; margin:0 0 8px; }
+  .filters input[type=search] { flex:1; min-width:0; padding:9px 12px; font:inherit; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); }
+  .chip { display:inline-flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--accent); color:var(--fg);
+          border-radius:16px; padding:3px 6px 3px 12px; font-size:13px; margin:0 0 8px; }
+  .chip button { padding:0 6px; background:none; color:var(--muted); font-size:16px; }
+  #areapanel input[type=range] { width:100%; }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   /* full-screen viewer */
   #viewer { position:fixed; inset:0; z-index:1000; background:#000; color:#fff; display:none; flex-direction:column; }
@@ -142,11 +144,25 @@
   </div>
 
   <div id="results" hidden>
+    <div class="filters">
+      <input type="search" id="q" placeholder="Search species, family, place, date…" autocomplete="off" spellcheck="false">
+      <button class="ib" id="areabtn" aria-label="Filter by map area" title="Filter by map area" aria-expanded="false">📍</button>
+    </div>
+    <div id="chips"></div>
+    <div class="card" id="areapanel" hidden>
+      <p class="status" style="margin:0 0 8px">Tap the map to set the centre, drag the pin to move it, and use the slider to change the radius. Only observations inside the circle are shown in every view.</p>
+      <div id="areamap"></div>
+      <div class="row">
+        <input type="range" id="radius" min="0" max="100" value="40" aria-label="Radius" style="flex:1;min-width:140px">
+        <span id="radiuslabel" class="status" style="min-width:90px"></span>
+        <button class="secondary" id="areafit">Fit</button>
+        <button class="secondary" id="areaclear">Clear area</button>
+      </div>
+    </div>
     <div class="tabs" role="tablist">
       <button id="tabTree" role="tab">By taxonomy</button>
       <button id="tabPlace" role="tab">By place</button>
       <button id="tabRecent" role="tab">Recent</button>
-      <button id="tabMap" role="tab">Map</button>
     </div>
     <div class="toolbar">
       <span id="treeTools"><button class="secondary" id="expand">Expand all</button>
@@ -158,10 +174,6 @@
     </div>
     <div class="card" id="tree"></div>
     <div class="card" id="recent" hidden></div>
-    <div class="card" id="mapwrap" hidden>
-      <div id="mapnote" class="status" style="margin:0 0 8px"></div>
-      <div id="mapcanvas"></div>
-    </div>
   </div>
 </main>
 
@@ -809,11 +821,11 @@ async function ensurePlaces() {
 // ---------- recent view ----------
 const VIEW_KEY = 'inat_view';
 let view = 'tree';
-try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent', 'map'].includes(v) ? v : 'tree'; } catch {}
+try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent'].includes(v) ? v : 'tree'; } catch {}
 
-function renderRecent() {
+function renderRecent(obs) {
   const el = $('recent');
-  const list = [...state.obs].sort((a, b) =>
+  const list = [...obs].sort((a, b) =>
     (b.date || '').localeCompare(a.date || '') || b.id - a.id);
   const PAGE = 30;
   let shown = 0, lastKey = null;
@@ -892,15 +904,54 @@ function renderRecent() {
   more();
 }
 
-// ---------- map view (Leaflet + marker clustering, loaded on demand) ----------
+// ---------- filters: text search + map area ----------
 const LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
 const CLUSTER = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/';
-let map, cluster, mapFitted = false, mapSeq = 0;
+const AREA_KEY = 'inat_area';
+let areaMap, areaCluster, areaCircle, areaPin, areaFitted = false;
+let area = null; // { lat, lng, r } with r in metres
+try { const a = JSON.parse(localStorage.getItem(AREA_KEY) || 'null'); if (a && isFinite(a.lat) && isFinite(a.lng) && a.r > 0) area = a; } catch {}
 
 function parseLoc(o) {
   const m = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/.exec(o.loc || '');
   return m ? [parseFloat(m[1]), parseFloat(m[2])] : null;
 }
+function distM(lat1, lng1, lat2, lng2) { // haversine
+  const R = 6371000, rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+const fold = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+let hay = new WeakMap(), haySig = '';
+function haystack(o) {
+  let s = hay.get(o);
+  if (s === undefined) {
+    const parts = [o.common, o.name, o.date];
+    for (const id of o.anc) { const t = state.names[id]; if (t) parts.push(t.name, t.common); }
+    for (const id of o.pids || []) { const p = state.places[id]; if (p && !p.missing && p.level != null) parts.push(p.name); }
+    s = fold(parts.filter(Boolean).join(' '));
+    hay.set(o, s);
+  }
+  return s;
+}
+// Observations passing the text search (before the area filter).
+function textFiltered() {
+  const sig = Object.keys(state.names).length + ':' + Object.keys(state.places).length;
+  if (sig !== haySig) { hay = new WeakMap(); haySig = sig; }
+  const terms = fold($('q').value).split(/\s+/).filter(Boolean);
+  return terms.length ? state.obs.filter(o => { const s = haystack(o); return terms.every(t => s.includes(t)); }) : state.obs;
+}
+function filteredObs() {
+  const t = textFiltered();
+  if (!area) return t;
+  return t.filter(o => { const ll = parseLoc(o); return ll && distM(area.lat, area.lng, ll[0], ll[1]) <= area.r; });
+}
+
+const fmtDist = m => m < 1000 ? `${Math.round(m)} m` : m < 10000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 1000)} km`;
+const sliderToR = v => 100 * Math.pow(10, v / 100 * 4.7);        // 100 m … ~5000 km
+const rToSlider = r => Math.round(Math.log10(r / 100) / 4.7 * 100);
+
 const addCss = href => { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.append(l); };
 const addScript = src => new Promise((res, rej) => {
   const s = document.createElement('script');
@@ -916,73 +967,85 @@ async function ensureLeaflet() {
   await addScript(CLUSTER + 'leaflet.markercluster.js');
 }
 
-function mapPopup(o) {
-  const ph = photosOf(o);
-  const el = document.createElement('div'); el.className = 'mp';
-  const open = () => viewer.open({
-    obs: o, photos: ph, title: o.common || o.name,
-    isPreferred: () => prefs[o.tid] === o.id,
-    setPreferred: () => { prefs[o.tid] = o.id; savePrefs(); log(`preferred observation for ${o.name} set to ${o.id}`); },
-  });
-  if (ph.length) {
-    const im = document.createElement('img');
-    im.src = sized(ph[0], 'medium'); im.alt = ''; im.onclick = open;
-    im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
-    el.append(im);
-  }
-  const t = document.createElement('div'); t.className = 't';
-  t.append(o.common ? o.common + ' ' : '');
-  const sci = document.createElement('i'); sci.textContent = o.name; t.append(sci);
-  const d = document.createElement('div'); d.className = 'd'; d.textContent = o.date || 'date unknown';
-  const acts = document.createElement('div'); acts.className = 'acts';
-  if (ph.length) {
-    const v = document.createElement('button'); v.className = 'secondary'; v.textContent = ph.length > 1 ? `View ${ph.length} photos` : 'View photo';
-    v.onclick = open; acts.append(v);
-  }
-  const ext = document.createElement('a');
-  ext.className = 'ib'; ext.textContent = '↗'; ext.href = obsUrl(o); ext.target = '_blank'; ext.rel = 'noopener';
-  ext.title = 'Open observation on iNaturalist';
-  acts.append(ext);
-  el.append(t, d, acts);
-  return el;
+function setArea(a) {
+  area = a;
+  try { a ? localStorage.setItem(AREA_KEY, JSON.stringify(a)) : localStorage.removeItem(AREA_KEY); } catch {}
+  drawArea(); drawChips(); scheduleShow();
 }
-
-async function renderMap() {
-  const seq = ++mapSeq;
-  const pts = state.obs.map(o => [o, parseLoc(o)]).filter(([, ll]) => ll);
-  const without = state.obs.length - pts.length;
-  $('mapnote').textContent = `${pts.length} observation${pts.length === 1 ? '' : 's'} on the map` +
-    (without ? ` · ${without} without coordinates (private/obscured, or cached before map support — use "Re-download observations")` : '');
+function drawChips() {
+  const c = $('chips');
+  c.replaceChildren();
+  $('areabtn').style.borderColor = area ? 'var(--accent)' : '';
+  if (!area) return;
+  const chip = document.createElement('span'); chip.className = 'chip';
+  chip.append(`📍 within ${fmtDist(area.r)} of ${area.lat.toFixed(3)}, ${area.lng.toFixed(3)}`);
+  const x = document.createElement('button'); x.textContent = '×'; x.title = 'Clear area filter'; x.setAttribute('aria-label', 'Clear area filter');
+  x.onclick = () => setArea(null);
+  chip.append(x); c.append(chip);
+}
+function drawArea() {
+  $('radiuslabel').textContent = area ? fmtDist(area.r) : 'no area set';
+  if (area) $('radius').value = rToSlider(area.r);
+  if (!areaMap) return;
+  if (areaCircle) { areaCircle.remove(); areaCircle = null; }
+  if (areaPin) { areaPin.remove(); areaPin = null; }
+  if (!area) return;
+  areaCircle = L.circle([area.lat, area.lng], { radius: area.r, color: '#d9480f', weight: 2, fillColor: '#d9480f', fillOpacity: 0.12, interactive: false }).addTo(areaMap);
+  areaPin = L.marker([area.lat, area.lng], { draggable: true, zIndexOffset: 10000, icon: L.divIcon({ className: '', html: '<div class="cpin"></div>', iconSize: [22, 22], iconAnchor: [11, 11] }) }).addTo(areaMap);
+  areaPin.on('drag', e => { const p = e.target.getLatLng(); areaCircle.setLatLng(p); });
+  areaPin.on('dragend', e => { const p = e.target.getLatLng(); setArea({ lat: p.lat, lng: p.lng, r: area.r }); });
+}
+function drawAreaMarkers() {
+  if (!areaMap) return;
+  areaCluster.clearLayers();
+  const markers = [];
+  for (const o of textFiltered()) {
+    const ll = parseLoc(o);
+    if (ll) markers.push(L.circleMarker(ll, { radius: 5, color: '#fff', weight: 1, fillColor: '#2f7d32', fillOpacity: 0.9 }));
+  }
+  areaCluster.addLayers(markers);
+  if (!areaFitted) {
+    if (area) areaMap.fitBounds(areaCircle.getBounds());
+    else if (markers.length) areaMap.fitBounds(L.latLngBounds(markers.map(m => m.getLatLng())).pad(0.1), { maxZoom: 12 });
+    else areaMap.setView([20, 0], 2);
+    areaFitted = true;
+  }
+}
+async function openAreaPanel(open) {
+  $('areapanel').hidden = !open;
+  $('areabtn').setAttribute('aria-expanded', String(open));
+  if (!open) return;
   try { await ensureLeaflet(); } catch (e) { log(String(e), 'e'); return status(`Map library failed to load: ${e.message}`, true); }
-  if (seq !== mapSeq || view !== 'map') return;
-  if (!map) {
-    map = L.map('mapcanvas', { preferCanvas: true, worldCopyJump: true });
+  if (!areaMap) {
+    areaMap = L.map('areamap', { preferCanvas: true, worldCopyJump: true });
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
-    cluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 45, showCoverageOnHover: false });
-    map.addLayer(cluster);
-    map.setView([20, 0], 2);
+    }).addTo(areaMap);
+    areaCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40, showCoverageOnHover: false, spiderfyOnMaxZoom: false, zoomToBoundsOnClick: true });
+    areaMap.addLayer(areaCluster);
+    areaMap.on('click', e => setArea({ lat: e.latlng.lat, lng: e.latlng.lng, r: area ? area.r : sliderToR(+$('radius').value) }));
+    areaMap.setView([20, 0], 2);
+    drawArea();
   }
-  map.invalidateSize();
-  cluster.clearLayers();
-  const markers = pts.map(([o, ll]) => {
-    const ph = photosOf(o);
-    let icon;
-    if (ph.length) {
-      const im = document.createElement('img');
-      im.src = sized(ph[0], 'square'); im.alt = ''; im.loading = 'lazy';
-      icon = L.divIcon({ className: 'pm', html: im, iconSize: [44, 44] });
-    } else icon = L.divIcon({ className: 'pm nophoto', iconSize: [20, 20] });
-    return L.marker(ll, { icon, title: o.common || o.name }).bindPopup(() => mapPopup(o), { minWidth: 200 });
-  });
-  cluster.addLayers(markers);
-  if (!mapFitted && pts.length) {
-    map.fitBounds(L.latLngBounds(pts.map(([, ll]) => ll)).pad(0.1), { maxZoom: 12 });
-    mapFitted = true;
-  }
-  log(`map: ${markers.length} markers`);
+  areaMap.invalidateSize();
+  drawAreaMarkers();
 }
+$('areabtn').onclick = () => openAreaPanel($('areapanel').hidden);
+$('radius').oninput = () => {
+  const r = sliderToR(+$('radius').value);
+  if (area) { area = { ...area, r }; areaCircle?.setRadius(r); $('radiuslabel').textContent = fmtDist(r); }
+  else $('radiuslabel').textContent = fmtDist(r) + ' (tap map to place)';
+};
+$('radius').onchange = () => { if (area) setArea(area); };
+$('areaclear').onclick = () => setArea(null);
+$('areafit').onclick = () => {
+  if (!areaMap) return;
+  if (area && areaCircle) areaMap.fitBounds(areaCircle.getBounds());
+  else { areaFitted = false; drawAreaMarkers(); }
+};
+let showTimer;
+function scheduleShow() { clearTimeout(showTimer); showTimer = setTimeout(() => show(), 250); }
+$('q').addEventListener('input', scheduleShow);
 
 function setView(v) {
   view = v;
@@ -990,39 +1053,41 @@ function setView(v) {
   $('tabTree').classList.toggle('active', v === 'tree');
   $('tabPlace').classList.toggle('active', v === 'place');
   $('tabRecent').classList.toggle('active', v === 'recent');
-  $('tabMap').classList.toggle('active', v === 'map');
-  $('tree').hidden = v === 'recent' || v === 'map';
+  $('tree').hidden = v === 'recent';
   $('recent').hidden = v !== 'recent';
-  $('mapwrap').hidden = v !== 'map';
-  $('treeTools').hidden = v === 'recent' || v === 'map';
+  $('treeTools').hidden = v === 'recent';
   $('locTools').hidden = v !== 'place';
   if (state.obs.length) show();
 }
 $('tabTree').onclick = () => setView('tree');
 $('tabPlace').onclick = () => setView('place');
 $('tabRecent').onclick = () => setView('recent');
-$('tabMap').onclick = () => setView('map');
 
 function show(keepStatus) {
   if (!state.obs.length) return;
   const t0 = performance.now();
+  const obs = filteredObs();
+  const filtered = obs.length !== state.obs.length;
   let species;
-  if (view === 'map') {
-    renderMap();
-    species = new Set(state.obs.map(o => o.tid)).size;
-  } else if (view === 'recent') {
-    renderRecent();
-    species = new Set(state.obs.map(o => o.tid)).size;
+  if (!$('areapanel').hidden) drawAreaMarkers();
+  if (view === 'recent') {
+    renderRecent(obs);
+    species = new Set(obs.map(o => o.tid)).size;
   } else if (view === 'place') {
-    species = render(buildTree(state.obs, placeChain), state.names, PLACE_META);
-    const without = state.obs.filter(o => !(o.pids && o.pids.length)).length;
+    species = render(buildTree(obs, placeChain), state.names, PLACE_META);
+    const without = obs.filter(o => !(o.pids && o.pids.length)).length;
     $('locnote').textContent = without
       ? `${without} observation${without > 1 ? 's' : ''} without place data (private, or cached before location support — use "Re-download observations")`
       : '';
     if (!keepStatus) ensurePlaces();
-  } else species = render(buildTree(state.obs), state.names);
+  } else species = render(buildTree(obs), state.names);
+  if (!obs.length) {
+    const empty = document.createElement('p');
+    empty.className = 'status'; empty.textContent = 'No observations match the current search / area.';
+    (view === 'recent' ? $('recent') : $('tree')).replaceChildren(empty);
+  }
   $('results').hidden = false;
-  $('summary').textContent = `${state.user.login}: ${species} species · ${state.obs.length} identified observations` +
+  $('summary').textContent = `${state.user.login}: ${species} species · ${obs.length}${filtered ? ` of ${state.obs.length}` : ''} identified observations` +
     (state.updated ? ` · updated ${new Date(state.updated).toLocaleString()}` : '');
   log(`rendered in ${Math.round(performance.now() - t0)}ms (${species} species)`);
 }
@@ -1127,6 +1192,7 @@ $('expand').onclick = () => document.querySelectorAll('#tree details').forEach(d
 $('collapse').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = false);
 
 setView(view);
+drawChips();
 (async () => {
   log(`start: ${navigator.userAgent}`);
   await loadCache();
