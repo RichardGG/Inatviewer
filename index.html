@@ -91,6 +91,26 @@
   .xrow a { color:var(--fg); text-decoration:none; } .xrow a:hover { text-decoration:underline; }
   .seen { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; background:var(--accent); color:#fff; width:fit-content; }
   .unseen { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; border:1px solid #d9480f; color:#d9480f; width:fit-content; }
+  #detail { position:fixed; inset:0; z-index:900; background:var(--bg); color:var(--fg); display:none; flex-direction:column; }
+  #detail.open { display:flex; }
+  .dbar { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--line); background:var(--card); }
+  .dtitle { flex:1; min-width:0; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dbody { flex:1; overflow-y:auto; padding:12px 16px 48px; }
+  .dbody > * { max-width:720px; margin-left:auto; margin-right:auto; }
+  .dbody h2 { font-size:1.25rem; margin:14px auto 6px; } .dbody h3 { font-size:1rem; margin:20px auto 8px; }
+  .dhero { width:100%; max-width:420px !important; aspect-ratio:1; object-fit:cover; border-radius:10px; display:block; background:var(--line); cursor:zoom-in; }
+  .crumbs { font-size:12px; color:var(--muted); line-height:1.8; }
+  .crumbs button { background:none; padding:0 2px; color:var(--accent); font-size:12px; }
+  .tag { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; border:1px solid var(--line); margin:0 6px 4px 0; }
+  .tag.warn { border-color:#d9480f; color:#d9480f; }
+  .mine { display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:6px; }
+  .mine .alt .ib { width:26px; height:26px; font-size:14px; }
+  .season { display:flex; align-items:flex-end; gap:3px; height:70px; }
+  .season div { flex:1; background:var(--accent); opacity:.75; border-radius:2px 2px 0 0; min-height:2px; }
+  .season-l { display:flex; gap:3px; font-size:10px; color:var(--muted); text-align:center; }
+  .season-l span { flex:1; } .season-l .me { color:#d9480f; font-weight:700; }
+  #dmap { height:260px; border-radius:8px; z-index:0; }
+  .xrow img.mineimg { outline:3px solid var(--accent); outline-offset:-3px; }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   /* full-screen viewer */
   #viewer { position:fixed; inset:0; z-index:1000; background:#000; color:#fff; display:none; flex-direction:column; }
@@ -214,6 +234,15 @@
 </main>
 
 <div id="toast"></div>
+
+<div id="detail" role="dialog" aria-modal="true" aria-label="Species details">
+  <div class="dbar">
+    <button class="ib" id="dclose" aria-label="Close">✕</button>
+    <div class="dtitle" id="dtitle"></div>
+    <a class="ib" id="dext" target="_blank" rel="noopener" aria-label="Open on iNaturalist">↗</a>
+  </div>
+  <div class="dbody" id="dbody"></div>
+</div>
 
 <div id="viewer" role="dialog" aria-modal="true" aria-label="Photo viewer">
   <div class="bar">
@@ -578,7 +607,7 @@ viewer.track.addEventListener('scroll', () => {
   const i = Math.round(viewer.track.scrollLeft / viewer.track.clientWidth);
   if (i !== viewer.idx) { viewer.idx = i; viewer.counter(); }
 });
-window.addEventListener('popstate', () => { if (viewer.isOpen) viewer.hide(); });
+window.addEventListener('popstate', () => { if (viewer.isOpen) viewer.hide(); else if (detail.isOpen) detail.hide(); });
 $('vclose').onclick = () => viewer.close();
 $('vprev').onclick = () => viewer.go(-1);
 $('vnext').onclick = () => viewer.go(1);
@@ -674,6 +703,7 @@ function render(root, names, meta = TAXON_META(names)) {
       info.className = 'info';
       const a = document.createElement('a');
       a.className = 't'; a.href = `https://www.inaturalist.org/taxa/${row.tid}`; a.target = '_blank'; a.rel = 'noopener';
+      speciesLink(a, row.tid);
       if (row.common) a.append(row.common + ' ');
       const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = row.name;
       a.append(sci);
@@ -894,6 +924,7 @@ function renderRecent(obs) {
     const info = document.createElement('div'); info.className = 'info';
     const a = document.createElement('a');
     a.className = 't'; a.href = `https://www.inaturalist.org/taxa/${o.tid}`; a.target = '_blank'; a.rel = 'noopener';
+    speciesLink(a, o.tid);
     if (o.common) a.append(o.common + ' ');
     const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = o.name;
     a.append(sci);
@@ -1114,6 +1145,185 @@ $('q').addEventListener('input', scheduleShow);
 $('datesel').onchange = () => { $('customdates').hidden = $('datesel').value !== 'custom'; scheduleShow(); };
 $('dfrom').onchange = $('dto').onchange = scheduleShow;
 
+// ---------- species detail (opens from any view) ----------
+const detail = {
+  el: $('detail'), isOpen: false,
+  open() {
+    this.el.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    if (!this.isOpen) history.pushState({ detail: 1 }, '');
+    this.isOpen = true;
+  },
+  hide() { this.el.classList.remove('open'); if (!viewer.isOpen) document.body.style.overflow = ''; this.isOpen = false; },
+  close() { if (this.isOpen) history.back(); },
+};
+$('dclose').onclick = () => detail.close();
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && detail.isOpen && !viewer.isOpen) detail.close(); });
+// viewer hide shouldn't release the scroll lock while the detail panel is still open
+const _vhide = viewer.hide.bind(viewer);
+viewer.hide = () => { _vhide(); if (detail.isOpen) document.body.style.overflow = 'hidden'; };
+
+function speciesLink(a, tid) {
+  a.addEventListener('click', e => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+    e.preventDefault();
+    openSpecies(tid);
+  });
+}
+
+const taxDetailCache = new Map();
+async function loadTaxonDetail(id) {
+  if (taxDetailCache.has(id)) return taxDetailCache.get(id);
+  const all = (await idb.get('taxdetail')) || {};
+  if (all[id]) { taxDetailCache.set(id, all[id]); return all[id]; }
+  const t = (await api(`/taxa/${id}`)).results[0];
+  const slimT = {
+    id: t.id, name: t.name, rank: t.rank, common: t.preferred_common_name || '',
+    photo: t.default_photo?.medium_url || '', wikiUrl: t.wikipedia_url || '',
+    // wikipedia_summary is HTML; keep plain text only
+    wiki: t.wikipedia_summary ? (new DOMParser().parseFromString(t.wikipedia_summary, 'text/html').body.textContent || '').trim() : '',
+    ancestors: (t.ancestors || []).map(a => ({ id: a.id, name: a.name, rank: a.rank, common: a.preferred_common_name || '' })),
+    status: t.conservation_status ? { name: t.conservation_status.status_name || t.conservation_status.status, iucn: t.conservation_status.iucn } : null,
+    threatened: !!t.threatened, extinct: !!t.extinct, endemic: !!t.endemic, introduced: !!t.introduced, native: !!t.native,
+    obsCount: t.observations_count || 0,
+  };
+  taxDetailCache.set(id, slimT);
+  all[id] = slimT; await idb.set('taxdetail', all);
+  return slimT;
+}
+
+async function openSpecies(id) {
+  const mineObs = state.obs.filter(o => o.tid === id || o.anc.includes(id));
+  const hint = state.names[id] || mineObs.find(o => o.tid === id) || {};
+  const body = $('dbody');
+  body.replaceChildren();
+  $('dtitle').textContent = hint.common || hint.name || 'Species';
+  $('dext').href = `https://www.inaturalist.org/taxa/${id}`;
+  detail.open();
+  body.scrollTop = 0;
+  const loading = document.createElement('p'); loading.className = 'status'; loading.textContent = 'Loading details…';
+  body.append(loading);
+
+  let t = null, err = '';
+  try { t = await loadTaxonDetail(id); } catch (e) { err = e.message; log(`taxon detail failed: ${e.stack || e}`, 'e'); }
+  if (!detail.isOpen || $('dext').href.split('/').pop() !== String(id)) return; // user moved on
+  loading.remove();
+  const name = t?.name || hint.name || `#${id}`, common = t?.common || hint.common || '';
+  $('dtitle').textContent = common || name;
+
+  const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
+
+  // hero: my preferred photo if I have one, otherwise iNaturalist's default photo
+  const ordered = [...mineObs].filter(o => photosOf(o).length);
+  const star = ordered.find(o => prefs[o.tid] === o.id) || ordered[0];
+  const heroSrc = star ? sized(photosOf(star)[0], 'medium') : t?.photo;
+  if (heroSrc) {
+    const hero = el('img', 'dhero'); hero.src = heroSrc; hero.alt = '';
+    if (star) { hero.title = 'Your photo'; hero.onclick = () => viewer.open({ obs: star, photos: photosOf(star), title: common || name,
+      isPreferred: () => prefs[star.tid] === star.id, setPreferred: () => { prefs[star.tid] = star.id; savePrefs(); } }); }
+    body.append(hero);
+  }
+  const h2 = el('h2', '', common || name); body.append(h2);
+  if (common) { const s = el('div', 'sci', name); s.style.margin = '-4px auto 6px'; body.append(s); }
+  const tags = el('div');
+  tags.style.margin = '6px auto';
+  const addTag = (txt, warn) => tags.append(el('span', 'tag' + (warn ? ' warn' : ''), txt));
+  if (t) {
+    addTag(t.rank);
+    if (t.status?.name) addTag(`${t.status.name}${t.status.iucn ? '' : ''}`, true);
+    else if (t.threatened) addTag('threatened', true);
+    if (t.extinct) addTag('extinct', true);
+    if (t.endemic) addTag('endemic');
+    if (t.introduced) addTag('introduced');
+    if (t.native) addTag('native');
+    if (t.obsCount) addTag(`${t.obsCount.toLocaleString()} observations on iNaturalist`);
+  }
+  const mc = mineObs.length;
+  addTag(mc ? `✓ You have ${mc} observation${mc > 1 ? 's' : ''}` : 'Not yet seen by you');
+  body.append(tags);
+  if (err) body.append(Object.assign(el('p', 'status error', `Could not load details: ${err}`)));
+
+  if (t?.ancestors?.length) {
+    const cr = el('div', 'crumbs');
+    t.ancestors.filter(a => a.rank !== 'stateofmatter').forEach((a, i) => {
+      if (i) cr.append(' › ');
+      const b = el('button', '', a.common || a.name); b.type = 'button'; b.title = a.rank;
+      b.onclick = () => openSpecies(a.id);
+      cr.append(b);
+    });
+    body.append(cr);
+  }
+
+  if (t?.wiki) {
+    body.append(el('h3', '', 'About'));
+    body.append(el('p', '', t.wiki.length > 900 ? t.wiki.slice(0, 900).replace(/\s+\S*$/, '') + '…' : t.wiki));
+    if (t.wikiUrl) { const a = el('a', '', 'Read on Wikipedia ↗'); a.href = t.wikiUrl; a.target = '_blank'; a.rel = 'noopener'; body.append(a); }
+  } else if (t && !err) {
+    body.append(el('p', 'status', 'No Wikipedia summary is linked to this taxon on iNaturalist.'));
+  }
+
+  // my observations
+  if (mineObs.length) {
+    const dates = mineObs.map(o => o.date).filter(Boolean).sort();
+    body.append(el('h3', '', `My observations (${mineObs.length})`));
+    if (dates.length) body.append(el('p', 'status', `First ${dates[0]} · Latest ${dates[dates.length - 1]}`));
+    const grid = el('div', 'mine');
+    for (const o of [...mineObs].sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id)) {
+      const ph = photosOf(o);
+      const cell = el('div', 'alt');
+      const pic = el('button', 'pic'); pic.type = 'button';
+      if (ph.length) {
+        const im = el('img'); im.src = sized(ph[0], 'medium'); im.alt = ''; im.loading = 'lazy'; pic.append(im);
+        pic.onclick = () => viewer.open({ obs: o, photos: ph, title: common || name,
+          isPreferred: () => prefs[o.tid] === o.id, setPreferred: () => { prefs[o.tid] = o.id; savePrefs(); log(`preferred observation for ${o.name} set to ${o.id}`); } });
+      }
+      const st = el('button', 'ib star', prefs[o.tid] === o.id ? '★' : '☆'); st.type = 'button'; st.title = 'Use as preferred photo';
+      st.onclick = () => { prefs[o.tid] = o.id; savePrefs(); grid.querySelectorAll('.star').forEach(s => s.textContent = '☆'); st.textContent = '★'; show(true); };
+      const ext = el('a', 'ib ext', '↗'); ext.href = obsUrl(o); ext.target = '_blank'; ext.rel = 'noopener';
+      cell.append(pic, st, ext);
+      if (o.date) { const d = el('span', 'badge', o.date); d.style.left = '4px'; d.style.right = 'auto'; cell.append(d); }
+      grid.append(cell);
+    }
+    body.append(grid);
+  }
+
+  // seasonality (global, from iNaturalist) with my months marked
+  const seasonBox = el('div'); body.append(seasonBox);
+  api(`/observations/histogram?taxon_id=${id}&date_field=observed&interval=month_of_year`).then(d => {
+    if (!detail.isOpen) return;
+    const m = d.results?.month_of_year || {};
+    const vals = Array.from({ length: 12 }, (_, i) => m[i + 1] || 0), max = Math.max(1, ...vals);
+    if (!vals.some(Boolean)) return;
+    const mineMonths = new Set(mineObs.map(o => parseInt((o.date || '').slice(5, 7), 10)).filter(Boolean));
+    seasonBox.append(el('h3', '', 'When it is seen'));
+    const bars = el('div', 'season'), labels = el('div', 'season-l');
+    vals.forEach((v, i) => {
+      const b = el('div'); b.style.height = `${Math.max(3, v / max * 100)}%`; b.title = `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i]}: ${v.toLocaleString()}`;
+      bars.append(b);
+      labels.append(el('span', mineMonths.has(i + 1) ? 'me' : '', 'JFMAMJJASOND'[i]));
+    });
+    seasonBox.append(bars, labels);
+    if (mineMonths.size) seasonBox.append(el('p', 'status', 'Orange letters: months you have seen it.'));
+  }).catch(e => log(`histogram failed: ${e.message}`, 'w'));
+
+  // map: my observations, plus an optional iNaturalist observation heat layer as a rough range
+  const pts = mineObs.map(parseLoc).filter(Boolean);
+  const mapBox = el('div'); body.append(mapBox);
+  mapBox.append(el('h3', '', 'Where it is seen'));
+  const lab = el('label', 'status'); const cb = el('input'); cb.type = 'checkbox'; lab.append(cb, ' Show all iNaturalist observations (approximate range)');
+  mapBox.append(lab);
+  const mapDiv = el('div'); mapDiv.id = 'dmap'; mapDiv.style.marginTop = '8px'; mapBox.append(mapDiv);
+  try { await ensureLeaflet(); } catch (e) { mapBox.append(el('p', 'status error', 'Map failed to load.')); return; }
+  if (!detail.isOpen) return;
+  const m = L.map(mapDiv, { worldCopyJump: true, preferCanvas: true });
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(m);
+  const heat = L.tileLayer(`https://api.inaturalist.org/v1/colored_heatmap/{z}/{x}/{y}.png?taxon_id=${id}`, { opacity: 0.7, maxNativeZoom: 12 });
+  cb.onchange = () => cb.checked ? heat.addTo(m) : heat.remove();
+  const dots = pts.map(ll => L.circleMarker(ll, { radius: 6, color: '#fff', weight: 1.5, fillColor: '#d9480f', fillOpacity: 0.95 }).addTo(m));
+  if (dots.length) m.fitBounds(L.latLngBounds(pts).pad(0.2), { maxZoom: 11 }); else { m.setView([20, 0], 2); cb.checked = true; heat.addTo(m); }
+  setTimeout(() => m.invalidateSize(), 50);
+}
+
 // ---------- Common here: most observed species in a place, and whether I've seen them ----------
 const EXP_KEY = 'inat_explore';
 const explore = { chain: [], extra: [], selected: null, items: [], total: 0, page: 0, loading: false, err: '', seq: 0 };
@@ -1130,6 +1340,17 @@ function speciesIdOf(o) {
 function mySpeciesCounts() {
   const m = new Map();
   for (const o of state.obs) { const id = speciesIdOf(o) ?? o.tid; m.set(id, (m.get(id) || 0) + 1); }
+  return m;
+}
+// My preferred photo for each species id: the starred observation if there is one, else the first with a photo.
+function myPhotoBySpecies() {
+  const m = new Map();
+  for (const o of state.obs) {
+    const ph = photosOf(o)[0];
+    if (!ph) continue;
+    const id = speciesIdOf(o) ?? o.tid, cur = m.get(id);
+    if (!cur || (prefs[o.tid] === o.id && !cur.starred)) m.set(id, { url: ph, starred: prefs[o.tid] === o.id });
+  }
   return m;
 }
 const placeObj = id => {
@@ -1249,7 +1470,7 @@ function renderExplore() {
     $('expnote').textContent = 'Choose a location to see the most observed species there, and which ones you have seen.';
     return;
   }
-  const mine = mySpeciesCounts(), mode = $('expfilter').value;
+  const mine = mySpeciesCounts(), myPhoto = myPhotoBySpecies(), mode = $('expfilter').value;
   const rows = explore.items.filter(it => {
     const seen = mine.has(it.taxon.id);
     return mode === 'all' || (mode === 'seen') === seen;
@@ -1264,11 +1485,14 @@ function renderExplore() {
     const t = it.taxon, n = mine.get(t.id);
     const row = document.createElement('div'); row.className = 'xrow';
     const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy';
-    const src = t.default_photo?.medium_url || t.default_photo?.square_url;
+    const mp = myPhoto.get(t.id);
+    const src = mp ? sized(mp.url, 'medium') : (t.default_photo?.medium_url || t.default_photo?.square_url);
+    if (mp) { img.className = 'mineimg'; img.title = 'Your photo'; }
     if (src) img.src = src;
     const info = document.createElement('div'); info.className = 'xi';
     const a = document.createElement('a');
     a.href = `https://www.inaturalist.org/taxa/${t.id}`; a.target = '_blank'; a.rel = 'noopener';
+    speciesLink(a, t.id);
     if (t.preferred_common_name) a.append(t.preferred_common_name + ' ');
     const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = t.name; a.append(sci);
     const c = document.createElement('span'); c.className = 'count'; c.style.marginLeft = '0';
