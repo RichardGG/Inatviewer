@@ -76,6 +76,7 @@
   #areamap { height:55vh; min-height:300px; border-radius:8px; z-index:0; }
   .filters { display:flex; gap:8px; align-items:center; margin:0 0 8px; }
   .filters input[type=search] { flex:1; min-width:0; padding:9px 12px; font:inherit; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); }
+  input[type=date] { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); }
   .chip { display:inline-flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--accent); color:var(--fg);
           border-radius:16px; padding:3px 6px 3px 12px; font-size:13px; margin:0 0 8px; }
   .chip button { padding:0 6px; background:none; color:var(--muted); font-size:16px; }
@@ -144,7 +145,16 @@
   <div id="results" hidden>
     <div class="filters">
       <input type="search" id="q" placeholder="Search common species name…" autocomplete="off" spellcheck="false">
+      <select id="datesel" aria-label="Date filter" style="max-width:110px">
+        <option value="all">All dates</option><option value="week">This week</option>
+        <option value="month">This month</option><option value="year">This year</option>
+        <option value="custom">Custom…</option>
+      </select>
       <button class="ib" id="areabtn" aria-label="Filter by map area" title="Filter by map area" aria-expanded="false">📍</button>
+    </div>
+    <div id="customdates" class="row" style="margin:0 0 8px" hidden>
+      <label class="status">From <input type="date" id="dfrom"></label>
+      <label class="status">to <input type="date" id="dto"></label>
     </div>
     <div id="chips"></div>
     <div class="card" id="areapanel" hidden>
@@ -921,10 +931,41 @@ function distM(lat1, lng1, lat2, lng2) { // haversine
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 const fold = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-// Text search matches the common species name only.
+// ---- date filter ----
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function dateRange() { // → [from, to] inclusive as YYYY-MM-DD, or null for all dates
+  const v = $('datesel').value, now = new Date(), today = ymd(now);
+  if (v === 'week') { const d = new Date(now); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return [ymd(d), today]; } // Monday start
+  if (v === 'month') return [`${today.slice(0, 7)}-01`, today];
+  if (v === 'year') return [`${now.getFullYear()}-01-01`, today];
+  if (/^y\d{4}$/.test(v)) return [`${v.slice(1)}-01-01`, `${v.slice(1)}-12-31`];
+  if (v === 'custom') return [$('dfrom').value || '0000-01-01', $('dto').value || '9999-12-31'];
+  return null;
+}
+// Offer a year option for every earlier year present in the data (this year has its own entry).
+function syncYearOptions() {
+  const cur = String(new Date().getFullYear());
+  const years = [...new Set(state.obs.map(o => (o.date || '').slice(0, 4)).filter(y => /^\d{4}$/.test(y) && y < cur))].sort().reverse();
+  const sel = $('datesel'), have = [...sel.options].filter(o => /^y\d{4}$/.test(o.value)).map(o => o.value.slice(1));
+  if (have.join() === years.join()) return;
+  const keep = sel.value;
+  [...sel.options].filter(o => /^y\d{4}$/.test(o.value)).forEach(o => o.remove());
+  const before = [...sel.options].find(o => o.value === 'custom');
+  for (const y of years) { const op = document.createElement('option'); op.value = 'y' + y; op.textContent = y; sel.insertBefore(op, before); }
+  sel.value = [...sel.options].some(o => o.value === keep) ? keep : 'all';
+}
+
+// Observations passing the text search (common species name only) and the date filter, before the area filter.
 function textFiltered() {
   const terms = fold($('q').value).split(/\s+/).filter(Boolean);
-  return terms.length ? state.obs.filter(o => { const s = fold(o.common || ''); return terms.every(t => s.includes(t)); }) : state.obs;
+  const range = dateRange();
+  if (!terms.length && !range) return state.obs;
+  return state.obs.filter(o => {
+    if (range && !(o.date && o.date >= range[0] && o.date <= range[1])) return false;
+    if (!terms.length) return true;
+    const s = fold(o.common || '');
+    return terms.every(t => s.includes(t));
+  });
 }
 function filteredObs() {
   const t = textFiltered();
@@ -983,7 +1024,7 @@ function drawArea(a = area) {
 let suppressMove = false;
 function moveMap(fn) { suppressMove = true; try { fn(); } finally { suppressMove = false; } }
 
-const markerKey = () => `${$('q').value}|${state.obs.length}|${textFiltered().length}`;
+const markerKey = () => `${$('q').value}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${state.obs.length}|${textFiltered().length}`;
 function drawAreaMarkers() {
   if (!areaMap) return;
   markerSig = markerKey();
@@ -1037,6 +1078,8 @@ $('areafit').onclick = () => {
 let showTimer;
 function scheduleShow() { clearTimeout(showTimer); showTimer = setTimeout(() => show(), 250); }
 $('q').addEventListener('input', scheduleShow);
+$('datesel').onchange = () => { $('customdates').hidden = $('datesel').value !== 'custom'; scheduleShow(); };
+$('dfrom').onchange = $('dto').onchange = scheduleShow;
 
 function setView(v) {
   view = v;
@@ -1057,6 +1100,7 @@ $('tabRecent').onclick = () => setView('recent');
 function show(keepStatus) {
   if (!state.obs.length) return;
   const t0 = performance.now();
+  syncYearOptions();
   const obs = filteredObs();
   const filtered = obs.length !== state.obs.length;
   let species;
@@ -1074,7 +1118,7 @@ function show(keepStatus) {
   } else species = render(buildTree(obs), state.names);
   if (!obs.length) {
     const empty = document.createElement('p');
-    empty.className = 'status'; empty.textContent = 'No observations match the current search / area.';
+    empty.className = 'status'; empty.textContent = 'No observations match the current search / date / area.';
     (view === 'recent' ? $('recent') : $('tree')).replaceChildren(empty);
   }
   $('results').hidden = false;
