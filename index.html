@@ -111,6 +111,10 @@
   .season-l span { flex:1; } .season-l .me { color:#d9480f; font-weight:700; }
   #dmap { height:260px; border-radius:8px; z-index:0; }
   .xrow img.mineimg { outline:3px solid var(--accent); outline-offset:-3px; }
+  .mp { width:200px; } .mp img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; display:block; cursor:zoom-in; }
+  .mp .t { font-weight:600; margin:6px 0 0; } .mp .d { color:#666; font-size:12px; } .mp .acts { margin-top:6px; }
+  .nb a { display:flex; align-items:center; gap:8px; margin:0 0 6px; color:#222; text-decoration:none; font-size:13px; }
+  .nb img { width:48px; height:48px; border-radius:6px; object-fit:cover; flex:none; }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   /* full-screen viewer */
   #viewer { position:fixed; inset:0; z-index:1000; background:#000; color:#fff; display:none; flex-direction:column; }
@@ -1096,7 +1100,7 @@ function drawAreaMarkers() {
   const markers = [];
   for (const o of textFiltered()) {
     const ll = parseLoc(o);
-    if (ll) markers.push(L.circleMarker(ll, { radius: 5, color: '#fff', weight: 1, fillColor: '#2f7d32', fillOpacity: 0.9 }));
+    if (ll) markers.push(L.circleMarker(ll, { radius: 7, color: '#fff', weight: 1, fillColor: '#2f7d32', fillOpacity: 0.9 }).bindPopup(() => obsPopup(o), { minWidth: 200 }));
   }
   areaCluster.addLayers(markers);
   if (!areaFitted) {
@@ -1144,6 +1148,64 @@ function scheduleShow() { clearTimeout(showTimer); showTimer = setTimeout(() => 
 $('q').addEventListener('input', scheduleShow);
 $('datesel').onchange = () => { $('customdates').hidden = $('datesel').value !== 'custom'; scheduleShow(); };
 $('dfrom').onchange = $('dto').onchange = scheduleShow;
+
+// ---------- map popups ----------
+function obsPopup(o) {
+  const ph = photosOf(o);
+  const el = document.createElement('div'); el.className = 'mp';
+  const open = () => viewer.open({
+    obs: o, photos: ph, title: o.common || o.name,
+    isPreferred: () => prefs[o.tid] === o.id,
+    setPreferred: () => { prefs[o.tid] = o.id; savePrefs(); log(`preferred observation for ${o.name} set to ${o.id}`); },
+  });
+  if (ph.length) {
+    const im = document.createElement('img');
+    im.src = sized(ph[0], 'medium'); im.alt = ''; im.onclick = open;
+    im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
+    el.append(im);
+  }
+  const t = document.createElement('div'); t.className = 't';
+  t.append(o.common ? o.common + ' ' : '');
+  const sci = document.createElement('i'); sci.textContent = o.name; t.append(sci);
+  const d = document.createElement('div'); d.className = 'd';
+  const chain = placeChain(o).filter(id => id !== UNKNOWN_LOC);
+  d.textContent = [o.date || 'date unknown', chain.length ? PLACE_META.get(chain[chain.length - 1]).name : ''].filter(Boolean).join(' · ');
+  const acts = document.createElement('div'); acts.className = 'acts';
+  if (ph.length) {
+    const v = document.createElement('button'); v.className = 'secondary';
+    v.textContent = ph.length > 1 ? `View ${ph.length} photos` : 'View photo'; v.onclick = open; acts.append(v);
+    const st = document.createElement('button'); st.type = 'button'; st.className = 'ib';
+    const paint = () => { const on = prefs[o.tid] === o.id; st.textContent = on ? '★' : '☆'; st.classList.toggle('on', on); };
+    st.title = 'Use as preferred photo'; st.onclick = () => { prefs[o.tid] = o.id; savePrefs(); paint(); };
+    paint(); acts.append(st);
+  }
+  const ext = document.createElement('a');
+  ext.className = 'ib'; ext.textContent = '↗'; ext.href = obsUrl(o); ext.target = '_blank'; ext.rel = 'noopener';
+  ext.title = 'Open observation on iNaturalist'; acts.append(ext);
+  el.append(t, d, acts);
+  return el;
+}
+// Tapping empty map space on a species map: list iNaturalist observations of the taxon near the tap.
+async function nearbyPopup(map, latlng, taxonId) {
+  const popup = L.popup({ minWidth: 220 }).setLatLng(latlng).setContent('Looking for observations…').openOn(map);
+  const mpp = 156543.03 * Math.cos(latlng.lat * Math.PI / 180) / Math.pow(2, map.getZoom());
+  const radiusKm = Math.max(0.05, 24 * mpp / 1000);
+  try {
+    const d = await api(`/observations?taxon_id=${taxonId}&lat=${latlng.lat}&lng=${latlng.lng}&radius=${radiusKm.toFixed(3)}&per_page=5&order_by=votes&only_id=false`);
+    const box = document.createElement('div'); box.className = 'nb';
+    if (!d.results.length) box.textContent = 'No observations found here. Tap closer to the coloured area.';
+    for (const o of d.results) {
+      const row = document.createElement('a');
+      row.href = `https://www.inaturalist.org/observations/${o.id}`; row.target = '_blank'; row.rel = 'noopener';
+      const ph = o.photos?.[0]?.url;
+      if (ph) { const im = document.createElement('img'); im.src = ph; im.alt = ''; row.append(im); }
+      const tx = document.createElement('span');
+      tx.textContent = `${o.user?.login || 'someone'} · ${o.observed_on || 'date unknown'}`;
+      row.append(tx); box.append(row);
+    }
+    popup.setContent(box);
+  } catch (e) { log(`nearby observations failed: ${e.message}`, 'e'); popup.setContent('Could not load observations.'); }
+}
 
 // ---------- species detail (opens from any view) ----------
 const detail = {
@@ -1319,7 +1381,14 @@ async function openSpecies(id) {
   const heat = L.tileLayer(`https://api.inaturalist.org/v1/colored_heatmap/{z}/{x}/{y}.png?taxon_id=${id}`, { opacity: 0.7, maxNativeZoom: 12 });
   heat.addTo(m);
   heat.on('tileerror', () => log(`range overlay tile failed for taxon ${id}`, 'w'));
-  const dots = pts.map(ll => L.circleMarker(ll, { radius: 6, color: '#fff', weight: 1.5, fillColor: '#d9480f', fillOpacity: 0.95 }).addTo(m));
+  const dots = [];
+  for (const o of mineObs) {
+    const ll = parseLoc(o);
+    if (!ll) continue;
+    dots.push(L.circleMarker(ll, { radius: 9, color: '#fff', weight: 2, fillColor: '#d9480f', fillOpacity: 0.95, bubblingMouseEvents: false })
+      .bindPopup(() => obsPopup(o), { minWidth: 200 }).addTo(m));
+  }
+  m.on('click', e => nearbyPopup(m, e.latlng, id));
   if (dots.length) m.fitBounds(L.latLngBounds(pts).pad(0.2), { maxZoom: 11 }); else m.setView([20, 0], 2);
   setTimeout(() => m.invalidateSize(), 50);
 }
