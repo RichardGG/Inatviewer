@@ -98,16 +98,29 @@
   <p class="sub">Your iNaturalist observations, grouped by how closely related the species are.</p>
 
   <div class="card" id="login">
-    <label for="token"><strong>iNaturalist API token</strong></label>
-    <p class="status" style="margin:4px 0 8px">
-      Log in to iNaturalist, then open
-      <a href="https://www.inaturalist.org/users/api_token" target="_blank" rel="noopener">inaturalist.org/users/api_token</a>
-      and paste the token below. Tokens expire after 24 hours. It is stored only in this browser's localStorage.
-    </p>
-    <textarea id="token" placeholder="eyJhbGciOi..." spellcheck="false"></textarea>
+    <div id="oauthbox">
+      <button id="oauth" style="width:100%;padding:12px;font-size:16px">Log in with iNaturalist</button>
+      <p class="status" id="whoami" style="margin:6px 0 0"></p>
+    </div>
+    <details id="manual" style="margin:12px 0 0;padding:0;border:0">
+      <summary class="status">Or use an API token / OAuth settings</summary>
+      <label for="token"><strong>API token (JWT)</strong></label>
+      <p class="status" style="margin:4px 0 8px">
+        Log in to iNaturalist, then open
+        <a href="https://www.inaturalist.org/users/api_token" target="_blank" rel="noopener">inaturalist.org/users/api_token</a>
+        and paste the token below. Tokens expire after 24 hours. It is stored only in this browser's localStorage.
+      </p>
+      <textarea id="token" placeholder="eyJhbGciOi..." spellcheck="false"></textarea>
+      <label for="clientid" style="display:block;margin-top:10px"><strong>OAuth client ID</strong></label>
+      <p class="status" style="margin:4px 0 8px">
+        Register an app at <a href="https://www.inaturalist.org/oauth/applications/new" target="_blank" rel="noopener">inaturalist.org/oauth/applications/new</a>
+        (not confidential) with redirect URI <code id="redirecturi"></code>, then paste its Client ID.
+      </p>
+      <input id="clientid" spellcheck="false" style="width:100%;padding:8px;font:12px monospace;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">
+    </details>
     <div class="row">
       <button id="load" title="Fetch only observations newer than the cache; reuses cached taxonomy">Check for new observations</button>
-      <button id="forget" class="secondary">Forget token</button>
+      <button id="forget" class="secondary">Log out</button>
       <button id="full" class="secondary" title="Re-download all observations (picks up edits, new IDs and extra photos). Cached taxonomy is reused, so only observations are fetched.">Re-download observations</button>
       <span id="status" class="status"></span>
     </div>
@@ -174,6 +187,99 @@ function log(msg, level) {
 }
 window.addEventListener('error', e => log(`window error: ${e.message} @ ${e.filename}:${e.lineno}`, 'e'));
 window.addEventListener('unhandledrejection', e => log(`unhandled rejection: ${e.reason?.stack || e.reason}`, 'e'));
+
+// ---------- OAuth (authorization code + PKCE) ----------
+const OAUTH = {
+  clientId: '', // optionally hard-code the registered app's Client ID here
+  authorize: 'https://www.inaturalist.org/oauth/authorize',
+  token: 'https://www.inaturalist.org/oauth/token',
+  apiToken: 'https://www.inaturalist.org/users/api_token',
+};
+const OAUTH_KEY = 'inat_oauth', CLIENT_KEY = 'inat_client_id';
+const redirectUri = () => location.origin + location.pathname;
+const clientId = () => { try { return localStorage.getItem(CLIENT_KEY) || OAUTH.clientId; } catch { return OAUTH.clientId; } };
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const rand = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
+
+async function oauthLogin() {
+  const id = ($('clientid').value || clientId()).trim();
+  if (!id) {
+    $('manual').open = true; $('clientid').focus();
+    return status('Enter your OAuth client ID first (see the box below), or paste an API token instead.', true);
+  }
+  try { localStorage.setItem(CLIENT_KEY, id); } catch {}
+  const verifier = rand(48), st = rand(16);
+  const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+  try { sessionStorage.setItem('inat_pkce', JSON.stringify({ verifier, st })); } catch (e) { log('sessionStorage failed: ' + e, 'e'); }
+  const url = `${OAUTH.authorize}?` + new URLSearchParams({
+    client_id: id, redirect_uri: redirectUri(), response_type: 'code',
+    code_challenge: challenge, code_challenge_method: 'S256', state: st,
+  });
+  log(`redirecting to OAuth authorize (redirect_uri=${redirectUri()})`);
+  location.href = url;
+}
+
+// Returns true if the page was opened by an OAuth redirect (code or error present).
+async function oauthCallback() {
+  const q = new URLSearchParams(location.search);
+  if (!q.has('code') && !q.has('error')) return false;
+  history.replaceState({}, '', redirectUri());
+  if (q.has('error')) { status(`OAuth error: ${q.get('error_description') || q.get('error')}`, true); log(`oauth error: ${q}`, 'e'); return true; }
+  let saved = {};
+  try { saved = JSON.parse(sessionStorage.getItem('inat_pkce') || '{}'); sessionStorage.removeItem('inat_pkce'); } catch {}
+  if (!saved.st || saved.st !== q.get('state')) { status('OAuth state mismatch; please try logging in again.', true); log('oauth state mismatch', 'e'); return true; }
+  status('Completing login…');
+  try {
+    log(`POST ${OAUTH.token}`);
+    const res = await fetch(OAUTH.token, {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: clientId(), grant_type: 'authorization_code', code: q.get('code'),
+        redirect_uri: redirectUri(), code_verifier: saved.verifier }),
+    });
+    const body = await res.text();
+    log(`  → ${res.status}${res.ok ? '' : ' ' + body.slice(0, 300)}`, res.ok ? '' : 'e');
+    if (!res.ok) throw new Error(`OAuth token exchange failed (${res.status})`);
+    const access = JSON.parse(body).access_token;
+    try { localStorage.setItem(OAUTH_KEY, access); } catch {}
+    await mintJwt(access);
+  } catch (e) {
+    log(`oauth callback failed: ${e.stack || e}`, 'e');
+    status(`${e.message}. If this was a network/CORS error, use the API-token option instead.`, true);
+    $('logwrap').open = true;
+  }
+  return true;
+}
+
+// Exchange the OAuth access token for the JWT that api.inaturalist.org expects.
+async function mintJwt(access) {
+  log(`GET ${OAUTH.apiToken} [oauth bearer]`);
+  const res = await fetch(OAUTH.apiToken, { headers: { Authorization: `Bearer ${access}` } });
+  log(`  → ${res.status}`, res.ok ? '' : 'e');
+  if (!res.ok) throw new Error(`Could not get an API token from the OAuth login (${res.status})`);
+  const jwt = (await res.json()).api_token;
+  $('token').value = jwt; store.set(jwt);
+  return jwt;
+}
+
+function jwtExpiry(jwt) {
+  try { return JSON.parse(atob(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp * 1000; } catch { return 0; }
+}
+// If the cached JWT is (nearly) expired and we have an OAuth login, quietly mint a new one.
+async function ensureFreshJwt() {
+  const jwt = $('token').value.trim();
+  let access = ''; try { access = localStorage.getItem(OAUTH_KEY) || ''; } catch {}
+  if (!access) return;
+  if (!jwt || jwtExpiry(jwt) < Date.now() + 60000) {
+    log('API token missing/expired; refreshing via OAuth login');
+    await mintJwt(access);
+  }
+}
+function authLabel() {
+  let access = ''; try { access = localStorage.getItem(OAUTH_KEY) || ''; } catch {}
+  $('whoami').textContent = access ? 'Signed in with iNaturalist (token refreshes automatically).'
+    : $('token').value.trim() ? 'Using a pasted API token (expires after 24h).' : '';
+  $('oauth').textContent = access ? 'Log in again with iNaturalist' : 'Log in with iNaturalist';
+}
 
 // ---------- token (localStorage) ----------
 const store = {
@@ -846,9 +952,10 @@ function show(keepStatus) {
 }
 
 // ---------- refresh ----------
-async function refresh({ full = false } = {}) {
+async function refresh({ full = false, retried = false } = {}) {
+  try { await ensureFreshJwt(); } catch (e) { log(`jwt refresh failed: ${e}`, 'e'); }
   const token = $('token').value.trim().replace(/^Bearer\s+/i, '');
-  if (!token) return status(state.obs.length ? 'Showing cached data (no token to refresh).' : 'Paste a token first.', true);
+  if (!token) return status(state.obs.length ? 'Showing cached data (no token to refresh).' : 'Log in with iNaturalist (or paste an API token) first.', true);
   store.set(token);
   $('load').disabled = $('full').disabled = true;
   try {
@@ -870,6 +977,11 @@ async function refresh({ full = false } = {}) {
     status(fresh.length ? `Done. ${fresh.length} new observations.` : 'Done. Already up to date.');
   } catch (e) {
     log(`refresh failed: ${e.stack || e}`, 'e');
+    if (!retried && /Token rejected/.test(e.message) && localStorage.getItem(OAUTH_KEY)) {
+      log('401 with OAuth login: minting a fresh API token and retrying once', 'w');
+      try { await mintJwt(localStorage.getItem(OAUTH_KEY)); $('load').disabled = $('full').disabled = false; return refresh({ full, retried: true }); }
+      catch (e2) { log(`re-mint failed: ${e2}`, 'e'); }
+    }
     if (state.obs.length) show();
     status(e.message + (state.obs.length ? ' Progress was saved; click Load to resume.' : ''), true);
     $('logwrap').open = true;
@@ -880,7 +992,14 @@ async function refresh({ full = false } = {}) {
 
 $('load').onclick = () => refresh();
 $('full').onclick = () => refresh({ full: true });
-$('forget').onclick = () => { store.del(); $('token').value = ''; status('Token removed (cached observations kept).'); };
+$('forget').onclick = () => {
+  store.del(); $('token').value = '';
+  try { localStorage.removeItem(OAUTH_KEY); } catch {}
+  authLabel(); status('Logged out (cached observations kept).');
+};
+$('oauth').onclick = oauthLogin;
+$('redirecturi').textContent = redirectUri();
+$('clientid').value = clientId();
 $('clearcache').onclick = async () => {
   await idb.clear(); state = { user: null, obs: [], names: {}, places: {}, updated: null };
   $('results').hidden = true; log('all cached data cleared'); status('Cache cleared.');
@@ -936,9 +1055,13 @@ setView(view);
   log(`start: ${navigator.userAgent}`);
   await loadCache();
   if (state.obs.length) { show(); status('Showing cached data; refreshing…'); }
+  await oauthCallback();
   const cached = store.get();
-  if (cached) { $('token').value = cached; refresh(); }
-  else if (state.obs.length) status('Showing cached data. Paste a token to refresh.');
+  if (cached) $('token').value = cached;
+  authLabel();
+  let hasOauth = false; try { hasOauth = !!localStorage.getItem(OAUTH_KEY); } catch {}
+  if (cached || hasOauth) refresh().then(authLabel);
+  else if (state.obs.length) status('Showing cached data. Log in to refresh.');
 })();
 </script>
 </body>
