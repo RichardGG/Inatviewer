@@ -32,7 +32,11 @@
   .species img { width:28px; height:28px; border-radius:4px; object-fit:cover; }
   .species a { color:var(--fg); text-decoration:none; }
   .species a:hover { text-decoration:underline; }
-  .toolbar { display:flex; gap:8px; margin:0 0 10px; }
+  .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
+  .species img.ph { background:var(--line); }
+  #log { max-height:260px; overflow:auto; font:11px/1.45 monospace; white-space:pre-wrap; margin:8px 0 0;
+         padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); }
+  #log .e { color:#c0392b; } #log .w { color:#b9770e; }
 </style>
 </head>
 <body>
@@ -51,8 +55,15 @@
     <div class="row">
       <button id="load">Load observations</button>
       <button id="forget" class="secondary">Forget token</button>
+      <button id="full" class="secondary" title="Discard cached observations and re-download everything">Full refresh</button>
       <span id="status" class="status"></span>
     </div>
+    <details style="margin:10px 0 0;padding:0;border:0" id="logwrap">
+      <summary class="status">Debug log</summary>
+      <div class="row"><button class="secondary" id="copylog">Copy log</button>
+        <button class="secondary" id="clearcache">Clear all cached data</button></div>
+      <pre id="log"></pre>
+    </details>
   </div>
 
   <div id="results" hidden>
@@ -70,62 +81,176 @@ const API = 'https://api.inaturalist.org/v1';
 const KEY = 'inat_token';
 const SHOWN_RANKS = new Set(['kingdom','phylum','class','order','family','genus']);
 const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// ---------- logging ----------
+function log(msg, level) {
+  const line = `${new Date().toISOString().slice(11, 23)} ${msg}`;
+  (level === 'e' ? console.error : level === 'w' ? console.warn : console.log)('[inat]', msg);
+  const pre = $('log');
+  const s = document.createElement('div');
+  if (level) s.className = level;
+  s.textContent = line;
+  pre.append(s);
+  pre.scrollTop = pre.scrollHeight;
+}
+window.addEventListener('error', e => log(`window error: ${e.message} @ ${e.filename}:${e.lineno}`, 'e'));
+window.addEventListener('unhandledrejection', e => log(`unhandled rejection: ${e.reason?.stack || e.reason}`, 'e'));
+
+// ---------- token (localStorage) ----------
 const store = {
   get() { try { return localStorage.getItem(KEY) || ''; } catch { return ''; } },
-  set(v) { try { localStorage.setItem(KEY, v); } catch {} },
+  set(v) { try { localStorage.setItem(KEY, v); } catch (e) { log('localStorage write failed: ' + e, 'w'); } },
   del() { try { localStorage.removeItem(KEY); } catch {} },
 };
+
+// ---------- data cache (IndexedDB) ----------
+const idb = {
+  db: null,
+  async open() {
+    if (this.db) return this.db;
+    this.db = await new Promise((res, rej) => {
+      const r = indexedDB.open('inatviewer', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    return this.db;
+  },
+  async get(k) {
+    try {
+      const db = await this.open();
+      return await new Promise((res, rej) => {
+        const r = db.transaction('kv').objectStore('kv').get(k);
+        r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+      });
+    } catch (e) { log(`IndexedDB get(${k}) failed: ${e}`, 'w'); return undefined; }
+  },
+  async set(k, v) {
+    try {
+      const db = await this.open();
+      await new Promise((res, rej) => {
+        const t = db.transaction('kv', 'readwrite');
+        t.objectStore('kv').put(v, k);
+        t.oncomplete = res; t.onerror = () => rej(t.error);
+      });
+    } catch (e) { log(`IndexedDB set(${k}) failed: ${e}`, 'w'); }
+  },
+  async clear() {
+    try {
+      const db = await this.open();
+      await new Promise((res, rej) => {
+        const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').clear();
+        t.oncomplete = res; t.onerror = () => rej(t.error);
+      });
+    } catch (e) { log('IndexedDB clear failed: ' + e, 'w'); }
+  },
+};
+
+// State: user {id, login}, obs [slim records], names {taxonId: {id,name,rank,common}}
+let state = { user: null, obs: [], names: {}, updated: null };
+
+async function loadCache() {
+  const [user, obs, names, updated] = await Promise.all(['user', 'obs', 'names', 'updated'].map(k => idb.get(k)));
+  if (user && obs) state = { user, obs, names: names || {}, updated };
+  log(`cache: ${state.obs.length} observations, ${Object.keys(state.names).length} taxa` +
+      (state.updated ? `, saved ${state.updated}` : ' (empty)'));
+}
+async function saveCache() {
+  state.updated = new Date().toISOString();
+  await Promise.all([idb.set('user', state.user), idb.set('obs', state.obs),
+                     idb.set('names', state.names), idb.set('updated', state.updated)]);
+  log('cache saved');
+}
 
 function status(msg, err) {
   $('status').textContent = msg;
   $('status').className = 'status' + (err ? ' error' : '');
 }
 
+// ---------- API ----------
 async function api(path, token) {
-  const res = await fetch(API + path, { headers: token ? { Authorization: token } : {} });
-  if (res.status === 401) throw new Error('Token rejected or expired. Get a fresh one and paste it again.');
-  if (res.status === 429) throw new Error('Rate limited by iNaturalist. Wait a minute and retry.');
-  if (!res.ok) throw new Error(`iNaturalist API error ${res.status}`);
-  return res.json();
+  const url = API + path;
+  const mask = token ? ` [auth ${token.slice(0, 6)}…(${token.length} chars)]` : ' [no auth]';
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const t0 = performance.now();
+    log(`GET ${url}${mask} (attempt ${attempt})`);
+    let res;
+    try {
+      res = await fetch(url, { headers: token ? { Authorization: token } : {} });
+    } catch (e) {
+      log(`NETWORK ERROR after ${Math.round(performance.now() - t0)}ms: ${e.name}: ${e.message}`, 'e');
+      log(`  navigator.onLine=${navigator.onLine}, page origin=${location.origin}, protocol=${location.protocol}`, 'e');
+      log('  "Failed to fetch" means the browser never got a response: offline, DNS/proxy/firewall block, ' +
+          'ad/privacy blocker, or CORS rejection (see browser DevTools → Network/Console for the exact reason).', 'e');
+      if (attempt < 3) { await sleep(1000 * attempt); continue; }
+      throw new Error(`Network error talking to iNaturalist (${e.message}). See the debug log below.`);
+    }
+    const ms = Math.round(performance.now() - t0);
+    log(`  → ${res.status} ${res.statusText} in ${ms}ms` +
+        ` (rate-limit-remaining=${res.headers.get('x-ratelimit-remaining') ?? 'n/a'})`);
+    if (res.ok) return res.json();
+    const body = (await res.text().catch(() => '')).slice(0, 300);
+    log(`  body: ${body}`, 'e');
+    if (res.status === 401 || res.status === 403) throw new Error('Token rejected or expired. Get a fresh one and paste it again.');
+    if (res.status === 429 || res.status >= 500) {
+      if (attempt < 3) { log(`  retrying in ${2 * attempt}s`, 'w'); await sleep(2000 * attempt); continue; }
+    }
+    throw new Error(`iNaturalist API error ${res.status}`);
+  }
 }
 
-async function fetchObservations(token, userId) {
-  const perPage = 200, all = [];
-  let page = 1, total = Infinity;
-  while (all.length < total && all.length < 10000) {
-    const d = await api(`/observations?user_id=${userId}&per_page=${perPage}&page=${page}&order_by=id&order=asc&only_id=false`, token);
-    total = d.total_results;
+// Reduce a full API observation to what we need.
+function slim(o) {
+  const t = o.taxon;
+  return {
+    id: o.id,
+    tid: t.id,
+    anc: t.ancestor_ids,
+    name: t.name,
+    common: t.preferred_common_name || '',
+    photo: o.photos?.[0]?.url || t.default_photo?.square_url || '',
+  };
+}
+
+async function fetchNewObservations(token, userId, afterId) {
+  const fresh = [];
+  let lastId = afterId, total = null, skipped = 0;
+  for (;;) {
+    const d = await api(`/observations?user_id=${userId}&per_page=200&order_by=id&order=asc&id_above=${lastId}`, token);
+    if (total === null) total = d.total_results;
     if (!d.results.length) break;
-    all.push(...d.results);
-    status(`Fetched ${all.length} of ${total} observations…`);
-    page++;
-    await new Promise(r => setTimeout(r, 700)); // be polite: ~1 req/sec
+    for (const o of d.results) {
+      if (o.taxon?.ancestor_ids?.length) fresh.push(slim(o)); else skipped++;
+    }
+    lastId = d.results[d.results.length - 1].id;
+    status(`Fetched ${fresh.length + skipped} of ${total} new observations…`);
+    if (d.results.length < 200) break;
+    await sleep(700);
   }
-  return all;
+  log(`fetched ${fresh.length} new identified observations (${skipped} unidentified skipped)`);
+  return fresh;
 }
 
-async function fetchTaxonNames(ids) {
-  const out = {};
-  const list = [...ids];
-  for (let i = 0; i < list.length; i += 30) {
-    const batch = list.slice(i, i + 30);
-    status(`Looking up taxonomy… ${Math.min(i + 30, list.length)}/${list.length}`);
+async function fetchMissingTaxa(ids) {
+  const missing = [...ids].filter(i => !state.names[i]);
+  log(`taxa lookup: ${ids.size} needed, ${missing.length} missing from cache`);
+  for (let i = 0; i < missing.length; i += 30) {
+    const batch = missing.slice(i, i + 30);
+    status(`Looking up taxonomy… ${Math.min(i + 30, missing.length)}/${missing.length}`);
     const d = await api(`/taxa/${batch.join(',')}?per_page=30`);
-    for (const t of d.results) out[t.id] = t;
-    await new Promise(r => setTimeout(r, 700));
+    for (const t of d.results) state.names[t.id] = { id: t.id, name: t.name, rank: t.rank, common: t.preferred_common_name || '' };
+    await sleep(700);
   }
-  return out;
 }
 
-// Build a nested tree from each taxon's ancestor_ids (root → taxon).
-function buildTree(taxaObs) {
+// ---------- tree ----------
+function buildTree(obs) {
   const root = { id: 0, children: new Map(), species: [], count: 0 };
-  for (const o of taxaObs) {
-    const chain = o.taxon.ancestor_ids;
+  for (const o of obs) {
     let node = root;
     node.count++;
-    for (const id of chain.slice(0, -1)) {
+    for (const id of o.anc.slice(0, -1)) {
       if (!node.children.has(id)) node.children.set(id, { id, children: new Map(), species: [], count: 0 });
       node = node.children.get(id);
       node.count++;
@@ -135,70 +260,60 @@ function buildTree(taxaObs) {
   return root;
 }
 
-// Collapse the tree so only major ranks appear; distinct species grouped under their nearest shown ancestor.
 function render(root, names) {
   const frag = document.createDocumentFragment();
 
   function speciesRows(obs) {
     const byTaxon = new Map();
     for (const o of obs) {
-      const k = o.taxon.id;
-      if (!byTaxon.has(k)) byTaxon.set(k, { taxon: o.taxon, n: 0 });
-      byTaxon.get(k).n++;
+      let r = byTaxon.get(o.tid);
+      if (!r) byTaxon.set(o.tid, r = { o, n: 0 });
+      r.n++;
+      if (!r.o.photo && o.photo) r.o = o;
     }
-    return [...byTaxon.values()].sort((a, b) => (a.taxon.name || '').localeCompare(b.taxon.name || ''));
+    return [...byTaxon.values()].sort((a, b) => a.o.name.localeCompare(b.o.name));
   }
-
-  function speciesEl({ taxon, n }) {
+  function speciesEl({ o, n }) {
     const d = document.createElement('div');
     d.className = 'species';
-    if (taxon.default_photo?.square_url) {
-      const img = document.createElement('img');
-      img.src = taxon.default_photo.square_url; img.alt = ''; img.loading = 'lazy';
-      d.append(img);
+    const img = document.createElement('img');
+    img.className = 'ph'; img.alt = ''; img.loading = 'lazy';
+    if (o.photo) {
+      img.src = o.photo;
+      img.onerror = () => log(`thumbnail failed to load: ${o.photo}`, 'w');
     }
+    d.append(img);
     const a = document.createElement('a');
-    a.href = `https://www.inaturalist.org/taxa/${taxon.id}`; a.target = '_blank'; a.rel = 'noopener';
-    const common = taxon.preferred_common_name;
-    a.innerHTML = '';
-    if (common) a.append(common + ' ');
-    const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = taxon.name;
+    a.href = `https://www.inaturalist.org/taxa/${o.tid}`; a.target = '_blank'; a.rel = 'noopener';
+    if (o.common) a.append(o.common + ' ');
+    const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = o.name;
     a.append(sci);
     const c = document.createElement('span'); c.className = 'count'; c.textContent = `${n} obs`;
     d.append(a, c);
     return d;
   }
-
-  // Gather all species rows beneath a node (flattened), in tree order.
-  function collect(node, acc = []) {
-    acc.push(...speciesRows(node.species));
-    for (const ch of sortedChildren(node)) collect(ch, acc);
+  const sortedChildren = node => [...node.children.values()].sort((a, b) => b.count - a.count);
+  function collect(node, acc = new Set()) {
+    node.species.forEach(o => acc.add(o.tid));
+    node.children.forEach(ch => collect(ch, acc));
     return acc;
   }
-  function sortedChildren(node) {
-    return [...node.children.values()].sort((a, b) => b.count - a.count);
-  }
-  function countSpecies(node) { return new Set(collect(node).map(r => r.taxon.id)).size; }
-
-  function groupEl(node, shownRank) {
+  function groupEl(node, rank) {
     const t = names[node.id];
     const det = document.createElement('details');
     const sum = document.createElement('summary');
-    const r = document.createElement('span'); r.className = 'rank'; r.textContent = shownRank;
+    const r = document.createElement('span'); r.className = 'rank'; r.textContent = rank;
     const nm = document.createElement('span');
-    const label = t?.preferred_common_name ? `${t.preferred_common_name} ` : '';
-    nm.append(label);
+    if (t?.common) nm.append(t.common + ' ');
     const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = t?.name || `#${node.id}`;
     nm.append(sci);
     const c = document.createElement('span'); c.className = 'count';
-    c.textContent = `${countSpecies(node)} taxa · ${node.count} obs`;
+    c.textContent = `${collect(node).size} taxa · ${node.count} obs`;
     sum.append(r, nm, c);
     det.append(sum);
     fill(node, det);
     return det;
   }
-
-  // Descend through unranked/minor nodes without creating a group for them.
   function fill(node, parentEl) {
     for (const row of speciesRows(node.species)) parentEl.append(speciesEl(row));
     for (const ch of sortedChildren(node)) {
@@ -207,47 +322,74 @@ function render(root, names) {
       else fill(ch, parentEl);
     }
   }
-
   fill(root, frag);
   $('tree').replaceChildren(frag);
-  // Open first level.
   document.querySelectorAll('#tree > details').forEach(d => d.open = true);
 }
 
-async function run() {
+function show() {
+  if (!state.obs.length) return;
+  const t0 = performance.now();
+  render(buildTree(state.obs), state.names);
+  $('results').hidden = false;
+  const species = new Set(state.obs.map(o => o.tid)).size;
+  $('summary').textContent = `${state.user.login}: ${state.obs.length} identified observations, ${species} distinct taxa` +
+    (state.updated ? ` · updated ${new Date(state.updated).toLocaleString()}` : '');
+  log(`rendered in ${Math.round(performance.now() - t0)}ms`);
+}
+
+// ---------- refresh ----------
+async function refresh({ full = false } = {}) {
   const token = $('token').value.trim().replace(/^Bearer\s+/i, '');
-  if (!token) return status('Paste a token first.', true);
+  if (!token) return status(state.obs.length ? 'Showing cached data (no token to refresh).' : 'Paste a token first.', true);
   store.set(token);
-  $('load').disabled = true;
+  $('load').disabled = $('full').disabled = true;
   try {
     status('Checking token…');
     const me = (await api('/users/me', token)).results[0];
-    const obs = await fetchObservations(token, me.id);
-    const withTaxon = obs.filter(o => o.taxon?.ancestor_ids?.length);
+    log(`authenticated as ${me.login} (id ${me.id})`);
+    if (full || state.user?.id !== me.id) {
+      if (state.user && state.user.id !== me.id) log('different user than cache; discarding cache', 'w');
+      state = { user: null, obs: [], names: state.names, updated: null };
+    }
+    state.user = { id: me.id, login: me.login };
+    const lastId = state.obs.reduce((m, o) => Math.max(m, o.id), 0);
+    const fresh = await fetchNewObservations(token, me.id, lastId);
+    state.obs.push(...fresh);
     const ids = new Set();
-    withTaxon.forEach(o => o.taxon.ancestor_ids.forEach(i => ids.add(i)));
-    const names = await fetchTaxonNames(ids);
-    const root = buildTree(withTaxon);
-    render(root, names);
-    $('results').hidden = false;
-    const species = new Set(withTaxon.map(o => o.taxon.id)).size;
-    $('summary').textContent = `${me.login}: ${obs.length} observations, ${species} distinct taxa` +
-      (obs.length - withTaxon.length ? `, ${obs.length - withTaxon.length} unidentified` : '');
-    status('Done.');
+    state.obs.forEach(o => o.anc.forEach(i => ids.add(i)));
+    await fetchMissingTaxa(ids);
+    await saveCache();
+    show();
+    status(fresh.length ? `Done. ${fresh.length} new observations.` : 'Done. Already up to date.');
   } catch (e) {
-    status(e.message, true);
+    log(`refresh failed: ${e.stack || e}`, 'e');
+    status(e.message + (state.obs.length ? ' (showing cached data)' : ''), true);
+    $('logwrap').open = true;
   } finally {
-    $('load').disabled = false;
+    $('load').disabled = $('full').disabled = false;
   }
 }
 
-$('load').onclick = run;
-$('forget').onclick = () => { store.del(); $('token').value = ''; $('results').hidden = true; status('Token removed.'); };
+$('load').onclick = () => refresh();
+$('full').onclick = () => refresh({ full: true });
+$('forget').onclick = () => { store.del(); $('token').value = ''; status('Token removed (cached observations kept).'); };
+$('clearcache').onclick = async () => {
+  await idb.clear(); state = { user: null, obs: [], names: {}, updated: null };
+  $('results').hidden = true; log('all cached data cleared'); status('Cache cleared.');
+};
+$('copylog').onclick = () => navigator.clipboard?.writeText($('log').innerText).then(() => status('Log copied.'));
 $('expand').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = true);
 $('collapse').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = false);
 
-const cached = store.get();
-if (cached) { $('token').value = cached; run(); }
+(async () => {
+  log(`start: ${navigator.userAgent}`);
+  await loadCache();
+  if (state.obs.length) { show(); status('Showing cached data; refreshing…'); }
+  const cached = store.get();
+  if (cached) { $('token').value = cached; refresh(); }
+  else if (state.obs.length) status('Showing cached data. Paste a token to refresh.');
+})();
 </script>
 </body>
 </html>
