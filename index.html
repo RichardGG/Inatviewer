@@ -74,13 +74,11 @@
   [hidden] { display:none !important; }
   select { font:inherit; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--card); color:var(--fg); }
   #areamap { height:55vh; min-height:300px; border-radius:8px; z-index:0; }
-  .cpin { width:22px; height:22px; border-radius:50%; background:#d9480f; border:3px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.6); }
   .filters { display:flex; gap:8px; align-items:center; margin:0 0 8px; }
   .filters input[type=search] { flex:1; min-width:0; padding:9px 12px; font:inherit; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); }
   .chip { display:inline-flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--accent); color:var(--fg);
           border-radius:16px; padding:3px 6px 3px 12px; font-size:13px; margin:0 0 8px; }
   .chip button { padding:0 6px; background:none; color:var(--muted); font-size:16px; }
-  #areapanel input[type=range] { width:100%; }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   /* full-screen viewer */
   #viewer { position:fixed; inset:0; z-index:1000; background:#000; color:#fff; display:none; flex-direction:column; }
@@ -150,14 +148,14 @@
     </div>
     <div id="chips"></div>
     <div class="card" id="areapanel" hidden>
-      <p class="status" style="margin:0 0 8px">Tap the map to set the centre, drag the pin to move it, and use the slider to change the radius. Only observations inside the circle are shown in every view.</p>
+      <p class="status" style="margin:0 0 8px">Pan and zoom the map: the orange circle always fits the current view. Turn the filter on and only observations inside the circle are shown in every view.</p>
       <div id="areamap"></div>
       <div class="row">
-        <input type="range" id="radius" min="0" max="100" value="40" aria-label="Radius" style="flex:1;min-width:140px">
-        <span id="radiuslabel" class="status" style="min-width:90px"></span>
-        <button class="secondary" id="areafit">Fit</button>
-        <button class="secondary" id="areaclear">Clear area</button>
+        <label style="display:flex;align-items:center;gap:8px;flex:1;min-width:150px"><input type="checkbox" id="follow"> Filter to the map view</label>
+        <span id="radiuslabel" class="status"></span>
+        <button class="secondary" id="areafit">Show all</button>
       </div>
+    </div>
     </div>
     <div class="tabs" role="tablist">
       <button id="tabTree" role="tab">By taxonomy</button>
@@ -908,7 +906,7 @@ function renderRecent(obs) {
 const LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
 const CLUSTER = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/';
 const AREA_KEY = 'inat_area';
-let areaMap, areaCluster, areaCircle, areaPin, areaFitted = false;
+let areaMap, areaCluster, areaCircle, areaFitted = false, markerSig = '';
 let area = null; // { lat, lng, r } with r in metres
 try { const a = JSON.parse(localStorage.getItem(AREA_KEY) || 'null'); if (a && isFinite(a.lat) && isFinite(a.lng) && a.r > 0) area = a; } catch {}
 
@@ -949,8 +947,6 @@ function filteredObs() {
 }
 
 const fmtDist = m => m < 1000 ? `${Math.round(m)} m` : m < 10000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 1000)} km`;
-const sliderToR = v => 100 * Math.pow(10, v / 100 * 4.7);        // 100 m … ~5000 km
-const rToSlider = r => Math.round(Math.log10(r / 100) / 4.7 * 100);
 
 const addCss = href => { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.append(l); };
 const addScript = src => new Promise((res, rej) => {
@@ -970,6 +966,7 @@ async function ensureLeaflet() {
 function setArea(a) {
   area = a;
   try { a ? localStorage.setItem(AREA_KEY, JSON.stringify(a)) : localStorage.removeItem(AREA_KEY); } catch {}
+  $('follow').checked = !!a;
   drawArea(); drawChips(); scheduleShow();
 }
 function drawChips() {
@@ -983,20 +980,27 @@ function drawChips() {
   x.onclick = () => setArea(null);
   chip.append(x); c.append(chip);
 }
-function drawArea() {
-  $('radiuslabel').textContent = area ? fmtDist(area.r) : 'no area set';
-  if (area) $('radius').value = rToSlider(area.r);
-  if (!areaMap) return;
-  if (areaCircle) { areaCircle.remove(); areaCircle = null; }
-  if (areaPin) { areaPin.remove(); areaPin = null; }
-  if (!area) return;
-  areaCircle = L.circle([area.lat, area.lng], { radius: area.r, color: '#d9480f', weight: 2, fillColor: '#d9480f', fillOpacity: 0.12, interactive: false }).addTo(areaMap);
-  areaPin = L.marker([area.lat, area.lng], { draggable: true, zIndexOffset: 10000, icon: L.divIcon({ className: '', html: '<div class="cpin"></div>', iconSize: [22, 22], iconAnchor: [11, 11] }) }).addTo(areaMap);
-  areaPin.on('drag', e => { const p = e.target.getLatLng(); areaCircle.setLatLng(p); });
-  areaPin.on('dragend', e => { const p = e.target.getLatLng(); setArea({ lat: p.lat, lng: p.lng, r: area.r }); });
+// Largest circle that fits inside the map's current view (with a little margin).
+function viewportCircle() {
+  const c = areaMap.getCenter(), b = areaMap.getBounds();
+  const r = 0.92 * Math.min(distM(c.lat, c.lng, c.lat, b.getEast()), distM(c.lat, c.lng, b.getNorth(), c.lng));
+  return { lat: c.lat, lng: c.lng, r: Math.max(r, 1) };
 }
+function drawArea(a = area) {
+  $('radiuslabel').textContent = a ? fmtDist(a.r) + ' radius' : '';
+  if (!areaMap) return;
+  if (!a) { if (areaCircle) { areaCircle.remove(); areaCircle = null; } return; }
+  if (!areaCircle) areaCircle = L.circle([a.lat, a.lng], { radius: a.r, color: '#d9480f', weight: 2, fillColor: '#d9480f', fillOpacity: 0.08, interactive: false }).addTo(areaMap);
+  else { areaCircle.setLatLng([a.lat, a.lng]); areaCircle.setRadius(a.r); }
+}
+// Run a programmatic map move without it being treated as the user changing the filter.
+let suppressMove = false;
+function moveMap(fn) { suppressMove = true; try { fn(); } finally { suppressMove = false; } }
+
+const markerKey = () => `${$('q').value}|${state.obs.length}|${textFiltered().length}`;
 function drawAreaMarkers() {
   if (!areaMap) return;
+  markerSig = markerKey();
   areaCluster.clearLayers();
   const markers = [];
   for (const o of textFiltered()) {
@@ -1005,9 +1009,11 @@ function drawAreaMarkers() {
   }
   areaCluster.addLayers(markers);
   if (!areaFitted) {
-    if (area) areaMap.fitBounds(areaCircle.getBounds());
-    else if (markers.length) areaMap.fitBounds(L.latLngBounds(markers.map(m => m.getLatLng())).pad(0.1), { maxZoom: 12 });
-    else areaMap.setView([20, 0], 2);
+    moveMap(() => {
+      if (area) areaMap.fitBounds(L.circle([area.lat, area.lng], { radius: area.r }).getBounds(), { animate: false });
+      else if (markers.length) areaMap.fitBounds(L.latLngBounds(markers.map(m => m.getLatLng())).pad(0.1), { maxZoom: 12, animate: false });
+      else areaMap.setView([20, 0], 2, { animate: false });
+    });
     areaFitted = true;
   }
 }
@@ -1021,27 +1027,26 @@ async function openAreaPanel(open) {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(areaMap);
-    areaCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40, showCoverageOnHover: false, spiderfyOnMaxZoom: false, zoomToBoundsOnClick: true });
+    areaCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40, showCoverageOnHover: false });
     areaMap.addLayer(areaCluster);
-    areaMap.on('click', e => setArea({ lat: e.latlng.lat, lng: e.latlng.lng, r: area ? area.r : sliderToR(+$('radius').value) }));
     areaMap.setView([20, 0], 2);
-    drawArea();
+    // While filtering, the circle tracks the view live; the filter itself updates when the move ends.
+    areaMap.on('move', () => { if ($('follow').checked && !suppressMove) drawArea(viewportCircle()); });
+    areaMap.on('moveend', () => { if ($('follow').checked && !suppressMove) setArea(viewportCircle()); });
   }
-  areaMap.invalidateSize();
+  moveMap(() => areaMap.invalidateSize({ animate: false }));
+  drawArea();
   drawAreaMarkers();
 }
 $('areabtn').onclick = () => openAreaPanel($('areapanel').hidden);
-$('radius').oninput = () => {
-  const r = sliderToR(+$('radius').value);
-  if (area) { area = { ...area, r }; areaCircle?.setRadius(r); $('radiuslabel').textContent = fmtDist(r); }
-  else $('radiuslabel').textContent = fmtDist(r) + ' (tap map to place)';
+$('follow').onchange = () => {
+  if (!areaMap) { $('follow').checked = false; return; }
+  setArea($('follow').checked ? viewportCircle() : null);
 };
-$('radius').onchange = () => { if (area) setArea(area); };
-$('areaclear').onclick = () => setArea(null);
 $('areafit').onclick = () => {
   if (!areaMap) return;
-  if (area && areaCircle) areaMap.fitBounds(areaCircle.getBounds());
-  else { areaFitted = false; drawAreaMarkers(); }
+  areaFitted = false; drawAreaMarkers();
+  if ($('follow').checked) setArea(viewportCircle());
 };
 let showTimer;
 function scheduleShow() { clearTimeout(showTimer); showTimer = setTimeout(() => show(), 250); }
@@ -1069,7 +1074,7 @@ function show(keepStatus) {
   const obs = filteredObs();
   const filtered = obs.length !== state.obs.length;
   let species;
-  if (!$('areapanel').hidden) drawAreaMarkers();
+  if (!$('areapanel').hidden && markerSig !== markerKey()) drawAreaMarkers();
   if (view === 'recent') {
     renderRecent(obs);
     species = new Set(obs.map(o => o.tid)).size;
@@ -1192,6 +1197,7 @@ $('expand').onclick = () => document.querySelectorAll('#tree details').forEach(d
 $('collapse').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = false);
 
 setView(view);
+$('follow').checked = !!area;
 drawChips();
 (async () => {
   log(`start: ${navigator.userAgent}`);
