@@ -633,15 +633,15 @@ let locMode = 'place';
 try { locMode = localStorage.getItem(LOC_KEY) === 'coords' ? 'coords' : 'place'; } catch {}
 const UNKNOWN_LOC = -1;
 
-// iNat admin_level: 0 country, 10 state/province, 20 county, 30 town/city; place_type 100 = continent.
+// iNat admin_level: -10 continent, 0 country, 10 state/province, 20 county, 30 town/city.
+// Places with no admin level (parks, regions, open spaces) are not part of the hierarchy.
 function placeRank(p) {
-  if (p.type === 100) return 'continent';
-  return { 0: 'country', 10: 'state', 20: 'county', 30: 'city' }[p.level] || 'area';
+  return { '-10': 'continent', 0: 'country', 10: 'state', 20: 'county', 30: 'city' }[p.level] || 'area';
 }
 // Ordered admin place ids (broad → narrow) for an observation; non-admin places (parks etc.) are skipped.
 function placeChain(o) {
-  const ps = (o.pids || []).map(id => state.places[id]).filter(p => p && !p.missing && (p.level != null || p.type === 100));
-  ps.sort((a, b) => (a.type === 100 ? -100 : a.level) - (b.type === 100 ? -100 : b.level));
+  const ps = (o.pids || []).map(id => state.places[id]).filter(p => p && !p.missing && p.level != null);
+  ps.sort((a, b) => a.level - b.level);
   return ps.length ? ps.map(p => p.id) : [UNKNOWN_LOC];
 }
 const PLACE_META = {
