@@ -63,6 +63,13 @@
   #toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:rgba(0,0,0,.8); color:#fff;
            padding:8px 14px; border-radius:20px; font-size:13px; z-index:2000; opacity:0; pointer-events:none; transition:opacity .2s; }
   #toast.show { opacity:1; }
+  .tabs { display:flex; gap:0; margin:0 0 10px; }
+  .tabs button { flex:1; background:transparent; color:var(--muted); border:1px solid var(--line); border-radius:0; padding:9px 12px; }
+  .tabs button:first-child { border-radius:8px 0 0 8px; } .tabs button:last-child { border-radius:0 8px 8px 0; border-left:0; }
+  .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .dh { position:sticky; top:0; z-index:5; background:var(--card); padding:6px 0; font-size:13px; font-weight:600;
+        color:var(--muted); border-bottom:1px solid var(--line); }
+  #recent .sp { border-left:0; padding-left:0; }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   /* full-screen viewer */
   #viewer { position:fixed; inset:0; z-index:1000; background:#000; color:#fff; display:none; flex-direction:column; }
@@ -111,12 +118,17 @@
   </div>
 
   <div id="results" hidden>
+    <div class="tabs" role="tablist">
+      <button id="tabTree" role="tab">By taxonomy</button>
+      <button id="tabRecent" role="tab">Recent</button>
+    </div>
     <div class="toolbar">
-      <button class="secondary" id="expand">Expand all</button>
-      <button class="secondary" id="collapse">Collapse all</button>
+      <span id="treeTools"><button class="secondary" id="expand">Expand all</button>
+      <button class="secondary" id="collapse">Collapse all</button></span>
       <span id="summary" class="status" style="align-self:center"></span>
     </div>
     <div class="card" id="tree"></div>
+    <div class="card" id="recent" hidden></div>
   </div>
 </main>
 
@@ -275,6 +287,7 @@ function slim(o) {
     anc: t.ancestor_ids,
     name: t.name,
     common: t.preferred_common_name || '',
+    date: o.observed_on || '',
     photos: (o.photos || []).map(p => p.url).filter(Boolean),
     photo: o.photos?.[0]?.url || t.default_photo?.square_url || '',
   };
@@ -600,10 +613,113 @@ function render(root, names) {
   return collect(root).size;
 }
 
+// ---------- recent view ----------
+const VIEW_KEY = 'inat_view';
+let view = 'tree';
+try { view = localStorage.getItem(VIEW_KEY) === 'recent' ? 'recent' : 'tree'; } catch {}
+
+function renderRecent() {
+  const el = $('recent');
+  const list = [...state.obs].sort((a, b) =>
+    (b.date || '').localeCompare(a.date || '') || b.id - a.id);
+  const PAGE = 30;
+  let shown = 0, lastKey = null;
+  el.replaceChildren();
+  const moreBtn = document.createElement('button');
+  moreBtn.className = 'secondary'; moreBtn.style.marginTop = '10px';
+
+  function card(o) {
+    const ph = photosOf(o);
+    const wrap = document.createElement('div'); wrap.className = 'sp';
+    const d = document.createElement('div'); d.className = 'species';
+    const btn = document.createElement('button');
+    btn.className = 'imgbtn'; btn.type = 'button'; btn.title = 'View full screen';
+    if (ph.length) {
+      const img = document.createElement('img');
+      img.alt = ''; img.loading = 'lazy'; img.src = sized(ph[0], 'medium');
+      img.onerror = () => { if (img.src !== ph[0]) img.src = ph[0]; };
+      btn.append(img);
+      if (ph.length > 1) {
+        const b = document.createElement('span'); b.className = 'badge'; b.textContent = `1/${ph.length}`;
+        btn.append(b);
+      }
+      btn.onclick = () => viewer.open({
+        obs: o, photos: ph, title: o.common || o.name,
+        isPreferred: () => prefs[o.tid] === o.id,
+        setPreferred,
+      });
+    }
+    const info = document.createElement('div'); info.className = 'info';
+    const a = document.createElement('a');
+    a.className = 't'; a.href = `https://www.inaturalist.org/taxa/${o.tid}`; a.target = '_blank'; a.rel = 'noopener';
+    if (o.common) a.append(o.common + ' ');
+    const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = o.name;
+    a.append(sci);
+    const dt = document.createElement('span'); dt.className = 'count';
+    dt.textContent = o.date || 'date unknown';
+    const acts = document.createElement('div'); acts.className = 'acts';
+    const star = document.createElement('button');
+    star.type = 'button'; star.className = 'ib'; star.title = star.ariaLabel = 'Use as preferred photo for this species';
+    const paint = () => { const on = prefs[o.tid] === o.id; star.textContent = on ? '★' : '☆'; star.classList.toggle('on', on); };
+    function setPreferred() {
+      prefs[o.tid] = o.id; savePrefs();
+      log(`preferred observation for ${o.name} (taxon ${o.tid}) set to ${o.id}`);
+      paint();
+    }
+    star.onclick = setPreferred; paint();
+    const ext = document.createElement('a');
+    ext.className = 'ib'; ext.textContent = '↗'; ext.href = obsUrl(o); ext.target = '_blank'; ext.rel = 'noopener';
+    ext.title = ext.ariaLabel = 'Open observation on iNaturalist';
+    acts.append(star, ext);
+    info.append(a, dt, acts);
+    d.append(btn, info); wrap.append(d);
+    return wrap;
+  }
+  function more() {
+    const frag = document.createDocumentFragment();
+    for (const o of list.slice(shown, shown + PAGE)) {
+      const key = o.date || '';
+      if (key !== lastKey) {
+        const h = document.createElement('div'); h.className = 'dh';
+        h.textContent = key ? new Date(key + 'T00:00:00').toLocaleDateString(undefined,
+          { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
+          : 'Date unknown (use "Re-download observations" to fill in dates)';
+        frag.append(h); lastKey = key;
+      }
+      frag.append(card(o));
+    }
+    shown = Math.min(list.length, shown + PAGE);
+    el.insertBefore(frag, moreBtn.isConnected ? moreBtn : null);
+    if (shown < list.length) {
+      moreBtn.textContent = `Show more (${list.length - shown} left)`;
+      if (!moreBtn.isConnected) el.append(moreBtn);
+    } else moreBtn.remove();
+  }
+  moreBtn.onclick = more;
+  more();
+}
+
+function setView(v) {
+  view = v;
+  try { localStorage.setItem(VIEW_KEY, v); } catch {}
+  $('tabTree').classList.toggle('active', v === 'tree');
+  $('tabRecent').classList.toggle('active', v === 'recent');
+  $('tree').hidden = v !== 'tree';
+  $('recent').hidden = v !== 'recent';
+  $('treeTools').hidden = v !== 'tree';
+  if (state.obs.length) show();
+}
+$('tabTree').onclick = () => setView('tree');
+$('tabRecent').onclick = () => setView('recent');
+
 function show() {
   if (!state.obs.length) return;
   const t0 = performance.now();
-  const species = render(buildTree(state.obs), state.names);
+  let species;
+  if (view === 'recent') {
+    renderRecent();
+    species = new Set(state.obs.map(o => o.tid)).size;
+  } else species = render(buildTree(state.obs), state.names);
   $('results').hidden = false;
   $('summary').textContent = `${state.user.login}: ${species} species · ${state.obs.length} identified observations` +
     (state.updated ? ` · updated ${new Date(state.updated).toLocaleString()}` : '');
@@ -695,6 +811,7 @@ function toast(msg) {
 $('expand').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = true);
 $('collapse').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = false);
 
+setView(view);
 (async () => {
   log(`start: ${navigator.userAgent}`);
   await loadCache();
