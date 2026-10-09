@@ -70,6 +70,8 @@
   .dh { position:sticky; top:0; z-index:5; background:var(--card); padding:6px 0; font-size:13px; font-weight:600;
         color:var(--muted); border-bottom:1px solid var(--line); }
   #recent .sp { border-left:0; padding-left:0; }
+  [hidden] { display:none !important; }
+  select { font:inherit; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--card); color:var(--fg); }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   /* full-screen viewer */
   #viewer { position:fixed; inset:0; z-index:1000; background:#000; color:#fff; display:none; flex-direction:column; }
@@ -120,12 +122,18 @@
   <div id="results" hidden>
     <div class="tabs" role="tablist">
       <button id="tabTree" role="tab">By taxonomy</button>
+      <button id="tabPlace" role="tab">By place</button>
       <button id="tabRecent" role="tab">Recent</button>
     </div>
     <div class="toolbar">
       <span id="treeTools"><button class="secondary" id="expand">Expand all</button>
       <button class="secondary" id="collapse">Collapse all</button></span>
       <span id="summary" class="status" style="align-self:center"></span>
+    </div>
+    <div id="locTools" class="row" style="margin:0 0 10px" hidden>
+      <label class="status" for="locmode">Group by</label>
+      <select id="locmode"><option value="place">Place names (country, state, …)</option><option value="coords">Coordinate ranges</option></select>
+      <span id="locnote" class="status"></span>
     </div>
     <div class="card" id="tree"></div>
     <div class="card" id="recent" hidden></div>
@@ -226,18 +234,18 @@ const idb = {
 };
 
 // State: user {id, login}, obs [slim records], names {taxonId: {id,name,rank,common}}
-let state = { user: null, obs: [], names: {}, updated: null };
+let state = { user: null, obs: [], names: {}, places: {}, updated: null };
 
 async function loadCache() {
-  const [user, obs, names, updated] = await Promise.all(['user', 'obs', 'names', 'updated'].map(k => idb.get(k)));
-  if (user && obs) state = { user, obs, names: names || {}, updated };
+  const [user, obs, names, updated, places] = await Promise.all(['user', 'obs', 'names', 'updated', 'places'].map(k => idb.get(k)));
+  if (user && obs) state = { user, obs, names: names || {}, places: places || {}, updated };
   log(`cache: ${state.obs.length} observations, ${Object.keys(state.names).length} taxa` +
       (state.updated ? `, saved ${state.updated}` : ' (empty)'));
 }
 async function saveCache() {
   state.updated = new Date().toISOString();
   await Promise.all([idb.set('user', state.user), idb.set('obs', state.obs),
-                     idb.set('names', state.names), idb.set('updated', state.updated)]);
+                     idb.set('names', state.names), idb.set('places', state.places), idb.set('updated', state.updated)]);
   log(`cache saved (${state.obs.length} obs, ${Object.keys(state.names).length} taxa)`);
 }
 
@@ -288,6 +296,8 @@ function slim(o) {
     name: t.name,
     common: t.preferred_common_name || '',
     date: o.observed_on || '',
+    loc: o.location || '',
+    pids: o.place_ids || [],
     photos: (o.photos || []).map(p => p.url).filter(Boolean),
     photo: o.photos?.[0]?.url || t.default_photo?.square_url || '',
   };
@@ -331,12 +341,12 @@ async function fetchMissingTaxa(ids) {
 }
 
 // ---------- tree ----------
-function buildTree(obs) {
+function buildTree(obs, chainOf = o => o.anc.slice(0, -1)) {
   const root = { id: 0, children: new Map(), species: [], count: 0 };
   for (const o of obs) {
     let node = root;
     node.count++;
-    for (const id of o.anc.slice(0, -1)) {
+    for (const id of chainOf(o)) {
       if (!node.children.has(id)) node.children.set(id, { id, children: new Map(), species: [], count: 0 });
       node = node.children.get(id);
       node.count++;
@@ -409,7 +419,11 @@ document.addEventListener('keydown', e => {
 });
 
 // ---------- tree rendering ----------
-function render(root, names) {
+const TAXON_META = (names) => ({
+  get: id => names[id],
+  shown: rank => SHOWN_RANKS.has(rank),
+});
+function render(root, names, meta = TAXON_META(names)) {
   const frag = document.createDocumentFragment();
 
   function speciesOf(o) {
@@ -545,7 +559,7 @@ function render(root, names) {
     return acc;
   }
   function groupEl(node, rank, depth) {
-    const t = names[node.id];
+    const t = meta.get(node.id);
     const det = document.createElement('details');
     det.className = 'g'; det.open = true;
     det.dataset.rank = rank;
@@ -603,8 +617,8 @@ function render(root, names) {
   function fill(node, parentEl, depth) {
     for (const row of speciesRows(node.species)) parentEl.append(speciesEl(row));
     for (const ch of sortedChildren(node)) {
-      const rank = names[ch.id]?.rank;
-      if (SHOWN_RANKS.has(rank)) parentEl.append(groupEl(ch, rank, depth));
+      const rank = meta.get(ch.id)?.rank;
+      if (meta.shown(rank)) parentEl.append(groupEl(ch, rank, depth));
       else fill(ch, parentEl, depth);
     }
   }
@@ -613,10 +627,98 @@ function render(root, names) {
   return collect(root).size;
 }
 
+// ---------- location grouping ----------
+const LOC_KEY = 'inat_locmode';
+let locMode = 'place';
+try { locMode = localStorage.getItem(LOC_KEY) === 'coords' ? 'coords' : 'place'; } catch {}
+const UNKNOWN_LOC = -1;
+
+// iNat admin_level: 0 country, 10 state/province, 20 county, 30 town/city; place_type 100 = continent.
+function placeRank(p) {
+  if (p.type === 100) return 'continent';
+  return { 0: 'country', 10: 'state', 20: 'county', 30: 'city' }[p.level] || 'area';
+}
+// Ordered admin place ids (broad → narrow) for an observation; non-admin places (parks etc.) are skipped.
+function placeChain(o) {
+  const ps = (o.pids || []).map(id => state.places[id]).filter(p => p && !p.missing && (p.level != null || p.type === 100));
+  ps.sort((a, b) => (a.type === 100 ? -100 : a.level) - (b.type === 100 ? -100 : b.level));
+  return ps.length ? ps.map(p => p.id) : [UNKNOWN_LOC];
+}
+const PLACE_META = {
+  get: id => id === UNKNOWN_LOC ? { name: 'Unknown location', rank: 'area' }
+    : state.places[id] && !state.places[id].missing ? { name: state.places[id].name, rank: placeRank(state.places[id]) } : { name: `place #${id}`, rank: 'area' },
+  shown: () => true,
+};
+
+// Coordinate grid: 10° zones → 1° cells → 0.1° cells.
+const GRID = [{ step: 10, rank: 'zone 10°', dp: 0 }, { step: 1, rank: 'grid 1°', dp: 0 }, { step: 0.1, rank: 'cell 0.1°', dp: 1 }];
+function parseLoc(o) {
+  const m = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/.exec(o.loc || '');
+  return m ? [parseFloat(m[1]), parseFloat(m[2])] : null;
+}
+function coordChain(o) {
+  const ll = parseLoc(o);
+  if (!ll) return [UNKNOWN_LOC];
+  return GRID.map(g => {
+    const la = Math.floor(ll[0] / g.step + 1e-9), lo = Math.floor(ll[1] / g.step + 1e-9);
+    return `c${g.step}:${la},${lo}`;
+  });
+}
+const COORD_META = {
+  get(id) {
+    if (id === UNKNOWN_LOC) return { name: 'No coordinates', rank: 'area' };
+    const m = /^c([\d.]+):(-?\d+),(-?\d+)$/.exec(id);
+    const g = GRID.find(x => x.step === parseFloat(m[1]));
+    const fmt = (i, pos, neg) => {
+      const a = i * g.step, b = (i + 1) * g.step;
+      const s = v => Math.abs(v).toFixed(g.dp);
+      const hemi = a >= 0 ? pos : neg;
+      return a >= 0 ? `${s(a)}–${s(b)}°${hemi}` : `${s(b)}–${s(a)}°${hemi}`;
+    };
+    return { name: `${fmt(+m[2], 'N', 'S')}, ${fmt(+m[3], 'E', 'W')}`, rank: g.rank };
+  },
+  shown: () => true,
+};
+
+let placeLoading = false;
+async function ensurePlaces() {
+  if (placeLoading) return;
+  const ids = new Set();
+  state.obs.forEach(o => (o.pids || []).forEach(i => ids.add(i)));
+  const missing = [...ids].filter(i => !state.places[i]);
+  if (!missing.length) return;
+  placeLoading = true;
+  log(`places lookup: ${ids.size} needed, ${missing.length} missing from cache`);
+  try {
+    for (let i = 0; i < missing.length; i += 50) {
+      const batch = missing.slice(i, i + 50);
+      status(`Looking up places… ${Math.min(i + 50, missing.length)}/${missing.length}`);
+      const d = await api(`/places/${batch.join(',')}?per_page=50`);
+      const seen = new Set();
+      for (const p of d.results) {
+        seen.add(p.id);
+        state.places[p.id] = { id: p.id, name: p.name || p.display_name, level: p.admin_level ?? null, type: p.place_type ?? null };
+      }
+      batch.forEach(id => { if (!seen.has(id)) state.places[id] = { id, missing: true }; });
+      await saveCache();
+      if ((i / 50) % 4 === 3 && view === 'place') show(true);
+      await sleep(700);
+    }
+    status('Places loaded.');
+  } catch (e) {
+    log(`places lookup failed: ${e.stack || e}`, 'e');
+    status(e.message + ' Places fetched so far were saved; reopen this view to resume.', true);
+    $('logwrap').open = true;
+  } finally {
+    placeLoading = false;
+  }
+  if (view === 'place') show(true);
+}
+
 // ---------- recent view ----------
 const VIEW_KEY = 'inat_view';
 let view = 'tree';
-try { view = localStorage.getItem(VIEW_KEY) === 'recent' ? 'recent' : 'tree'; } catch {}
+try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent'].includes(v) ? v : 'tree'; } catch {}
 
 function renderRecent() {
   const el = $('recent');
@@ -703,22 +805,39 @@ function setView(v) {
   view = v;
   try { localStorage.setItem(VIEW_KEY, v); } catch {}
   $('tabTree').classList.toggle('active', v === 'tree');
+  $('tabPlace').classList.toggle('active', v === 'place');
   $('tabRecent').classList.toggle('active', v === 'recent');
-  $('tree').hidden = v !== 'tree';
+  $('tree').hidden = v === 'recent';
   $('recent').hidden = v !== 'recent';
-  $('treeTools').hidden = v !== 'tree';
+  $('treeTools').hidden = v === 'recent';
+  $('locTools').hidden = v !== 'place';
   if (state.obs.length) show();
 }
 $('tabTree').onclick = () => setView('tree');
+$('tabPlace').onclick = () => setView('place');
 $('tabRecent').onclick = () => setView('recent');
+$('locmode').onchange = e => {
+  locMode = e.target.value;
+  try { localStorage.setItem(LOC_KEY, locMode); } catch {}
+  show();
+};
 
-function show() {
+function show(keepStatus) {
   if (!state.obs.length) return;
   const t0 = performance.now();
   let species;
   if (view === 'recent') {
     renderRecent();
     species = new Set(state.obs.map(o => o.tid)).size;
+  } else if (view === 'place') {
+    $('locmode').value = locMode;
+    const coords = locMode === 'coords';
+    species = render(buildTree(state.obs, coords ? coordChain : placeChain), state.names, coords ? COORD_META : PLACE_META);
+    const without = state.obs.filter(o => coords ? !parseLoc(o) : !(o.pids && o.pids.length)).length;
+    $('locnote').textContent = without
+      ? `${without} observation${without > 1 ? 's' : ''} without ${coords ? 'coordinates' : 'place data'} (private, or cached before location support — use "Re-download observations")`
+      : '';
+    if (!coords && !keepStatus) ensurePlaces();
   } else species = render(buildTree(state.obs), state.names);
   $('results').hidden = false;
   $('summary').textContent = `${state.user.login}: ${species} species · ${state.obs.length} identified observations` +
@@ -738,7 +857,7 @@ async function refresh({ full = false } = {}) {
     log(`authenticated as ${me.login} (id ${me.id})`);
     if (full || state.user?.id !== me.id) {
       if (state.user && state.user.id !== me.id) log('different user than cache; discarding cache', 'w');
-      state = { user: null, obs: [], names: state.names, updated: null };
+      state = { user: null, obs: [], names: state.names, places: state.places, updated: null };
     }
     state.user = { id: me.id, login: me.login };
     const lastId = state.obs.reduce((m, o) => Math.max(m, o.id), 0);
@@ -763,12 +882,13 @@ $('load').onclick = () => refresh();
 $('full').onclick = () => refresh({ full: true });
 $('forget').onclick = () => { store.del(); $('token').value = ''; status('Token removed (cached observations kept).'); };
 $('clearcache').onclick = async () => {
-  await idb.clear(); state = { user: null, obs: [], names: {}, updated: null };
+  await idb.clear(); state = { user: null, obs: [], names: {}, places: {}, updated: null };
   $('results').hidden = true; log('all cached data cleared'); status('Cache cleared.');
 };
 $('copylog').onclick = () => navigator.clipboard?.writeText($('log').innerText).then(() => status('Log copied.'));
 // Hold a group heading: collapse every group of the same rank (or expand them all if it was already collapsed).
-const PLURAL = { kingdom: 'kingdoms', phylum: 'phyla', class: 'classes', order: 'orders', family: 'families', genus: 'genera' };
+const PLURAL = { kingdom: 'kingdoms', phylum: 'phyla', class: 'classes', order: 'orders', family: 'families', genus: 'genera',
+  continent: 'continents', country: 'countries', county: 'counties', city: 'cities', area: 'areas', 'grid 1°': 'grid cells (1°)', 'cell 0.1°': 'cells (0.1°)', 'zone 10°': 'zones (10°)' };
 let toastTimer;
 function toast(msg) {
   $('toast').textContent = msg; $('toast').classList.add('show');
