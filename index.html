@@ -160,7 +160,7 @@ async function saveCache() {
   state.updated = new Date().toISOString();
   await Promise.all([idb.set('user', state.user), idb.set('obs', state.obs),
                      idb.set('names', state.names), idb.set('updated', state.updated)]);
-  log('cache saved');
+  log(`cache saved (${state.obs.length} obs, ${Object.keys(state.names).length} taxa)`);
 }
 
 function status(msg, err) {
@@ -214,16 +214,21 @@ function slim(o) {
 }
 
 async function fetchNewObservations(token, userId, afterId) {
-  const fresh = [];
+  const fresh = []; // also appended to state.obs and saved after every page
   let lastId = afterId, total = null, skipped = 0;
   for (;;) {
     const d = await api(`/observations?user_id=${userId}&per_page=200&order_by=id&order=asc&id_above=${lastId}`, token);
     if (total === null) total = d.total_results;
     if (!d.results.length) break;
+    const page = [];
     for (const o of d.results) {
-      if (o.taxon?.ancestor_ids?.length) fresh.push(slim(o)); else skipped++;
+      if (o.taxon?.ancestor_ids?.length) page.push(slim(o)); else skipped++;
     }
+    fresh.push(...page);
+    state.obs.push(...page);
     lastId = d.results[d.results.length - 1].id;
+    await saveCache(); // resume point: next run continues from the highest cached id
+    if (!$('results').hidden || fresh.length === page.length) show();
     status(`Fetched ${fresh.length + skipped} of ${total} new observations…`);
     if (d.results.length < 200) break;
     await sleep(700);
@@ -240,6 +245,7 @@ async function fetchMissingTaxa(ids) {
     status(`Looking up taxonomy… ${Math.min(i + 30, missing.length)}/${missing.length}`);
     const d = await api(`/taxa/${batch.join(',')}?per_page=30`);
     for (const t of d.results) state.names[t.id] = { id: t.id, name: t.name, rank: t.rank, common: t.preferred_common_name || '' };
+    await saveCache();
     await sleep(700);
   }
 }
@@ -355,7 +361,6 @@ async function refresh({ full = false } = {}) {
     state.user = { id: me.id, login: me.login };
     const lastId = state.obs.reduce((m, o) => Math.max(m, o.id), 0);
     const fresh = await fetchNewObservations(token, me.id, lastId);
-    state.obs.push(...fresh);
     const ids = new Set();
     state.obs.forEach(o => o.anc.forEach(i => ids.add(i)));
     await fetchMissingTaxa(ids);
@@ -364,7 +369,8 @@ async function refresh({ full = false } = {}) {
     status(fresh.length ? `Done. ${fresh.length} new observations.` : 'Done. Already up to date.');
   } catch (e) {
     log(`refresh failed: ${e.stack || e}`, 'e');
-    status(e.message + (state.obs.length ? ' (showing cached data)' : ''), true);
+    if (state.obs.length) show();
+    status(e.message + (state.obs.length ? ' Progress was saved; click Load to resume.' : ''), true);
     $('logwrap').open = true;
   } finally {
     $('load').disabled = $('full').disabled = false;
