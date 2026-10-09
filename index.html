@@ -73,6 +73,12 @@
   #recent .sp { border-left:0; padding-left:0; }
   [hidden] { display:none !important; }
   select { font:inherit; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--card); color:var(--fg); }
+  #mapcanvas { height:70vh; min-height:360px; border-radius:8px; z-index:0; }
+  .pm img { width:40px; height:40px; border-radius:50%; border:2px solid #fff; object-fit:cover; background:#9aa; box-shadow:0 1px 4px rgba(0,0,0,.5); display:block; }
+  .pm.nophoto { width:16px; height:16px; border-radius:50%; background:#4a8a2a; border:2px solid #fff; }
+  .mp { width:200px; } .mp img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; display:block; cursor:zoom-in; }
+  .mp .t { font-weight:600; margin:6px 0 0; } .mp .d { color:#666; font-size:12px; }
+  .mp .acts { margin-top:6px; }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   /* full-screen viewer */
   #viewer { position:fixed; inset:0; z-index:1000; background:#000; color:#fff; display:none; flex-direction:column; }
@@ -140,6 +146,7 @@
       <button id="tabTree" role="tab">By taxonomy</button>
       <button id="tabPlace" role="tab">By place</button>
       <button id="tabRecent" role="tab">Recent</button>
+      <button id="tabMap" role="tab">Map</button>
     </div>
     <div class="toolbar">
       <span id="treeTools"><button class="secondary" id="expand">Expand all</button>
@@ -151,6 +158,10 @@
     </div>
     <div class="card" id="tree"></div>
     <div class="card" id="recent" hidden></div>
+    <div class="card" id="mapwrap" hidden>
+      <div id="mapnote" class="status" style="margin:0 0 8px"></div>
+      <div id="mapcanvas"></div>
+    </div>
   </div>
 </main>
 
@@ -409,6 +420,7 @@ function slim(o) {
     name: t.name,
     common: t.preferred_common_name || '',
     date: o.observed_on || '',
+    loc: o.location || '',
     pids: o.place_ids || [],
     photos: (o.photos || []).map(p => p.url).filter(Boolean),
     photo: o.photos?.[0]?.url || t.default_photo?.square_url || '',
@@ -797,7 +809,7 @@ async function ensurePlaces() {
 // ---------- recent view ----------
 const VIEW_KEY = 'inat_view';
 let view = 'tree';
-try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent'].includes(v) ? v : 'tree'; } catch {}
+try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent', 'map'].includes(v) ? v : 'tree'; } catch {}
 
 function renderRecent() {
   const el = $('recent');
@@ -880,27 +892,125 @@ function renderRecent() {
   more();
 }
 
+// ---------- map view (Leaflet + marker clustering, loaded on demand) ----------
+const LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
+const CLUSTER = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/';
+let map, cluster, mapFitted = false, mapSeq = 0;
+
+function parseLoc(o) {
+  const m = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/.exec(o.loc || '');
+  return m ? [parseFloat(m[1]), parseFloat(m[2])] : null;
+}
+const addCss = href => { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.append(l); };
+const addScript = src => new Promise((res, rej) => {
+  const s = document.createElement('script');
+  s.src = src; s.onload = res; s.onerror = () => rej(new Error(`failed to load ${src}`));
+  document.head.append(s);
+});
+async function ensureLeaflet() {
+  if (window.L && L.markerClusterGroup) return;
+  log('loading Leaflet from cdnjs');
+  addCss(LEAFLET + 'leaflet.css');
+  addCss(CLUSTER + 'MarkerCluster.css'); addCss(CLUSTER + 'MarkerCluster.Default.css');
+  await addScript(LEAFLET + 'leaflet.js');
+  await addScript(CLUSTER + 'leaflet.markercluster.js');
+}
+
+function mapPopup(o) {
+  const ph = photosOf(o);
+  const el = document.createElement('div'); el.className = 'mp';
+  const open = () => viewer.open({
+    obs: o, photos: ph, title: o.common || o.name,
+    isPreferred: () => prefs[o.tid] === o.id,
+    setPreferred: () => { prefs[o.tid] = o.id; savePrefs(); log(`preferred observation for ${o.name} set to ${o.id}`); },
+  });
+  if (ph.length) {
+    const im = document.createElement('img');
+    im.src = sized(ph[0], 'medium'); im.alt = ''; im.onclick = open;
+    im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
+    el.append(im);
+  }
+  const t = document.createElement('div'); t.className = 't';
+  t.append(o.common ? o.common + ' ' : '');
+  const sci = document.createElement('i'); sci.textContent = o.name; t.append(sci);
+  const d = document.createElement('div'); d.className = 'd'; d.textContent = o.date || 'date unknown';
+  const acts = document.createElement('div'); acts.className = 'acts';
+  if (ph.length) {
+    const v = document.createElement('button'); v.className = 'secondary'; v.textContent = ph.length > 1 ? `View ${ph.length} photos` : 'View photo';
+    v.onclick = open; acts.append(v);
+  }
+  const ext = document.createElement('a');
+  ext.className = 'ib'; ext.textContent = '↗'; ext.href = obsUrl(o); ext.target = '_blank'; ext.rel = 'noopener';
+  ext.title = 'Open observation on iNaturalist';
+  acts.append(ext);
+  el.append(t, d, acts);
+  return el;
+}
+
+async function renderMap() {
+  const seq = ++mapSeq;
+  const pts = state.obs.map(o => [o, parseLoc(o)]).filter(([, ll]) => ll);
+  const without = state.obs.length - pts.length;
+  $('mapnote').textContent = `${pts.length} observation${pts.length === 1 ? '' : 's'} on the map` +
+    (without ? ` · ${without} without coordinates (private/obscured, or cached before map support — use "Re-download observations")` : '');
+  try { await ensureLeaflet(); } catch (e) { log(String(e), 'e'); return status(`Map library failed to load: ${e.message}`, true); }
+  if (seq !== mapSeq || view !== 'map') return;
+  if (!map) {
+    map = L.map('mapcanvas', { preferCanvas: true, worldCopyJump: true });
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+    cluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 45, showCoverageOnHover: false });
+    map.addLayer(cluster);
+    map.setView([20, 0], 2);
+  }
+  map.invalidateSize();
+  cluster.clearLayers();
+  const markers = pts.map(([o, ll]) => {
+    const ph = photosOf(o);
+    let icon;
+    if (ph.length) {
+      const im = document.createElement('img');
+      im.src = sized(ph[0], 'square'); im.alt = ''; im.loading = 'lazy';
+      icon = L.divIcon({ className: 'pm', html: im, iconSize: [44, 44] });
+    } else icon = L.divIcon({ className: 'pm nophoto', iconSize: [20, 20] });
+    return L.marker(ll, { icon, title: o.common || o.name }).bindPopup(() => mapPopup(o), { minWidth: 200 });
+  });
+  cluster.addLayers(markers);
+  if (!mapFitted && pts.length) {
+    map.fitBounds(L.latLngBounds(pts.map(([, ll]) => ll)).pad(0.1), { maxZoom: 12 });
+    mapFitted = true;
+  }
+  log(`map: ${markers.length} markers`);
+}
+
 function setView(v) {
   view = v;
   try { localStorage.setItem(VIEW_KEY, v); } catch {}
   $('tabTree').classList.toggle('active', v === 'tree');
   $('tabPlace').classList.toggle('active', v === 'place');
   $('tabRecent').classList.toggle('active', v === 'recent');
-  $('tree').hidden = v === 'recent';
+  $('tabMap').classList.toggle('active', v === 'map');
+  $('tree').hidden = v === 'recent' || v === 'map';
   $('recent').hidden = v !== 'recent';
-  $('treeTools').hidden = v === 'recent';
+  $('mapwrap').hidden = v !== 'map';
+  $('treeTools').hidden = v === 'recent' || v === 'map';
   $('locTools').hidden = v !== 'place';
   if (state.obs.length) show();
 }
 $('tabTree').onclick = () => setView('tree');
 $('tabPlace').onclick = () => setView('place');
 $('tabRecent').onclick = () => setView('recent');
+$('tabMap').onclick = () => setView('map');
 
 function show(keepStatus) {
   if (!state.obs.length) return;
   const t0 = performance.now();
   let species;
-  if (view === 'recent') {
+  if (view === 'map') {
+    renderMap();
+    species = new Set(state.obs.map(o => o.tid)).size;
+  } else if (view === 'recent') {
     renderRecent();
     species = new Set(state.obs.map(o => o.tid)).size;
   } else if (view === 'place') {
