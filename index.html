@@ -65,7 +65,7 @@
            padding:8px 14px; border-radius:20px; font-size:13px; z-index:2000; opacity:0; pointer-events:none; transition:opacity .2s; }
   #toast.show { opacity:1; }
   .tabs { display:flex; gap:0; margin:0 0 10px; }
-  .tabs button { flex:1; background:transparent; color:var(--muted); border:1px solid var(--line); border-radius:0; padding:9px 12px; }
+  .tabs button { flex:1; background:transparent; color:var(--muted); border:1px solid var(--line); border-radius:0; padding:9px 2px; font-size:13px; }
   .tabs button:first-child { border-radius:8px 0 0 8px; } .tabs button:last-child { border-radius:0 8px 8px 0; border-left:0; }
   .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
   .dh { position:sticky; top:0; z-index:5; background:var(--card); padding:6px 0; font-size:13px; font-weight:600;
@@ -80,6 +80,17 @@
   .chip { display:inline-flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--accent); color:var(--fg);
           border-radius:16px; padding:3px 6px 3px 12px; font-size:13px; margin:0 0 8px; }
   .chip button { padding:0 6px; background:none; color:var(--muted); font-size:16px; }
+  .pill { display:inline-flex; flex-direction:column; align-items:flex-start; margin:0 6px 6px 0; padding:5px 10px; border-radius:10px;
+          border:1px solid var(--line); background:var(--card); color:var(--fg); font-size:13px; line-height:1.25; }
+  .pill small { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.04em; }
+  .pill.on { border-color:var(--accent); background:var(--accent); color:#fff; } .pill.on small { color:#e8f5df; }
+  .pill.extra { border-style:dashed; }
+  .xrow { display:flex; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
+  .xrow img { width:84px; height:84px; flex:none; border-radius:8px; object-fit:cover; background:var(--line); }
+  .xrow .xi { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .xrow a { color:var(--fg); text-decoration:none; } .xrow a:hover { text-decoration:underline; }
+  .seen { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; background:var(--accent); color:#fff; width:fit-content; }
+  .unseen { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; border:1px solid #d9480f; color:#d9480f; width:fit-content; }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   /* full-screen viewer */
   #viewer { position:fixed; inset:0; z-index:1000; background:#000; color:#fff; display:none; flex-direction:column; }
@@ -143,6 +154,7 @@
   </div>
 
   <div id="results" hidden>
+    <div id="filterwrap">
     <div class="filters">
       <input type="search" id="q" placeholder="Search common species name…" autocomplete="off" spellcheck="false">
       <select id="datesel" aria-label="Date filter" style="max-width:110px">
@@ -166,11 +178,12 @@
         <button class="secondary" id="areafit">Show all</button>
       </div>
     </div>
-    </div>
+    </div><!-- /filterwrap -->
     <div class="tabs" role="tablist">
-      <button id="tabTree" role="tab">By taxonomy</button>
-      <button id="tabPlace" role="tab">By place</button>
+      <button id="tabTree" role="tab">Taxonomy</button>
+      <button id="tabPlace" role="tab">Place</button>
       <button id="tabRecent" role="tab">Recent</button>
+      <button id="tabExplore" role="tab">Common here</button>
     </div>
     <div class="toolbar">
       <span id="treeTools"><button class="secondary" id="expand">Expand all</button>
@@ -182,6 +195,21 @@
     </div>
     <div class="card" id="tree"></div>
     <div class="card" id="recent" hidden></div>
+    <div class="card" id="explore" hidden>
+      <div class="row" style="margin:0 0 10px">
+        <button id="expgps">📍 Use my location</button>
+        <select id="expplace" style="flex:1;min-width:0"><option value="">Or pick a place from my observations…</option></select>
+      </div>
+      <div id="exppills"></div>
+      <div class="row" style="margin:6px 0 4px">
+        <label class="status"><input type="checkbox" id="expres" checked> Research grade only</label>
+        <label class="status"><input type="checkbox" id="expmonth"> This calendar month only</label>
+        <select id="expfilter"><option value="all">All species</option><option value="unseen">Not yet seen by me</option><option value="seen">Seen by me</option></select>
+      </div>
+      <p id="expnote" class="status"></p>
+      <div id="explist"></div>
+      <button class="secondary" id="expmore" hidden style="margin-top:10px">Show more</button>
+    </div>
   </div>
 </main>
 
@@ -824,12 +852,13 @@ async function ensurePlaces() {
     placeLoading = false;
   }
   if (view === 'place') show(true);
+  if (view === 'explore') renderExplore();
 }
 
 // ---------- recent view ----------
 const VIEW_KEY = 'inat_view';
 let view = 'tree';
-try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent'].includes(v) ? v : 'tree'; } catch {}
+try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent', 'explore'].includes(v) ? v : 'tree'; } catch {}
 
 function renderRecent(obs) {
   const el = $('recent');
@@ -883,7 +912,11 @@ function renderRecent(obs) {
     const ext = document.createElement('a');
     ext.className = 'ib'; ext.textContent = '↗'; ext.href = obsUrl(o); ext.target = '_blank'; ext.rel = 'noopener';
     ext.title = ext.ariaLabel = 'Open observation on iNaturalist';
-    acts.append(star, ext);
+    const here = document.createElement('button');
+    here.type = 'button'; here.className = 'ib'; here.textContent = '🌍';
+    here.title = here.ariaLabel = 'Most observed species where this was seen';
+    here.onclick = () => exploreFromObs(o);
+    acts.append(star, ext, here);
     info.append(a, dt, acts);
     d.append(btn, info); wrap.append(d);
     return wrap;
@@ -1081,23 +1114,212 @@ $('q').addEventListener('input', scheduleShow);
 $('datesel').onchange = () => { $('customdates').hidden = $('datesel').value !== 'custom'; scheduleShow(); };
 $('dfrom').onchange = $('dto').onchange = scheduleShow;
 
+// ---------- Common here: most observed species in a place, and whether I've seen them ----------
+const EXP_KEY = 'inat_explore';
+const explore = { chain: [], extra: [], selected: null, items: [], total: 0, page: 0, loading: false, err: '', seq: 0 };
+try {
+  const s = JSON.parse(localStorage.getItem(EXP_KEY) || 'null');
+  if (s && Array.isArray(s.chain)) Object.assign(explore, { chain: s.chain, extra: s.extra || [], selected: s.selected || null });
+} catch {}
+const saveExplore = () => { try { localStorage.setItem(EXP_KEY, JSON.stringify({ chain: explore.chain, extra: explore.extra, selected: explore.selected })); } catch {} };
+
+function speciesIdOf(o) {
+  if (state.names[o.tid]?.rank === 'species') return o.tid;
+  return o.anc.find(id => state.names[id]?.rank === 'species') || null;
+}
+function mySpeciesCounts() {
+  const m = new Map();
+  for (const o of state.obs) { const id = speciesIdOf(o) ?? o.tid; m.set(id, (m.get(id) || 0) + 1); }
+  return m;
+}
+const placeObj = id => {
+  const p = state.places[id];
+  return p && !p.missing ? { id, name: p.name, rank: placeRank(p), level: p.level } : null;
+};
+function pickDefaultLevel(chain) {
+  return (chain.find(p => p.level === 20) || chain[chain.length - 1] || {}).id || null;
+}
+function setExplore(chain, extra, selected) {
+  Object.assign(explore, { chain, extra, selected: selected ?? pickDefaultLevel(chain) });
+  saveExplore();
+  loadExplore();
+}
+
+async function exploreFromObs(o) {
+  setView('explore');
+  status('Looking up places…');
+  await ensurePlaces();
+  const chain = placeChain(o).filter(id => id !== UNKNOWN_LOC).map(placeObj).filter(Boolean);
+  if (!chain.length) { status('No place data for that observation (private, or cached before location support).', true); return; }
+  status('');
+  setExplore(chain, []);
+}
+
+function useMyLocation() {
+  if (!navigator.geolocation) return status('Geolocation is not available in this browser.', true);
+  status('Getting your location…');
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+    log(`geolocation: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${Math.round(accuracy)} m)`);
+    try {
+      const d = 0.002; // ~200 m box around the point
+      const r = (await api(`/places/nearby?nelat=${lat + d}&nelng=${lng + d}&swlat=${lat - d}&swlng=${lng - d}&per_page=50`)).results;
+      const standard = Array.isArray(r) ? r : (r.standard || []), community = Array.isArray(r) ? [] : (r.community || []);
+      for (const p of [...standard, ...community]) {
+        state.places[p.id] = { id: p.id, name: p.name || p.display_name, level: p.admin_level ?? null, type: p.place_type ?? null };
+      }
+      const mk = p => ({ id: p.id, name: p.name || p.display_name, rank: placeRank({ level: p.admin_level ?? null }), level: p.admin_level ?? null });
+      const chain = standard.filter(p => p.admin_level != null).sort((a, b) => a.admin_level - b.admin_level).map(mk);
+      const extra = [...standard.filter(p => p.admin_level == null), ...community].slice(0, 12).map(mk);
+      log(`places/nearby: ${standard.length} standard, ${community.length} community → ${chain.length} admin levels`);
+      if (!chain.length && !extra.length) return status('No iNaturalist places found at your location.', true);
+      status('');
+      setExplore(chain, extra, pickDefaultLevel(chain) || extra[0]?.id);
+    } catch (e) { log(`nearby lookup failed: ${e.stack || e}`, 'e'); status(e.message, true); }
+  }, err => {
+    log(`geolocation error ${err.code}: ${err.message}`, 'e');
+    status(err.code === 1 ? 'Location permission denied. Pick a place from your observations instead.' : `Could not get your location (${err.message}).`, true);
+  }, { timeout: 15000, maximumAge: 60000 });
+}
+
+async function loadExplore(more = false) {
+  if (!explore.selected) return renderExplore();
+  const seq = ++explore.seq;
+  if (!more) Object.assign(explore, { items: [], total: 0, page: 0, err: '' });
+  explore.loading = true; renderExplore();
+  try {
+    const q = new URLSearchParams({ place_id: explore.selected, per_page: 100, page: explore.page + 1 });
+    if ($('expres').checked) q.set('quality_grade', 'research');
+    if ($('expmonth').checked) q.set('month', new Date().getMonth() + 1);
+    const d = await api(`/observations/species_counts?${q}`);
+    if (seq !== explore.seq) return; // selection changed while loading
+    explore.items.push(...d.results); explore.total = d.total_results; explore.page++;
+  } catch (e) {
+    if (seq !== explore.seq) return;
+    log(`species_counts failed: ${e.stack || e}`, 'e'); explore.err = e.message;
+  } finally {
+    if (seq === explore.seq) { explore.loading = false; renderExplore(); }
+  }
+}
+
+let expPlaceSig = '';
+function fillExpPlaces() {
+  const sig = `${state.obs.length}|${Object.keys(state.places).length}`;
+  if (sig === expPlaceSig) return;
+  expPlaceSig = sig;
+  const counts = new Map();
+  for (const o of state.obs) for (const id of o.pids || []) counts.set(id, (counts.get(id) || 0) + 1);
+  const groups = new Map();
+  for (const [id, n] of counts) {
+    const p = placeObj(id);
+    if (!p || p.level == null) continue;
+    if (!groups.has(p.level)) groups.set(p.level, []);
+    groups.get(p.level).push({ ...p, n });
+  }
+  const sel = $('expplace');
+  sel.replaceChildren(new Option('Or pick a place from my observations…', ''));
+  for (const lv of [...groups.keys()].sort((a, b) => a - b)) {
+    const og = document.createElement('optgroup');
+    og.label = placeRank({ level: lv }).replace(/^./, c => c.toUpperCase());
+    for (const p of groups.get(lv).sort((a, b) => b.n - a.n)) og.append(new Option(`${p.name} (${p.n} obs)`, p.id));
+    sel.append(og);
+  }
+}
+
+function renderExplore() {
+  fillExpPlaces();
+  const pills = $('exppills');
+  pills.replaceChildren();
+  const addPill = (p, extra) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pill' + (extra ? ' extra' : '') + (p.id === explore.selected ? ' on' : '');
+    const s = document.createElement('small'); s.textContent = extra ? 'area' : p.rank;
+    b.append(s, p.name);
+    b.onclick = () => { explore.selected = p.id; saveExplore(); loadExplore(); };
+    pills.append(b);
+  };
+  explore.chain.forEach(p => addPill(p, false));
+  explore.extra.forEach(p => addPill(p, true));
+
+  const sel = [...explore.chain, ...explore.extra].find(p => p.id === explore.selected);
+  const list = $('explist');
+  list.replaceChildren();
+  $('expmore').hidden = true;
+  if (!sel) {
+    $('expnote').textContent = 'Choose a location to see the most observed species there, and which ones you have seen.';
+    return;
+  }
+  const mine = mySpeciesCounts(), mode = $('expfilter').value;
+  const rows = explore.items.filter(it => {
+    const seen = mine.has(it.taxon.id);
+    return mode === 'all' || (mode === 'seen') === seen;
+  });
+  const seenN = explore.items.filter(it => mine.has(it.taxon.id)).length;
+  $('expnote').textContent = explore.err ? explore.err
+    : explore.loading && !explore.items.length ? `Loading species for ${sel.name}…`
+    : `${sel.name}: ${explore.total.toLocaleString()} species. You've seen ${seenN} of the top ${explore.items.length} shown.` +
+      (state.obs.length ? '' : ' (Load your observations to see which you have seen.)');
+  const frag = document.createDocumentFragment();
+  for (const it of rows) {
+    const t = it.taxon, n = mine.get(t.id);
+    const row = document.createElement('div'); row.className = 'xrow';
+    const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy';
+    const src = t.default_photo?.medium_url || t.default_photo?.square_url;
+    if (src) img.src = src;
+    const info = document.createElement('div'); info.className = 'xi';
+    const a = document.createElement('a');
+    a.href = `https://www.inaturalist.org/taxa/${t.id}`; a.target = '_blank'; a.rel = 'noopener';
+    if (t.preferred_common_name) a.append(t.preferred_common_name + ' ');
+    const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = t.name; a.append(sci);
+    const c = document.createElement('span'); c.className = 'count'; c.style.marginLeft = '0';
+    c.textContent = `${it.count.toLocaleString()} observations here`;
+    const badge = document.createElement('span');
+    badge.className = n ? 'seen' : 'unseen';
+    badge.textContent = n ? `✓ Seen · ${n} obs` : 'Not yet seen';
+    info.append(a, c, badge);
+    row.append(img, info); frag.append(row);
+  }
+  list.append(frag);
+  if (!rows.length && !explore.loading && !explore.err) list.textContent = 'Nothing to show for this filter.';
+  $('expmore').hidden = explore.loading || explore.items.length >= explore.total;
+  $('expmore').textContent = `Show more (${explore.total - explore.items.length} left)`;
+}
+$('expgps').onclick = useMyLocation;
+$('expmore').onclick = () => loadExplore(true);
+$('expres').onchange = $('expmonth').onchange = () => loadExplore();
+$('expfilter').onchange = renderExplore;
+$('expplace').onchange = e => {
+  const id = +e.target.value;
+  if (!id) return;
+  const o = state.obs.find(o => (o.pids || []).includes(id));
+  const chain = o ? placeChain(o).filter(x => x !== UNKNOWN_LOC).map(placeObj).filter(Boolean) : [];
+  setExplore(chain.length ? chain : [placeObj(id)].filter(Boolean), [], id);
+  e.target.value = '';
+};
+
 function setView(v) {
   view = v;
   try { localStorage.setItem(VIEW_KEY, v); } catch {}
   $('tabTree').classList.toggle('active', v === 'tree');
   $('tabPlace').classList.toggle('active', v === 'place');
   $('tabRecent').classList.toggle('active', v === 'recent');
-  $('tree').hidden = v === 'recent';
+  $('tabExplore').classList.toggle('active', v === 'explore');
+  $('tree').hidden = v === 'recent' || v === 'explore';
   $('recent').hidden = v !== 'recent';
-  $('treeTools').hidden = v === 'recent';
+  $('explore').hidden = v !== 'explore';
+  $('treeTools').hidden = v === 'recent' || v === 'explore';
+  $('filterwrap').hidden = v === 'explore';
   $('locTools').hidden = v !== 'place';
+  if (v === 'explore') { ensurePlaces(); renderExplore(); if (explore.selected && !explore.items.length && !explore.loading) loadExplore(); }
   if (state.obs.length) show();
 }
 $('tabTree').onclick = () => setView('tree');
 $('tabPlace').onclick = () => setView('place');
 $('tabRecent').onclick = () => setView('recent');
+$('tabExplore').onclick = () => setView('explore');
 
 function show(keepStatus) {
+  if (view === 'explore') { renderExplore(); $('summary').textContent = ''; $('results').hidden = false; return; }
   if (!state.obs.length) return;
   const t0 = performance.now();
   syncYearOptions();
