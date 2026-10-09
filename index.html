@@ -28,8 +28,19 @@
   .rank { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; margin-right:6px; }
   .count { color:var(--muted); font-size:12px; margin-left:6px; }
   .sci { font-style:italic; }
-  .species { margin-left:4px; padding:3px 0 3px 6px; border-left:1px solid var(--line); display:flex; gap:8px; align-items:center; }
-  .species img { width:64px; height:64px; border-radius:6px; object-fit:cover; flex:none; }
+  .sp { margin-left:4px; padding:4px 0 4px 6px; border-left:1px solid var(--line); }
+  .species { display:flex; gap:10px; align-items:flex-start; }
+  .species .imgbtn { flex:0 0 min(50%, 260px); padding:0; border:0; background:none; cursor:pointer; position:relative; }
+  .species img { width:100%; aspect-ratio:1; border-radius:8px; object-fit:cover; display:block; }
+  .species .info { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .species .info small { color:var(--muted); }
+  .species .info small a { color:var(--accent); }
+  .badge { position:absolute; right:6px; bottom:6px; background:rgba(0,0,0,.65); color:#fff; font-size:12px;
+           padding:1px 7px; border-radius:10px; }
+  .alts { display:grid; grid-template-columns:repeat(auto-fill, minmax(90px, 1fr)); gap:6px; margin:8px 0 4px; }
+  .alts button { padding:0; border:2px solid transparent; border-radius:8px; background:none; cursor:pointer; overflow:hidden; }
+  .alts button.sel { border-color:var(--accent); }
+  .alts img { width:100%; aspect-ratio:1; object-fit:cover; display:block; border-radius:6px; }
   .species a { color:var(--fg); text-decoration:none; }
   .species a:hover { text-decoration:underline; }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
@@ -103,6 +114,14 @@ const store = {
   set(v) { try { localStorage.setItem(KEY, v); } catch (e) { log('localStorage write failed: ' + e, 'w'); } },
   del() { try { localStorage.removeItem(KEY); } catch {} },
 };
+
+// ---------- preferred photo per taxon (localStorage) ----------
+const PREF_KEY = 'inat_pref_obs';
+let prefs = {};
+try { prefs = JSON.parse(localStorage.getItem(PREF_KEY) || '{}') || {}; } catch { prefs = {}; }
+function savePrefs() {
+  try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) { log('could not save preferences: ' + e, 'w'); }
+}
 
 // ---------- data cache (IndexedDB) ----------
 const idb = {
@@ -273,30 +292,90 @@ function render(root, names) {
     const byTaxon = new Map();
     for (const o of obs) {
       let r = byTaxon.get(o.tid);
-      if (!r) byTaxon.set(o.tid, r = { o, n: 0 });
-      r.n++;
-      if (!r.o.photo && o.photo) r.o = o;
+      if (!r) byTaxon.set(o.tid, r = { tid: o.tid, name: o.name, common: o.common, obs: [] });
+      r.obs.push(o);
     }
-    return [...byTaxon.values()].sort((a, b) => a.o.name.localeCompare(b.o.name));
+    return [...byTaxon.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
-  function speciesEl({ o, n }) {
+  // iNat photo URLs end in square.jpg (75px); medium.jpg (500px) is available at the same path.
+  const sized = (url, size) => url.replace(/\/square\.(\w+)/, `/${size}.$1`);
+  function preferred(row) {
+    const withPhoto = row.obs.filter(o => o.photo);
+    return withPhoto.find(o => o.id === prefs[row.tid]) || withPhoto[0] || row.obs[0];
+  }
+  function speciesEl(row) {
+    const wrap = document.createElement('div');
+    wrap.className = 'sp';
     const d = document.createElement('div');
     d.className = 'species';
+
+    const btn = document.createElement('button');
+    btn.className = 'imgbtn'; btn.type = 'button';
+    btn.title = 'Tap to choose a different observation photo';
     const img = document.createElement('img');
-    img.className = 'ph'; img.alt = ''; img.loading = 'lazy';
-    if (o.photo) {
-      img.src = o.photo;
-      img.onerror = () => log(`thumbnail failed to load: ${o.photo}`, 'w');
+    img.alt = ''; img.loading = 'lazy';
+    img.onerror = () => {
+      log(`image failed: ${img.src}`, 'w');
+      if (img.dataset.fallback && img.src !== img.dataset.fallback) img.src = img.dataset.fallback;
+    };
+    btn.append(img);
+    const nPhotos = row.obs.filter(o => o.photo).length;
+    if (nPhotos > 1) {
+      const b = document.createElement('span'); b.className = 'badge'; b.textContent = `${nPhotos} photos`;
+      btn.append(b);
     }
-    d.append(img);
+
+    const info = document.createElement('div');
+    info.className = 'info';
     const a = document.createElement('a');
-    a.href = `https://www.inaturalist.org/taxa/${o.tid}`; a.target = '_blank'; a.rel = 'noopener';
-    if (o.common) a.append(o.common + ' ');
-    const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = o.name;
+    a.href = `https://www.inaturalist.org/taxa/${row.tid}`; a.target = '_blank'; a.rel = 'noopener';
+    if (row.common) a.append(row.common + ' ');
+    const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = row.name;
     a.append(sci);
-    const c = document.createElement('span'); c.className = 'count'; c.textContent = `${n} obs`;
-    d.append(a, c);
-    return d;
+    const c = document.createElement('span'); c.className = 'count'; c.style.marginLeft = '0';
+    c.textContent = `${row.obs.length} obs`;
+    const link = document.createElement('small');
+    info.append(a, c, link);
+
+    function setCurrent(o) {
+      if (o.photo) { img.dataset.fallback = o.photo; img.src = sized(o.photo, 'medium'); }
+      link.replaceChildren();
+      const l = document.createElement('a');
+      l.href = `https://www.inaturalist.org/observations/${o.id}`; l.target = '_blank'; l.rel = 'noopener';
+      l.textContent = 'View this observation';
+      link.append(l);
+    }
+    setCurrent(preferred(row));
+
+    let alts = null;
+    btn.onclick = () => {
+      if (alts) { alts.remove(); alts = null; return; }
+      if (nPhotos < 1) return;
+      alts = document.createElement('div');
+      alts.className = 'alts';
+      const cur = preferred(row).id;
+      for (const o of row.obs.filter(o => o.photo)) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.title = `Observation ${o.id}`;
+        if (o.id === cur) b.className = 'sel';
+        const im = document.createElement('img');
+        im.src = sized(o.photo, 'square'); im.loading = 'lazy'; im.alt = '';
+        b.append(im);
+        b.onclick = () => {
+          prefs[row.tid] = o.id;
+          savePrefs();
+          log(`preferred observation for ${row.name} (taxon ${row.tid}) set to ${o.id}`);
+          setCurrent(o);
+          alts.remove(); alts = null;
+        };
+        alts.append(b);
+      }
+      wrap.append(alts);
+    };
+
+    d.append(btn, info);
+    wrap.append(d);
+    return wrap;
   }
   const sortedChildren = node => [...node.children.values()].sort((a, b) => b.count - a.count);
   function collect(node, acc = new Set()) {
