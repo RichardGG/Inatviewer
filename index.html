@@ -1482,6 +1482,26 @@ async function openSpecies(id) {
   setTimeout(() => m.invalidateSize(), 50);
 }
 
+// ---------- open iNaturalist links in the Android app ----------
+// Plain https links stay in the browser on some Android setups; an intent: URL asks Android to open the app,
+// and falls back to the normal web page if the app isn't installed.
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
+function androidIntent(href) {
+  const m = /^https:\/\/www\.inaturalist\.org\/(observations|taxa)\/(\d+)/.exec(href);
+  if (!m) return null;
+  return `intent://www.inaturalist.org/${m[1]}/${m[2]}#Intent;scheme=https;package=org.inaturalist.android;` +
+         `S.browser_fallback_url=${encodeURIComponent(href)};end`;
+}
+document.addEventListener('click', e => {
+  if (!IS_ANDROID || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+  const a = e.target.closest && e.target.closest('a[href]');
+  const intent = a && androidIntent(a.href);
+  if (!intent) return;
+  e.preventDefault();
+  log(`opening in the iNaturalist app: ${a.href}`);
+  location.href = intent;
+});
+
 // ---------- Common here: most observed species in a place, and whether I've seen them ----------
 const EXP_KEY = 'inat_explore';
 const explore = { chain: [], extra: [], selected: null, point: null, radius: 10, items: [], total: 0, page: 0, loading: false, err: '', seq: 0 };
