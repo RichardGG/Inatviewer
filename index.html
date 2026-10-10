@@ -215,7 +215,9 @@
     </div>
     <div class="toolbar">
       <span id="treeTools"><button class="secondary" id="expand">Expand all</button>
-      <button class="secondary" id="collapse">Collapse all</button></span>
+      <button class="secondary" id="collapse">Collapse all</button>
+      <button class="secondary" id="shuffle" title="Randomise the order of groups and species. Tap again for a new order.">🔀 Shuffle</button>
+      <button class="secondary" id="unshuffle" title="Back to the default order" hidden>Default order</button></span>
       <span id="summary" class="status" style="align-self:center"></span>
     </div>
     <div id="locTools" class="row" style="margin:0 0 10px" hidden>
@@ -646,6 +648,14 @@ const TAXON_META = (names) => ({
   get: id => names[id],
   shown: rank => SHOWN_RANKS.has(rank),
 });
+// Optional shuffle: a stable pseudo-random order per (seed, id) so re-renders (e.g. starring a photo) don't reshuffle.
+let shuffleSeed = null;
+function shuffleKey(id) {
+  let x = 2166136261;
+  for (const c of `${shuffleSeed}:${id}`) { x ^= c.charCodeAt(0); x = Math.imul(x, 16777619); }
+  x ^= x >>> 16; x = Math.imul(x, 0x85ebca6b); x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35); x ^= x >>> 16; // murmur3 finaliser
+  return x >>> 0;
+}
 function render(root, names, meta = TAXON_META(names)) {
   const frag = document.createDocumentFragment();
 
@@ -660,7 +670,8 @@ function render(root, names, meta = TAXON_META(names)) {
       if (!r) byTaxon.set(o.tid, r = { tid: o.tid, name: o.name, common: o.common, obs: [] });
       r.obs.push(o);
     }
-    return [...byTaxon.values()].sort((a, b) => a.name.localeCompare(b.name));
+    const rows = [...byTaxon.values()];
+    return shuffleSeed == null ? rows.sort((a, b) => a.name.localeCompare(b.name)) : rows.sort((a, b) => shuffleKey(a.tid) - shuffleKey(b.tid));
   }
   function preferred(row) {
     const withPhoto = row.obs.filter(o => photosOf(o).length);
@@ -776,7 +787,7 @@ function render(root, names, meta = TAXON_META(names)) {
     return wrap;
   }
 
-  const sortedChildren = node => [...node.children.values()].sort((a, b) => b.count - a.count);
+  const sortedChildren = node => [...node.children.values()].sort(shuffleSeed == null ? (a, b) => b.count - a.count : (a, b) => shuffleKey(a.id) - shuffleKey(b.id));
   function collect(node, acc = new Set()) {
     node.species.forEach(o => { const s = speciesOf(o); if (s) acc.add(s); });
     node.children.forEach(ch => collect(ch, acc));
@@ -1891,6 +1902,8 @@ function toast(msg) {
 })();
 
 $('expand').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = true);
+$('shuffle').onclick = () => { shuffleSeed = Math.floor(Math.random() * 2 ** 31); $('unshuffle').hidden = false; show(true); };
+$('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = true; show(true); };
 $('collapse').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = false);
 
 setView(view);
