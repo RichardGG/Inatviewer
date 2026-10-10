@@ -600,6 +600,14 @@ const sized = (url, size) => url.replace(/\/square\.(\w+)/, `/${size}.$1`);
 // Cache records saved before multi-photo support only have `photo`; Full refresh fills in the rest.
 const photosOf = o => (o.photos && o.photos.length) ? o.photos : (o.photo ? [o.photo] : []);
 const obsUrl = o => `https://www.inaturalist.org/observations/${o.id}`;
+// The one "open on iNaturalist" control used everywhere (cards, grid tiles, popups, detail). On Android the
+// click handler near androidIntent() turns it into an app-launching intent link.
+function obsLink(o, cls = 'ib') {
+  const a = document.createElement('a');
+  a.className = cls; a.textContent = '↗'; a.href = obsUrl(o); a.target = '_blank'; a.rel = 'noopener';
+  a.title = 'Open observation on iNaturalist'; a.setAttribute('aria-label', a.title);
+  return a;
+}
 
 // ---------- full-screen viewer ----------
 const viewer = {
@@ -698,13 +706,7 @@ function render(root, names, meta = TAXON_META(names)) {
     b.onclick = e => { e.stopPropagation(); onclick(); };
     return b;
   }
-  function mkExt(o, cls = 'ib') {
-    const a = document.createElement('a');
-    a.className = cls; a.textContent = '↗'; a.href = obsUrl(o); a.target = '_blank'; a.rel = 'noopener';
-    a.title = a.ariaLabel = 'Open observation on iNaturalist';
-    a.onclick = e => e.stopPropagation();
-    return a;
-  }
+  const mkExt = obsLink;
 
   function speciesEl(row) {
     const wrap = document.createElement('div');
@@ -1014,9 +1016,7 @@ function renderRecent(obs) {
       paint();
     }
     star.onclick = setPreferred; paint();
-    const ext = document.createElement('a');
-    ext.className = 'ib'; ext.textContent = '↗'; ext.href = obsUrl(o); ext.target = '_blank'; ext.rel = 'noopener';
-    ext.title = ext.ariaLabel = 'Open observation on iNaturalist';
+    const ext = obsLink(o);
     const here = document.createElement('button');
     here.type = 'button'; here.className = 'ib'; here.textContent = '🌍';
     here.title = here.ariaLabel = 'Most observed species where this was seen';
@@ -1268,9 +1268,7 @@ function obsPopup(o) {
     st.title = 'Use as preferred photo'; st.onclick = () => { prefs[o.tid] = o.id; savePrefs(); paint(); };
     paint(); acts.append(st);
   }
-  const ext = document.createElement('a');
-  ext.className = 'ib'; ext.textContent = '↗'; ext.href = obsUrl(o); ext.target = '_blank'; ext.rel = 'noopener';
-  ext.title = 'Open observation on iNaturalist'; acts.append(ext);
+  acts.append(obsLink(o));
   el.append(t, d, acts);
   return el;
 }
@@ -1315,6 +1313,7 @@ const _vhide = viewer.hide.bind(viewer);
 viewer.hide = () => { _vhide(); if (detail.isOpen) document.body.style.overflow = 'hidden'; };
 
 function speciesLink(a, tid) {
+  a.dataset.inpage = '1';
   a.addEventListener('click', e => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
     e.preventDefault();
@@ -1430,8 +1429,7 @@ async function openSpecies(id) {
       }
       const st = el('button', 'ib star', prefs[o.tid] === o.id ? '★' : '☆'); st.type = 'button'; st.title = 'Use as preferred photo';
       st.onclick = () => { prefs[o.tid] = o.id; savePrefs(); grid.querySelectorAll('.star').forEach(s => s.textContent = '☆'); st.textContent = '★'; show(true); };
-      const ext = el('a', 'ib ext', '↗'); ext.href = obsUrl(o); ext.target = '_blank'; ext.rel = 'noopener';
-      cell.append(pic, st, ext);
+      cell.append(pic, st, obsLink(o, 'ib ext'));
       if (o.date) { const d = el('span', 'badge', o.date); d.style.left = '4px'; d.style.right = 'auto'; cell.append(d); }
       grid.append(cell);
     }
@@ -1495,12 +1493,13 @@ function androidIntent(href) {
 document.addEventListener('click', e => {
   if (!IS_ANDROID || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
   const a = e.target.closest && e.target.closest('a[href]');
+  if (a && a.dataset.inpage) return; // species names open the in-page detail panel
   const intent = a && androidIntent(a.href);
   if (!intent) return;
   e.preventDefault();
   log(`opening in the iNaturalist app: ${a.href}`);
   location.href = intent;
-});
+}, true); // capture phase: some containers (map popups etc.) stop click propagation
 
 // ---------- Common here: most observed species in a place, and whether I've seen them ----------
 const EXP_KEY = 'inat_explore';
