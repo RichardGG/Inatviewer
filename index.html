@@ -119,6 +119,13 @@
   .mp .t { font-weight:600; margin:6px 0 0; } .mp .d { color:#666; font-size:12px; } .mp .acts { margin-top:6px; }
   .nb a { display:flex; align-items:center; gap:8px; margin:0 0 6px; color:#222; text-decoration:none; font-size:13px; }
   .nb img { width:48px; height:48px; border-radius:6px; object-fit:cover; flex:none; }
+  .rgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(112px, 1fr)); gap:4px; }
+  .rgrid .dh { grid-column:1 / -1; }
+  .tile { position:relative; padding:0; border:0; border-radius:6px; overflow:hidden; background:var(--line); cursor:zoom-in; aspect-ratio:1; }
+  .tile img { width:100%; height:100%; object-fit:cover; display:block; }
+  .tile .cap { position:absolute; left:0; right:0; bottom:0; padding:14px 6px 4px; color:#fff; font-size:11px; text-align:left;
+               background:linear-gradient(transparent, rgba(0,0,0,.65)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tile .badge { top:4px; right:4px; bottom:auto; }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   /* full-screen viewer */
   #viewer { position:fixed; inset:0; z-index:1000; background:#000; color:#fff; display:none; flex-direction:column; }
@@ -218,6 +225,11 @@
       <button class="secondary" id="collapse">Collapse all</button>
       <button class="secondary" id="shuffle" title="Randomise the order of groups and species. Tap again for a new order.">🔀 Shuffle</button>
       <button class="secondary" id="unshuffle" title="Back to the default order" hidden>Default order</button></span>
+      <span id="recentTools" hidden>
+        <button class="secondary" id="rlayout" title="Switch between list and photo grid">▦ Grid</button>
+        <button class="secondary" id="rshuffle" title="Random order. Tap again for a new order.">🔀 Shuffle</button>
+        <button class="secondary" id="rdefault" title="Back to newest first" hidden>Newest first</button>
+      </span>
       <span id="summary" class="status" style="align-self:center"></span>
     </div>
     <div id="locTools" class="row" style="margin:0 0 10px" hidden>
@@ -650,9 +662,9 @@ const TAXON_META = (names) => ({
 });
 // Optional shuffle: a stable pseudo-random order per (seed, id) so re-renders (e.g. starring a photo) don't reshuffle.
 let shuffleSeed = null;
-function shuffleKey(id) {
+function shuffleKey(id, seed = shuffleSeed) {
   let x = 2166136261;
-  for (const c of `${shuffleSeed}:${id}`) { x ^= c.charCodeAt(0); x = Math.imul(x, 16777619); }
+  for (const c of `${seed}:${id}`) { x ^= c.charCodeAt(0); x = Math.imul(x, 16777619); }
   x ^= x >>> 16; x = Math.imul(x, 0x85ebca6b); x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35); x ^= x >>> 16; // murmur3 finaliser
   return x >>> 0;
 }
@@ -923,11 +935,21 @@ const VIEW_KEY = 'inat_view';
 let view = 'tree';
 try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent', 'explore'].includes(v) ? v : 'tree'; } catch {}
 
+const LAYOUT_KEY = 'inat_recent_layout';
+let recentLayout = 'list', recentSeed = null;
+try { recentLayout = localStorage.getItem(LAYOUT_KEY) === 'grid' ? 'grid' : 'list'; } catch {}
+
 function renderRecent(obs) {
   const el = $('recent');
-  const list = [...obs].sort((a, b) =>
-    (b.date || '').localeCompare(a.date || '') || b.id - a.id);
-  const PAGE = 30;
+  const grid = recentLayout === 'grid';
+  const shuffled = recentSeed != null;
+  let list = [...obs];
+  if (grid) list = list.filter(o => photosOf(o).length); // the gallery is photos only
+  list = shuffled ? list.sort((a, b) => shuffleKey(a.id, recentSeed) - shuffleKey(b.id, recentSeed))
+                  : list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id);
+  const PAGE = grid ? 60 : 30;
+  const gridEl = document.createElement('div'); gridEl.className = 'rgrid';
+  const target = () => grid ? gridEl : el;
   let shown = 0, lastKey = null;
   el.replaceChildren();
   const moreBtn = document.createElement('button');
@@ -985,26 +1007,45 @@ function renderRecent(obs) {
     d.append(btn, info); wrap.append(d);
     return wrap;
   }
+  function tile(o) {
+    const ph = photosOf(o);
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tile'; b.title = `${o.common || o.name}${o.date ? ' · ' + o.date : ''}`;
+    const im = document.createElement('img');
+    im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
+    im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
+    b.append(im);
+    const cap = document.createElement('span'); cap.className = 'cap'; cap.textContent = o.common || o.name;
+    b.append(cap);
+    if (ph.length > 1) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `1/${ph.length}`; b.append(n); }
+    b.onclick = () => viewer.open({
+      obs: o, photos: ph, title: o.common || o.name,
+      isPreferred: () => prefs[o.tid] === o.id,
+      setPreferred: () => { prefs[o.tid] = o.id; savePrefs(); log(`preferred observation for ${o.name} (taxon ${o.tid}) set to ${o.id}`); },
+    });
+    return b;
+  }
   function more() {
     const frag = document.createDocumentFragment();
     for (const o of list.slice(shown, shown + PAGE)) {
-      const key = o.date || '';
-      if (key !== lastKey) {
+      const key = shuffled ? '' : (o.date || '');
+      if (!shuffled && key !== lastKey) {
         const h = document.createElement('div'); h.className = 'dh';
         h.textContent = key ? new Date(key + 'T00:00:00').toLocaleDateString(undefined,
           { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
           : 'Date unknown (use "Re-download observations" to fill in dates)';
         frag.append(h); lastKey = key;
       }
-      frag.append(card(o));
+      frag.append(grid ? tile(o) : card(o));
     }
     shown = Math.min(list.length, shown + PAGE);
-    el.insertBefore(frag, moreBtn.isConnected ? moreBtn : null);
+    target().insertBefore(frag, !grid && moreBtn.isConnected ? moreBtn : null);
     if (shown < list.length) {
       moreBtn.textContent = `Show more (${list.length - shown} left)`;
       if (!moreBtn.isConnected) el.append(moreBtn);
     } else moreBtn.remove();
   }
+  if (grid) el.append(gridEl);
   moreBtn.onclick = more;
   more();
 }
@@ -1764,6 +1805,7 @@ function setView(v) {
   $('recent').hidden = v !== 'recent';
   $('explore').hidden = v !== 'explore';
   $('treeTools').hidden = v === 'recent' || v === 'explore';
+  $('recentTools').hidden = v !== 'recent';
   $('filterwrap').hidden = v === 'explore';
   $('locTools').hidden = v !== 'place';
   if (v === 'explore') { ensurePlaces(); renderExplore(); if (explore.selected && !explore.items.length && !explore.loading) loadExplore(); }
@@ -1902,6 +1944,18 @@ function toast(msg) {
 })();
 
 $('expand').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = true);
+function syncRecentTools() {
+  $('rlayout').textContent = recentLayout === 'grid' ? '☰ List' : '▦ Grid';
+  $('rdefault').hidden = recentSeed == null;
+}
+$('rlayout').onclick = () => {
+  recentLayout = recentLayout === 'grid' ? 'list' : 'grid';
+  try { localStorage.setItem(LAYOUT_KEY, recentLayout); } catch {}
+  syncRecentTools(); show(true);
+};
+$('rshuffle').onclick = () => { recentSeed = Math.floor(Math.random() * 2 ** 31); syncRecentTools(); show(true); };
+$('rdefault').onclick = () => { recentSeed = null; syncRecentTools(); show(true); };
+syncRecentTools();
 $('shuffle').onclick = () => { shuffleSeed = Math.floor(Math.random() * 2 ** 31); $('unshuffle').hidden = false; show(true); };
 $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = true; show(true); };
 $('collapse').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = false);
