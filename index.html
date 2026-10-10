@@ -67,6 +67,7 @@
   .tabs { display:flex; gap:0; margin:0 0 10px; }
   .tabs button { flex:1; background:transparent; color:var(--muted); border:1px solid var(--line); border-radius:0; padding:9px 2px; font-size:13px; }
   .tabs button:first-child { border-radius:8px 0 0 8px; } .tabs button:last-child { border-radius:0 8px 8px 0; border-left:0; }
+  button.secondary.active { border-color:var(--accent); color:var(--accent); font-weight:600; }
   .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
   .dh { position:sticky; top:0; z-index:5; background:var(--card); padding:6px 0; font-size:13px; font-weight:600;
         color:var(--muted); border-bottom:1px solid var(--line); }
@@ -227,6 +228,7 @@
       <button class="secondary" id="unshuffle" title="Back to the default order" hidden>Default order</button></span>
       <span id="recentTools" hidden>
         <button class="secondary" id="rlayout" title="Switch between list and photo grid">▦ Grid</button>
+        <button class="secondary" id="runique" title="One entry per species, using your starred (or newest) observation">◉ Unique species</button>
         <button class="secondary" id="rshuffle" title="Random order. Tap again for a new order.">🔀 Shuffle</button>
         <button class="secondary" id="rdefault" title="Back to newest first" hidden>Newest first</button>
       </span>
@@ -935,18 +937,35 @@ const VIEW_KEY = 'inat_view';
 let view = 'tree';
 try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent', 'explore'].includes(v) ? v : 'tree'; } catch {}
 
-const LAYOUT_KEY = 'inat_recent_layout';
-let recentLayout = 'list', recentSeed = null;
-try { recentLayout = localStorage.getItem(LAYOUT_KEY) === 'grid' ? 'grid' : 'list'; } catch {}
+const LAYOUT_KEY = 'inat_recent_layout', UNIQUE_KEY = 'inat_recent_unique';
+let recentLayout = 'list', recentSeed = null, recentUnique = false;
+try { recentLayout = localStorage.getItem(LAYOUT_KEY) === 'grid' ? 'grid' : 'list'; recentUnique = localStorage.getItem(UNIQUE_KEY) === '1'; } catch {}
+
+// One entry per species: my starred observation if there is one, otherwise the newest one with a photo.
+// _n = how many observations of the species, _last = date it was last seen.
+function uniqueSpecies(obs) {
+  const groups = new Map();
+  for (const o of obs) {
+    const k = speciesIdOf(o) ?? o.tid;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(o);
+  }
+  return [...groups.values()].map(g => {
+    const byNew = [...g].sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id);
+    const rep = g.find(o => prefs[o.tid] === o.id) || byNew.find(o => photosOf(o).length) || byNew[0];
+    return { ...rep, _n: g.length, _last: byNew[0].date || '' };
+  });
+}
+const recentDate = o => o._last ?? o.date ?? '';
 
 function renderRecent(obs) {
   const el = $('recent');
   const grid = recentLayout === 'grid';
   const shuffled = recentSeed != null;
-  let list = [...obs];
+  let list = recentUnique ? uniqueSpecies(obs) : [...obs];
   if (grid) list = list.filter(o => photosOf(o).length); // the gallery is photos only
   list = shuffled ? list.sort((a, b) => shuffleKey(a.id, recentSeed) - shuffleKey(b.id, recentSeed))
-                  : list.sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id);
+                  : list.sort((a, b) => recentDate(b).localeCompare(recentDate(a)) || b.id - a.id);
   const PAGE = grid ? 60 : 30;
   const gridEl = document.createElement('div'); gridEl.className = 'rgrid';
   const target = () => grid ? gridEl : el;
@@ -984,7 +1003,7 @@ function renderRecent(obs) {
     const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = o.name;
     a.append(sci);
     const dt = document.createElement('span'); dt.className = 'count';
-    dt.textContent = o.date || 'date unknown';
+    dt.textContent = o._n != null ? `last seen ${o._last || 'date unknown'} · ${o._n} obs` : (o.date || 'date unknown');
     const acts = document.createElement('div'); acts.className = 'acts';
     const star = document.createElement('button');
     star.type = 'button'; star.className = 'ib'; star.title = star.ariaLabel = 'Use as preferred photo for this species';
@@ -1010,7 +1029,7 @@ function renderRecent(obs) {
   function tile(o) {
     const ph = photosOf(o);
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'tile'; b.title = `${o.common || o.name}${o.date ? ' · ' + o.date : ''}`;
+    b.type = 'button'; b.className = 'tile'; b.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
     const im = document.createElement('img');
     im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
     im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
@@ -1028,7 +1047,7 @@ function renderRecent(obs) {
   function more() {
     const frag = document.createDocumentFragment();
     for (const o of list.slice(shown, shown + PAGE)) {
-      const key = shuffled ? '' : (o.date || '');
+      const key = shuffled ? '' : recentDate(o);
       if (!shuffled && key !== lastKey) {
         const h = document.createElement('div'); h.className = 'dh';
         h.textContent = key ? new Date(key + 'T00:00:00').toLocaleDateString(undefined,
@@ -1947,10 +1966,17 @@ $('expand').onclick = () => document.querySelectorAll('#tree details').forEach(d
 function syncRecentTools() {
   $('rlayout').textContent = recentLayout === 'grid' ? '☰ List' : '▦ Grid';
   $('rdefault').hidden = recentSeed == null;
+  $('runique').classList.toggle('active', recentUnique);
+  $('runique').setAttribute('aria-pressed', String(recentUnique));
 }
 $('rlayout').onclick = () => {
   recentLayout = recentLayout === 'grid' ? 'list' : 'grid';
   try { localStorage.setItem(LAYOUT_KEY, recentLayout); } catch {}
+  syncRecentTools(); show(true);
+};
+$('runique').onclick = () => {
+  recentUnique = !recentUnique;
+  try { localStorage.setItem(UNIQUE_KEY, recentUnique ? '1' : '0'); } catch {}
   syncRecentTools(); show(true);
 };
 $('rshuffle').onclick = () => { recentSeed = Math.floor(Math.random() * 2 ** 31); syncRecentTools(); show(true); };
