@@ -86,6 +86,8 @@
                    border:1px solid var(--line); border-top:0; border-radius:0; padding:8px 12px; font-size:14px; }
   #expsug button small { color:var(--muted); }
   .cls { padding:4px 12px; border-radius:16px; border:1px solid var(--line); background:var(--card); color:var(--fg); font-size:13px; }
+  .clsrow { display:flex; gap:6px; overflow-x:auto; padding:0 0 6px; margin:0 0 8px; scrollbar-width:thin; }
+  .clsrow .cls { flex:none; }
   .cls.on { background:var(--accent); border-color:var(--accent); color:#fff; }
   .pill { display:inline-flex; flex-direction:column; align-items:flex-start; margin:0 6px 6px 0; padding:5px 10px; border-radius:10px;
           border:1px solid var(--line); background:var(--card); color:var(--fg); font-size:13px; line-height:1.25; }
@@ -217,6 +219,7 @@
       <label class="status">From <input type="date" id="dfrom"></label>
       <label class="status">to <input type="date" id="dto"></label>
     </div>
+    <div id="fclasses" class="clsrow" role="group" aria-label="Filter by group (none selected = all)"></div>
     <div id="chips"></div>
     <div class="card" id="areapanel" hidden>
       <p class="status" style="margin:0 0 8px">Pan and zoom the map: the orange circle always fits the current view. Turn the filter on and only observations inside the circle are shown in every view.</p>
@@ -1144,13 +1147,26 @@ function syncYearOptions() {
   sel.value = [...sel.options].some(o => o.value === keep) ? keep : 'all';
 }
 
-// Observations passing the text search (common species name only) and the date filter, before the area filter.
+// ---- class filter (my observations): matched on ancestor taxon ids, or names once the taxonomy is loaded ----
+const filterClasses = new Set();
+const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
+                    47158: 'Insecta', 47119: 'Arachnida', 47115: 'Mollusca', 47126: 'Plantae', 47170: 'Fungi' };
+const CLASS_NAMES = new Set(Object.values(CLASS_IDS));
+function classMatch(o) {
+  for (const id of o.anc) {
+    const key = CLASS_IDS[id] || (CLASS_NAMES.has(state.names[id]?.name) ? state.names[id].name : null);
+    if (key && filterClasses.has(key)) return true;
+  }
+  return false;
+}
+// Observations passing the text search (common species name only), date and class filters, before the area filter.
 function textFiltered() {
   const terms = fold($('q').value).split(/\s+/).filter(Boolean);
   const range = dateRange();
-  if (!terms.length && !range) return state.obs;
+  if (!terms.length && !range && !filterClasses.size) return state.obs;
   return state.obs.filter(o => {
     if (range && !(o.date && o.date >= range[0] && o.date <= range[1])) return false;
+    if (filterClasses.size && !classMatch(o)) return false;
     if (!terms.length) return true;
     const s = fold(o.common || '');
     return terms.every(t => s.includes(t));
@@ -1213,7 +1229,7 @@ function drawArea(a = area) {
 let suppressMove = false;
 function moveMap(fn) { suppressMove = true; try { fn(); } finally { suppressMove = false; } }
 
-const markerKey = () => `${$('q').value}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${state.obs.length}|${textFiltered().length}`;
+const markerKey = () => `${$('q').value}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${state.obs.length}|${textFiltered().length}`;
 function drawAreaMarkers() {
   if (!areaMap) return;
   markerSig = markerKey();
@@ -1832,22 +1848,28 @@ const EXP_CLASSES = [['Aves', 'Birds'], ['Mammalia', 'Mammals'], ['Reptilia', 'R
   ['Insecta', 'Insects'], ['Arachnida', 'Arachnids'], ['Mollusca', 'Molluscs'], ['Plantae', 'Plants'], ['Fungi', 'Fungi']];
 const expClasses = new Set();
 try { (localStorage.getItem('inat_expclass') || '').split(',').filter(c => EXP_CLASSES.some(x => x[0] === c)).forEach(c => expClasses.add(c)); } catch {}
-function drawClassChips() {
-  const box = $('expclasses');
+// Draw a row of toggle chips bound to a Set of class keys; persists to localStorage and calls onChange.
+function drawChips2(box, set, storeKey, onChange) {
   box.replaceChildren();
   for (const [val, label] of EXP_CLASSES) {
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'cls' + (expClasses.has(val) ? ' on' : ''); b.textContent = label;
-    b.setAttribute('aria-pressed', String(expClasses.has(val)));
+    b.type = 'button'; b.className = 'cls' + (set.has(val) ? ' on' : ''); b.textContent = label;
+    b.setAttribute('aria-pressed', String(set.has(val)));
     b.onclick = () => {
-      expClasses.has(val) ? expClasses.delete(val) : expClasses.add(val);
-      try { localStorage.setItem('inat_expclass', [...expClasses].join(',')); } catch {}
-      drawClassChips(); loadExplore();
+      set.has(val) ? set.delete(val) : set.add(val);
+      try { localStorage.setItem(storeKey, [...set].join(',')); } catch {}
+      drawChips2(box, set, storeKey, onChange); onChange();
     };
     box.append(b);
   }
 }
+const loadSet = (set, key) => { try { (localStorage.getItem(key) || '').split(',').filter(c => EXP_CLASSES.some(x => x[0] === c)).forEach(c => set.add(c)); } catch {} };
+function drawClassChips() { drawChips2($('expclasses'), expClasses, 'inat_expclass', () => loadExplore()); }
 drawClassChips();
+// Same chips as a filter on my own observations (Recent, Taxonomy, Place).
+loadSet(filterClasses, 'inat_fclass');
+function drawFilterChips() { drawChips2($('fclasses'), filterClasses, 'inat_fclass', () => scheduleShow()); }
+drawFilterChips();
 $('expres').onchange = $('expmonth').onchange = () => loadExplore();
 $('expfilter').onchange = renderExplore;
 
@@ -1895,7 +1917,7 @@ function show(keepStatus) {
   } else species = render(buildTree(obs), state.names);
   if (!obs.length) {
     const empty = document.createElement('p');
-    empty.className = 'status'; empty.textContent = 'No observations match the current search / date / area.';
+    empty.className = 'status'; empty.textContent = 'No observations match the current search / date / group / area.';
     (view === 'recent' ? $('recent') : $('tree')).replaceChildren(empty);
   }
   $('results').hidden = false;
