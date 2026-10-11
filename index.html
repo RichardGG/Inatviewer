@@ -120,6 +120,7 @@
   .mp .t { font-weight:600; margin:6px 0 0; } .mp .d { color:#666; font-size:12px; } .mp .acts { margin-top:6px; }
   .nb a { display:flex; align-items:center; gap:8px; margin:0 0 6px; color:#222; text-decoration:none; font-size:13px; }
   .nb img { width:48px; height:48px; border-radius:6px; object-fit:cover; flex:none; }
+  @media (min-width: 900px) { .spgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); gap:2px 14px; align-items:start; } }
   .rgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(112px, 1fr)); gap:4px; }
   @media (min-width: 900px) { main { max-width:1200px; } .rgrid { grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:8px; } .tile .cap { font-size:14px; padding:22px 10px 8px; } }
   @media (min-width: 1500px) { main { max-width:1500px; } .rgrid { grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); } }
@@ -781,6 +782,7 @@ function render(root, names, meta = TAXON_META(names)) {
         info.append(more);
       }
       d.append(btn, info);
+      wrap.style.gridColumn = showAlts ? '1 / -1' : ''; // an expanded card takes the full row
       wrap.replaceChildren(d);
 
       if (showAlts && others.length) {
@@ -874,13 +876,25 @@ function render(root, names, meta = TAXON_META(names)) {
     }
     pv.replaceChildren(frag);
   }
-  function fill(node, parentEl, depth) {
-    for (const row of speciesRows(node.species)) parentEl.append(speciesEl(row));
+  // Species cards go in one grid (several per row on wide screens); child groups follow, full width.
+  function gather(node, rows, groups) {
+    rows.push(...speciesRows(node.species));
     for (const ch of sortedChildren(node)) {
       const rank = meta.get(ch.id)?.rank;
-      if (meta.shown(rank)) parentEl.append(groupEl(ch, rank, depth));
-      else fill(ch, parentEl, depth);
+      if (meta.shown(rank)) groups.push([ch, rank]);
+      else gather(ch, rows, groups);
     }
+  }
+  function fill(node, parentEl, depth) {
+    const rows = [], groups = [];
+    gather(node, rows, groups);
+    if (rows.length) {
+      const grid = document.createElement('div');
+      grid.className = 'spgrid';
+      for (const row of rows) grid.append(speciesEl(row));
+      parentEl.append(grid);
+    }
+    for (const [ch, rank] of groups) parentEl.append(groupEl(ch, rank, depth));
   }
   fill(root, frag, 0);
   $('tree').replaceChildren(frag);
