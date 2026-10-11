@@ -79,7 +79,6 @@
     #tabRecent::before { content:'🕒'; } #tabTree::before { content:'🌳'; } #tabPlace::before { content:'🗺️'; } #tabExplore::before { content:'🧭'; }
     .tabs button.active { background:transparent; color:var(--accent); font-weight:700; box-shadow:inset 0 3px 0 var(--accent); }
     main { padding-bottom:calc(84px + env(safe-area-inset-bottom)); }
-    #totop { bottom:calc(76px + env(safe-area-inset-bottom)) !important; }
     #toast { bottom:calc(88px + env(safe-area-inset-bottom)) !important; }
   }
   .dh { position:sticky; top:var(--bar-h, 0px); transition:top .2s; z-index:5; background:var(--card); padding:6px 0; font-size:13px; font-weight:600;
@@ -105,7 +104,6 @@
   .sp, .tile, details.g { scroll-margin-top:240px; }
   #tree .rgrid { padding:4px 0 6px 3px; border-left:2px solid var(--line); }
   /* tabs + view controls: stuck to the top, slide away while scrolling down, return on scroll up */
-  #totop { position:fixed; right:16px; bottom:20px; z-index:80; width:46px; height:46px; font-size:18px; background:var(--accent); color:#fff; border:0; box-shadow:0 3px 10px rgba(0,0,0,.35); }
   @keyframes slideInR { from { opacity:0; transform:translateX(36px); } to { opacity:1; transform:none; } }
   @keyframes slideInL { from { opacity:0; transform:translateX(-36px); } to { opacity:1; transform:none; } }
   .swipe-next #tree, .swipe-next #recent, .swipe-next #explore { animation:slideInR .22s ease-out; }
@@ -335,7 +333,6 @@
   </div>
 </main>
 
-<button id="totop" class="ib" aria-label="Jump to top" title="Jump to top" hidden>▲</button>
 <div id="toast"></div>
 
 <div id="detail" role="dialog" aria-modal="true" aria-label="Species details">
@@ -2053,7 +2050,9 @@ drawFilterChips();
 $('expres').onchange = $('expmonth').onchange = () => loadExplore();
 $('expfilter').onchange = renderExplore;
 
+const scrollPos = {}; // scroll offset remembered per tab
 function setView(v) {
+  if (v !== view) scrollPos[view] = scrollY;
   view = v;
   try { localStorage.setItem(VIEW_KEY, v); } catch {}
   $('tabTree').classList.toggle('active', v === 'tree');
@@ -2070,11 +2069,20 @@ function setView(v) {
   $('locTools').hidden = v !== 'place';
   if (v === 'explore') { initExpMap(); renderExplore(); if (explore.selected && !explore.items.length && !explore.loading) loadExplore(); }
   if (state.obs.length) show();
+  // each tab keeps its own scroll position (re-applied once more next frame in case layout settles late)
+  const y = scrollPos[v] || 0;
+  scrollTo({ top: y });
+  requestAnimationFrame(() => scrollTo({ top: y }));
 }
-$('tabTree').onclick = () => setView('tree');
-$('tabPlace').onclick = () => setView('place');
-$('tabRecent').onclick = () => setView('recent');
-$('tabExplore').onclick = () => setView('explore');
+// Tapping a tab switches to it; tapping the already-active tab scrolls it back to the top.
+function tabTap(v) {
+  if (v === view) scrollTo({ top: 0, behavior: 'smooth' });
+  else setView(v);
+}
+$('tabTree').onclick = () => tabTap('tree');
+$('tabPlace').onclick = () => tabTap('place');
+$('tabRecent').onclick = () => tabTap('recent');
+$('tabExplore').onclick = () => tabTap('explore');
 
 function show(keepStatus) {
   if (view === 'explore') { renderExplore(); $('summary').textContent = ''; $('results').hidden = false; return; }
@@ -2287,18 +2295,8 @@ $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = tru
     results.classList.add(dx < 0 ? 'swipe-next' : 'swipe-prev');
     setTimeout(() => results.classList.remove('swipe-next', 'swipe-prev'), 300);
     setView(order[next]);
-    scrollTo({ top: 0 });
     log(`swipe → ${order[next]}`);
   }, { passive: true });
-})();
-
-// ---------- jump to top ----------
-(() => {
-  const btn = $('totop');
-  let frame = 0;
-  const update = () => { frame = 0; btn.hidden = scrollY < 700; };
-  addEventListener('scroll', () => { if (!frame) frame = requestAnimationFrame(update); }, { passive: true });
-  btn.onclick = () => scrollTo({ top: 0, behavior: 'smooth' });
 })();
 
 // ---------- jump-to search (Taxonomy / Place): autocomplete over group and species names, then scroll to the item ----------
