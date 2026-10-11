@@ -1521,10 +1521,7 @@ async function openSpecies(id, focusObs) {
       const cap = el('div', 'ccap');
       const meta = [o.date || 'date unknown', placeLabel(o)].filter(Boolean).join(' · ');
       cap.append(el('span', 'count', meta));
-      const st = el('button', 'ib' + (prefs[o.tid] === o.id ? ' on' : ''), prefs[o.tid] === o.id ? '★' : '☆');
-      st.type = 'button'; st.title = prefs[o.tid] === o.id ? 'This is your favourite' : 'Make this your favourite photo for the species';
-      st.onclick = () => chooseFav(o);
-      cap.append(st, obsLink(o));
+      cap.append(obsLink(o)); // the favourite star lives on the observation tiles below
       if (isNewObs(o)) cap.append(el('span', 'pillnew', 'NEW since favourite'));
       heroBox.append(cap);
     }
