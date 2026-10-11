@@ -389,7 +389,7 @@
   <div class="bar">
     <button class="ib" id="vclose" aria-label="Close"><i data-i="x"></i></button>
     <div class="grow" id="vtitle"></div>
-    <button class="ib" id="vstar" aria-label="Set as preferred observation"><i data-i="star"></i></button>
+    <button class="ib" id="vstar" aria-label="Favourite on iNaturalist"><i data-i="star"></i></button>
     <a class="ib" id="vext" target="_blank" rel="noopener" aria-label="Open observation on iNaturalist"><i data-i="external-link"></i></a>
   </div>
   <div class="track" id="vtrack"></div>
@@ -552,14 +552,58 @@ function dismissNew(tid) { prefMeta[tid] = { max: maxObsId(tid), t: Date.now() }
 // Favourites chosen before this feature existed have no mark: treat everything cached today as already reviewed.
 function backfillPrefMeta() {
   let changed = false;
-  for (const tid of Object.keys(prefs)) {
+  const tids = new Set(Object.keys(prefs));
+  for (const o of state.obs) if (o.fav) tids.add(String(o.tid));
+  for (const tid of tids) {
     if (prefMeta[tid]) continue;
     const m = maxObsId(+tid);
     if (m) { prefMeta[tid] = { max: m, t: Date.now() }; changed = true; }
   }
   if (changed) { savePrefMeta(); favVer++; }
 }
-const isNewObs = o => { const m = prefMeta[o.tid]; return !!(prefs[o.tid] && m && o.id > m.max); };
+// An observation counts as a favourite if its owner faved it on iNaturalist, or (when not logged in) starred it here.
+const isFavObs = o => !!(o.fav || prefs[o.tid] === o.id);
+let faveTidSig = '', faveTids = new Set();
+function hasFavTid(tid) {
+  if (prefs[tid]) return true;
+  const sig = `${state.obs.length}|${favVer}`;
+  if (sig !== faveTidSig) { faveTids = new Set(); for (const o of state.obs) if (o.fav) faveTids.add(o.tid); faveTidSig = sig; }
+  return faveTids.has(tid);
+}
+const isNewObs = o => { const m = prefMeta[o.tid]; return !!(m && hasFavTid(o.tid) && o.id > m.max); };
+
+// Toggle the favourite state of an observation. Logged in: fave/unfave on iNaturalist (optimistic, reverted on failure).
+// Not logged in: falls back to a local star. onChange runs right after the optimistic update and again after a revert.
+async function toggleFav(o, onChange = () => {}) {
+  const want = !isFavObs(o);
+  const token = $('token').value.trim().replace(/^Bearer\s+/i, '');
+  if (!token) {
+    if (want) setFav(o.tid, o.id); else if (prefs[o.tid] === o.id) { delete prefs[o.tid]; savePrefs(); favVer++; }
+    toast('Saved on this device only. Log in to save favourites to iNaturalist.');
+    onChange(); return true;
+  }
+  const prev = { fav: o.fav, pref: prefs[o.tid] };
+  o.fav = want;
+  if (want) { prefMeta[o.tid] = { max: maxObsId(o.tid), t: Date.now() }; savePrefMeta(); }
+  if (!want && prefs[o.tid] === o.id) { delete prefs[o.tid]; savePrefs(); }
+  favVer++;
+  onChange();
+  try {
+    try { await ensureFreshJwt(); } catch {}
+    const t = $('token').value.trim().replace(/^Bearer\s+/i, '') || token;
+    await api(`/observations/${o.id}/${want ? 'fave' : 'unfave'}`, t, { method: want ? 'POST' : 'DELETE' });
+    log(`${want ? 'faved' : 'unfaved'} observation ${o.id} on iNaturalist`);
+    saveCache();
+    return true;
+  } catch (e) {
+    log(`fave update failed for ${o.id}: ${e.stack || e}`, 'e');
+    o.fav = prev.fav;
+    if (prev.pref !== undefined) { prefs[o.tid] = prev.pref; savePrefs(); }
+    favVer++; onChange();
+    toast(`Couldn't update iNaturalist: ${e.message}`);
+    return false;
+  }
+}
 // Per-taxon stats: observation count, how many have photos, whether a favourite exists, how many are new.
 function favStats() {
   const sig = `${state.obs.length}|${favVer}`;
@@ -570,7 +614,7 @@ function favStats() {
     if (!s) m.set(o.tid, s = { n: 0, nPhoto: 0, hasFav: false, newN: 0 });
     s.n++;
     if (photosOf(o).length) s.nPhoto++;
-    if (prefs[o.tid] === o.id || o.fav) s.hasFav = true;
+    if (isFavObs(o)) s.hasFav = true;
     if (isNewObs(o)) s.newN++;
   }
   favSig = sig; favCache = m;
@@ -649,15 +693,15 @@ function setPanel(open) {
 $('acct').onclick = () => setPanel($('login').hidden);
 
 // ---------- API ----------
-async function api(path, token) {
-  const url = API + path;
+async function api(path, token, opts = {}) {
+  const url = API + path, method = opts.method || 'GET';
   const mask = token ? ` [auth ${token.slice(0, 6)}…(${token.length} chars)]` : ' [no auth]';
   for (let attempt = 1; attempt <= 3; attempt++) {
     const t0 = performance.now();
-    log(`GET ${url}${mask} (attempt ${attempt})`);
+    log(`${method} ${url}${mask} (attempt ${attempt})`);
     let res;
     try {
-      res = await fetch(url, { headers: token ? { Authorization: token } : {} });
+      res = await fetch(url, { method, headers: token ? { Authorization: token } : {} });
     } catch (e) {
       log(`NETWORK ERROR after ${Math.round(performance.now() - t0)}ms: ${e.name}: ${e.message}`, 'e');
       log(`  navigator.onLine=${navigator.onLine}, page origin=${location.origin}, protocol=${location.protocol}`, 'e');
@@ -669,7 +713,7 @@ async function api(path, token) {
     const ms = Math.round(performance.now() - t0);
     log(`  → ${res.status} ${res.statusText} in ${ms}ms` +
         ` (rate-limit-remaining=${res.headers.get('x-ratelimit-remaining') ?? 'n/a'})`);
-    if (res.ok) return res.json();
+    if (res.ok) { const txt = await res.text(); try { return txt ? JSON.parse(txt) : {}; } catch { return {}; } }
     const body = (await res.text().catch(() => '')).slice(0, 300);
     log(`  body: ${body}`, 'e');
     if (res.status === 401 || res.status === 403) throw new Error('Token rejected or expired. Get a fresh one and paste it again.');
@@ -681,16 +725,16 @@ async function api(path, token) {
 }
 
 // Reduce a full API observation to what we need.
-// Thumbnail for a species: your starred observation if you set one here, otherwise one of the observations
-// the owner has faved on iNaturalist (picked at random, stable for this page load), otherwise the newest with a photo.
+// Thumbnail for a species: one of the observations its owner has faved on iNaturalist (random, stable for this page load),
+// else an observation starred locally (when not logged in), else the newest with a photo.
 const thumbSeed = Math.floor(Math.random() * 2 ** 31);
 function thumbObs(list) {
   const withPhoto = list.filter(o => photosOf(o).length);
   if (!withPhoto.length) return list[0];
-  const starred = withPhoto.find(o => prefs[o.tid] === o.id);
-  if (starred) return starred;
   const faves = withPhoto.filter(o => o.fav);
   if (faves.length) return faves[shuffleKey(list[0].tid, thumbSeed) % faves.length];
+  const starred = withPhoto.find(o => prefs[o.tid] === o.id);
+  if (starred) return starred;
   return withPhoto.reduce((a, b) => (b.id > a.id ? b : a));
 }
 function slim(o) {
@@ -1364,8 +1408,8 @@ function obsPopup(o) {
     const v = document.createElement('button'); v.className = 'secondary';
     v.textContent = ph.length > 1 ? `View ${ph.length} photos` : 'View photo'; v.onclick = open; acts.append(v);
     const st = document.createElement('button'); st.type = 'button'; st.className = 'ib';
-    const paint = () => { const on = prefs[o.tid] === o.id; setIcon(st, 'star', 18, on); st.classList.toggle('on', on); };
-    st.title = 'Use as preferred photo'; st.onclick = () => { setFav(o.tid, o.id); paint(); };
+    const paint = () => { const on = isFavObs(o); setIcon(st, 'star', 18, on); st.classList.toggle('on', on); };
+    st.title = 'Favourite on iNaturalist'; st.onclick = () => toggleFav(o, () => { paint(); show(true); });
     paint(); acts.append(st);
   }
   acts.append(obsLink(o));
@@ -1476,7 +1520,7 @@ async function openSpecies(id, focusObs) {
         im.src = ph.length ? sized(u, 'large') : u; if (i > 0) im.loading = 'lazy';
         im.onerror = () => { if (im.src !== u) im.src = u; };
         if (ph.length) im.onclick = () => viewer.open({ obs: o, photos: ph, title,
-          isPreferred: () => prefs[o.tid] === o.id, setPreferred: () => chooseFav(o) }, idx());
+          isPreferred: () => isFavObs(o), setPreferred: () => starTap(o) }, idx());
         s.append(im); track.append(s);
       });
       const idx = () => Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
@@ -1506,15 +1550,21 @@ async function openSpecies(id, focusObs) {
       heroBox.append(cap);
     }
   }
-  function chooseFav(o) {
-    setFav(o.tid, o.id);
-    log(`preferred observation for ${o.name} set to ${o.id}`);
-    mineGrid?.querySelectorAll('.alt').forEach(c => { const s = c.querySelector('.star'); if (s) setIcon(s, 'star', 16, c.dataset.obs === String(o.id)); });
-    mineGrid?.querySelectorAll('.newtag').forEach(x => x.remove());
-    banner?.remove(); banner = null;
-    renderHero(focus || o);
+  // Star tap: toggles the iNaturalist fave; everything on screen is refreshed straight away and again if it has to be reverted.
+  function syncFavUI() {
+    mineGrid?.querySelectorAll('.alt').forEach(c => {
+      const ob = mineObs.find(x => String(x.id) === c.dataset.obs); if (!ob) return;
+      const s = c.querySelector('.star'); if (s) setIcon(s, 'star', 16, isFavObs(ob));
+      c.querySelector('.favtag')?.remove();
+      if (ob.fav) { const ft = el('span', 'favtag'); ft.title = 'Favourited on iNaturalist'; ft.innerHTML = ic('heart', 14, true); c.append(ft); }
+      if (!isNewObs(ob)) c.querySelector('.newtag')?.remove();
+    });
+    if (banner && !(dstatsNow()?.newN > 0)) { banner.remove(); banner = null; }
+    renderHero(focus);
     show(true);
   }
+  const dstatsNow = () => favStats().get(id);
+  function starTap(o) { return toggleFav(o, syncFavUI); }
   function selectObs(o) {
     focus = o; renderHero(o);
     mineGrid?.querySelectorAll('.alt').forEach(c => c.classList.toggle('sel', c.dataset.obs === String(o.id)));
@@ -1601,8 +1651,8 @@ async function openSpecies(id, focusObs) {
         const im = el('img'); im.src = sized(ph[0], 'medium'); im.alt = ''; im.loading = 'lazy'; pic.append(im);
         pic.onclick = () => selectObs(o);
       }
-      const st = el('button', 'ib star'); setIcon(st, 'star', 16, prefs[o.tid] === o.id); st.type = 'button'; st.title = 'Use as preferred photo';
-      st.onclick = () => chooseFav(o);
+      const st = el('button', 'ib star'); setIcon(st, 'star', 16, isFavObs(o)); st.type = 'button'; st.title = 'Favourite on iNaturalist';
+      st.onclick = () => starTap(o);
       cell.append(pic, st, obsLink(o, 'ib ext'));
       if (isNewObs(o)) cell.append(el('span', 'newtag', 'NEW'));
       if (o.fav) { const ft = el('span', 'favtag'); ft.title = 'Favourited on iNaturalist'; ft.innerHTML = ic('heart', 14, true); cell.append(ft); }
@@ -2138,6 +2188,7 @@ async function refresh({ full = false, retried = false } = {}) {
     const ids = new Set();
     state.obs.forEach(o => o.anc.forEach(i => ids.add(i)));
     await fetchMissingTaxa(ids);
+    backfillPrefMeta(); // first read of iNaturalist faves: don't flag existing observations as new
     await saveCache();
     show();
     status(fresh.length ? `Done. ${fresh.length} new observations.` : 'Done. Already up to date.');
