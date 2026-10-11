@@ -92,6 +92,10 @@
   .sp, details.g { scroll-margin-top:240px; }
   /* tabs + view controls: stuck to the top, slide away while scrolling down, return on scroll up */
   #totop { position:fixed; right:16px; bottom:20px; z-index:80; width:46px; height:46px; font-size:18px; background:var(--accent); color:#fff; border:0; box-shadow:0 3px 10px rgba(0,0,0,.35); }
+  @keyframes slideInR { from { opacity:0; transform:translateX(36px); } to { opacity:1; transform:none; } }
+  @keyframes slideInL { from { opacity:0; transform:translateX(-36px); } to { opacity:1; transform:none; } }
+  .swipe-next #tree, .swipe-next #recent, .swipe-next #explore { animation:slideInR .22s ease-out; }
+  .swipe-prev #tree, .swipe-prev #recent, .swipe-prev #explore { animation:slideInL .22s ease-out; }
   #stickybar { position:sticky; top:0; z-index:60; background:var(--bg); margin:0 -16px 6px; padding:6px 16px 0; transition:transform .22s ease, box-shadow .2s; }
   #stickybar.hide { transform:translateY(-130%); }
   #stickybar.stuck:not(.hide) { box-shadow:0 2px 8px rgba(0,0,0,.18); }
@@ -2199,6 +2203,43 @@ $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = tru
   addEventListener('resize', setVar);
   new ResizeObserver(setVar).observe(bar);
   setVar();
+})();
+
+// ---------- swipe left/right to change tab ----------
+(() => {
+  const order = ['recent', 'tree', 'place', 'explore'];
+  const results = $('results');
+  let sx = 0, sy = 0, st = 0, ok = false;
+  // don't hijack horizontal gestures that belong to something else (carousels, maps, chip rows, inputs, overlays)
+  const blocked = el => {
+    if (!el.closest) return true;
+    if (el.closest('input, textarea, select, .leaflet-container, .ctrack, .clsrow, #detail, #viewer, #jumpsug, #expsug, [data-noswipe]')) return true;
+    for (let e = el; e && e !== results; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 2) return true;
+    }
+    return false;
+  };
+  results.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    ok = e.touches.length === 1 && t.clientX > 28 && t.clientX < innerWidth - 28 && !blocked(e.target); // edges belong to the browser's back gesture
+    sx = t.clientX; sy = t.clientY; st = Date.now();
+  }, { passive: true });
+  results.addEventListener('touchend', e => {
+    if (!ok) return;
+    ok = false;
+    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6 || Date.now() - st > 700) return;
+    const next = order.indexOf(view) + (dx < 0 ? 1 : -1);
+    if (next < 0 || next >= order.length) return;
+    results.classList.remove('swipe-next', 'swipe-prev');
+    void results.offsetWidth;
+    results.classList.add(dx < 0 ? 'swipe-next' : 'swipe-prev');
+    setTimeout(() => results.classList.remove('swipe-next', 'swipe-prev'), 300);
+    setView(order[next]);
+    scrollTo({ top: 0 });
+    log(`swipe → ${order[next]}`);
+  }, { passive: true });
 })();
 
 // ---------- jump to top ----------
