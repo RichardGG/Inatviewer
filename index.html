@@ -192,7 +192,10 @@
   .xrow img.mineimg { outline:3px solid var(--accent); outline-offset:-3px; }
   .mp { width:200px; } .mp img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; display:block; cursor:zoom-in; }
   .mp .t { font-weight:600; margin:6px 0 0; } .mp .d { color:#666; font-size:12px; } .mp .acts { margin-top:6px; }
-  .nb a { display:flex; align-items:center; gap:8px; margin:0 0 6px; color:#222; text-decoration:none; font-size:13px; }
+  .nbrow { display:flex; align-items:center; gap:6px; margin:0 0 6px; }
+  .nbrow > a:first-child { flex:1; min-width:0; }
+  .nb a { display:flex; align-items:center; gap:8px; color:#222; text-decoration:none; font-size:13px; }
+  .nb a.nbview { width:30px; height:30px; flex:none; justify-content:center; color:#2f7d32; }
   .nb img { width:48px; height:48px; border-radius:6px; object-fit:cover; flex:none; }
   .rgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(112px, 1fr)); gap:4px; }
   @media (min-width: 900px) { main { max-width:1200px; } .rgrid { grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:8px; } .tile .cap { font-size:14px; padding:22px 10px 8px; } }
@@ -1511,13 +1514,22 @@ async function nearbyPopup(map, latlng, taxonId) {
     const box = document.createElement('div'); box.className = 'nb';
     if (!d.results.length) box.textContent = 'No observations found here. Tap closer to the coloured area.';
     for (const o of d.results) {
+      const line = document.createElement('div'); line.className = 'nbrow';
       const row = document.createElement('a');
       row.href = `https://www.inaturalist.org/observations/${o.id}`; row.target = '_blank'; row.rel = 'noopener';
       const ph = o.photos?.[0]?.url;
       if (ph) { const im = document.createElement('img'); im.src = ph; im.alt = ''; row.append(im); }
       const tx = document.createElement('span');
       tx.textContent = `${o.user?.login || 'someone'} · ${o.observed_on || 'date unknown'}`;
-      row.append(tx); box.append(row);
+      row.append(tx); line.append(row);
+      // open that person's observations in this app (new tab, so the current species/map stays put)
+      if (o.user?.login) {
+        const v = document.createElement('a');
+        v.className = 'ib nbview'; v.href = `${redirectUri()}?u=${encodeURIComponent(o.user.login)}`; v.target = '_blank'; v.rel = 'noopener';
+        v.title = v.ariaLabel = `View @${o.user.login}'s observations`; v.innerHTML = ic('user-round', 16);
+        line.append(v);
+      }
+      box.append(line);
     }
     popup.setContent(box);
   } catch (e) { log(`nearby observations failed: ${e.message}`, 'e'); popup.setContent('Could not load observations.'); }
