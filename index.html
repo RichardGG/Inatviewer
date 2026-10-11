@@ -184,7 +184,6 @@
   .mp .t { font-weight:600; margin:6px 0 0; } .mp .d { color:#666; font-size:12px; } .mp .acts { margin-top:6px; }
   .nb a { display:flex; align-items:center; gap:8px; margin:0 0 6px; color:#222; text-decoration:none; font-size:13px; }
   .nb img { width:48px; height:48px; border-radius:6px; object-fit:cover; flex:none; }
-  @media (min-width: 900px) { .spgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); gap:2px 14px; align-items:start; } }
   .rgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(112px, 1fr)); gap:4px; }
   @media (min-width: 900px) { main { max-width:1200px; } .rgrid { grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:8px; } .tile .cap { font-size:14px; padding:22px 10px 8px; } }
   @media (min-width: 1500px) { main { max-width:1500px; } .rgrid { grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); } }
@@ -268,7 +267,7 @@
     </div>
     <div id="iconbar">
       <div id="fbtns" class="ibgroup">
-        <button class="ib tb" id="bsearch" aria-label="Search" title="Search">🔍</button>
+        <button class="ib tb" id="bsearch" aria-label="Jump to" title="Jump to a group or species">🔍</button>
         <button class="ib tb" id="bdate" aria-label="Date" title="Date">📅</button>
         <button class="ib tb" id="areabtn" aria-label="Map area" title="Map area" aria-expanded="false">📍</button>
         <button class="ib tb" id="bclass" aria-label="Groups" title="Groups (birds, plants…)">🐾</button>
@@ -278,7 +277,6 @@
       <div class="ibgroup">
         <span id="treeTools" class="ibgroup">
           <button class="ib tb" id="expcol" aria-label="Collapse all" title="Collapse all">⊟</button>
-          <button class="ib tb" id="tlayout" aria-label="Gallery" title="Switch between detailed cards and a photo gallery">▦</button>
           <button class="ib tb" id="shuffle" aria-label="Shuffle" title="Randomise the order of groups and species. Tap again for a new order.">🔀</button>
           <button class="ib tb" id="unshuffle" aria-label="Default order" title="Back to the default order" hidden>↺</button>
         </span>
@@ -293,9 +291,8 @@
     <div id="filterwrap">
       <div id="chips"></div>
       <div class="card fpanel" id="psearch" hidden>
-        <input type="search" id="q" placeholder="Filter by common species name…" autocomplete="off" spellcheck="false">
         <div id="jumpwrap" hidden>
-          <p class="status" style="margin:10px 0 4px">Jump to a group or species in the list</p>
+          <p class="status" style="margin:0 0 4px">Jump to a group or species in the list</p>
           <input type="search" id="jump" placeholder="Jump to…" autocomplete="off" spellcheck="false"
                  style="width:100%;padding:9px 12px;font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)">
           <div id="jumpsug" hidden></div>
@@ -810,9 +807,6 @@ const TAXON_META = (names) => ({
 });
 // Optional shuffle: a stable pseudo-random order per (seed, id) so re-renders (e.g. starring a photo) don't reshuffle.
 let shuffleSeed = null;
-const TLAYOUT_KEY = 'inat_tree_layout';
-let treeLayout = 'cards'; // 'cards' | 'gallery' (photo tiles, still nested by group)
-try { treeLayout = localStorage.getItem(TLAYOUT_KEY) === 'gallery' ? 'gallery' : 'cards'; } catch {}
 function shuffleKey(id, seed = shuffleSeed) {
   let x = 2166136261;
   for (const c of `${seed}:${id}`) { x ^= c.charCodeAt(0); x = Math.imul(x, 16777619); }
@@ -848,105 +842,6 @@ function render(root, names, meta = TAXON_META(names)) {
     return b;
   }
   const mkExt = obsLink;
-
-  function speciesEl(row) {
-    const wrap = document.createElement('div');
-    wrap.className = 'sp';
-    let showAlts = false;
-
-    function openViewer(o, row) { openSpecies(o.tid, o); }
-    function setPref(row, o) {
-      setFav(row.tid, o.id);
-      log(`preferred observation for ${row.name} (taxon ${row.tid}) set to ${o.id}`);
-      draw();
-    }
-
-    function draw() {
-      const cur = preferred(row);
-      const curPhotos = photosOf(cur);
-      const others = row.obs.filter(o => o !== cur && photosOf(o).length);
-
-      const d = document.createElement('div');
-      d.className = 'species';
-      const btn = document.createElement('button');
-      btn.className = 'imgbtn'; btn.type = 'button'; btn.title = 'View full screen';
-      if (curPhotos.length) {
-        const img = document.createElement('img');
-        img.alt = ''; img.loading = 'lazy'; img.src = sized(curPhotos[0], 'medium');
-        img.onerror = () => { log(`image failed: ${img.src}`, 'w'); if (img.src !== curPhotos[0]) img.src = curPhotos[0]; };
-        btn.append(img);
-        if (curPhotos.length > 1) {
-          const b = document.createElement('span'); b.className = 'badge'; b.textContent = `1/${curPhotos.length}`;
-          btn.append(b);
-        }
-        btn.onclick = () => openViewer(cur, row);
-      }
-
-      const info = document.createElement('div');
-      info.className = 'info';
-      const a = document.createElement('a');
-      a.className = 't'; a.href = `https://www.inaturalist.org/taxa/${row.tid}`; a.target = '_blank'; a.rel = 'noopener';
-      speciesLink(a, row.tid);
-      if (row.common) a.append(row.common + ' ');
-      const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = row.name;
-      a.append(sci);
-      const c = document.createElement('span'); c.className = 'count';
-      c.textContent = `${row.obs.length} obs`;
-      const acts = document.createElement('div'); acts.className = 'acts';
-      acts.append(mkExt(cur)); // no star on the preferred observation itself; it's set from the other observations
-      info.append(a, c);
-      const fs = favStats().get(row.tid);
-      if (fs && fs.newN > 0) {
-        const p = document.createElement('button'); p.type = 'button'; p.className = 'pillnew';
-        p.textContent = `↻ ${fs.newN} new since favourite`; p.title = 'Open details to review';
-        p.onclick = () => openSpecies(row.tid);
-        info.append(p);
-      } else if (needsFav(fs)) {
-        const p = document.createElement('span'); p.className = 'pillnofav'; p.textContent = '☆ no favourite chosen';
-        info.append(p);
-      }
-      info.append(acts);
-      if (others.length) {
-        const more = document.createElement('button');
-        more.type = 'button'; more.className = 'more';
-        more.textContent = showAlts ? 'Hide other observations'
-          : `${others.length} more observation${others.length > 1 ? 's' : ''}`;
-        more.onclick = () => { showAlts = !showAlts; draw(); };
-        info.append(more);
-      }
-      d.append(btn, info);
-      wrap.style.gridColumn = showAlts ? '1 / -1' : ''; // an expanded card takes the full row
-      wrap.replaceChildren(d);
-
-      if (showAlts && others.length) {
-        const grid = document.createElement('div');
-        grid.className = 'alts';
-        for (const o of others) {
-          const ph = photosOf(o);
-          const cell = document.createElement('div');
-          cell.className = 'alt';
-          const pic = document.createElement('button');
-          pic.type = 'button'; pic.className = 'pic'; pic.title = 'View full screen';
-          const im = document.createElement('img');
-          im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
-          im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
-          pic.append(im);
-          if (ph.length > 1) {
-            const b = document.createElement('span'); b.className = 'badge'; b.textContent = `1/${ph.length}`;
-            pic.append(b);
-          }
-          pic.onclick = () => openViewer(o, row);
-          const st = mkBtn('ib star', '☆', 'Set as preferred', () => setPref(row, o));
-          cell.append(pic, st, mkExt(o, 'ib ext'));
-          if (isNewObs(o)) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.textContent = 'NEW'; cell.append(nt); }
-          grid.append(cell);
-        }
-        wrap.append(grid);
-      }
-    }
-    draw();
-    return wrap;
-  }
 
   const sortedChildren = node => [...node.children.values()].sort(shuffleSeed == null ? (a, b) => b.count - a.count : (a, b) => shuffleKey(a.id) - shuffleKey(b.id));
   function collect(node, acc = new Set()) {
@@ -1049,8 +944,8 @@ function render(root, names, meta = TAXON_META(names)) {
     gather(node, rows, groups);
     if (rows.length) {
       const grid = document.createElement('div');
-      grid.className = treeLayout === 'gallery' ? 'rgrid' : 'spgrid';
-      for (const row of rows) grid.append(treeLayout === 'gallery' ? speciesTile(row) : speciesEl(row));
+      grid.className = 'rgrid';
+      for (const row of rows) grid.append(speciesTile(row));
       parentEl.append(grid);
     }
     for (const [ch, rank] of groups) parentEl.append(groupEl(ch, rank, depth));
@@ -1261,19 +1156,16 @@ function classMatch(o) {
   }
   return false;
 }
-// Observations passing the text search (common species name only), date and class filters, before the area filter.
+// Observations passing the date, group and favourite-status filters, before the area filter.
 function textFiltered() {
-  const terms = fold($('q').value).split(/\s+/).filter(Boolean);
   const range = dateRange();
-  if (!terms.length && !range && !filterClasses.size && !favMode) return state.obs;
+  if (!range && !filterClasses.size && !favMode) return state.obs;
   const stats = favMode ? favStats() : null;
   return state.obs.filter(o => {
     if (favMode) { const s = stats.get(o.tid); if (!(favMode === 'need' ? needsFav(s) : s && s.newN > 0)) return false; }
     if (range && !(o.date && o.date >= range[0] && o.date <= range[1])) return false;
     if (filterClasses.size && !classMatch(o)) return false;
-    if (!terms.length) return true;
-    const s = fold(o.common || '');
-    return terms.every(t => s.includes(t));
+    return true;
   });
 }
 function filteredObs() {
@@ -1316,8 +1208,7 @@ function drawChips() {
     x.onclick = clear;
     chip.append(x); c.append(chip);
   };
-  const q = $('q').value.trim(), dv = $('datesel').value;
-  if (q) add(`🔍 “${q}”`, () => { $('q').value = ''; scheduleShow(); }, 'Clear search');
+  const dv = $('datesel').value;
   if (dv !== 'all') add(`📅 ${dv === 'custom' ? `${$('dfrom').value || '…'} → ${$('dto').value || '…'}` : $('datesel').selectedOptions[0].textContent}`,
     () => { $('datesel').value = 'all'; $('customdates').hidden = true; scheduleShow(); }, 'Clear date filter');
   if (area) add(`📍 within ${fmtDist(area.r)}`, () => setArea(null), 'Clear area filter');
@@ -1326,7 +1217,7 @@ function drawChips() {
   if (favMode) add(favMode === 'need' ? '☆ Needs favourite' : '↻ New since favourite',
     () => { favMode = ''; drawFilterChips(); scheduleShow(); }, 'Clear favourite filter');
   const has = (id, on) => $(id).classList.toggle('has', !!on);
-  has('bsearch', q); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
+  has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
 }
 // Largest circle that fits inside the map's current view (with a little margin).
 function viewportCircle() {
@@ -1345,7 +1236,7 @@ function drawArea(a = area) {
 let suppressMove = false;
 function moveMap(fn) { suppressMove = true; try { fn(); } finally { suppressMove = false; } }
 
-const markerKey = () => `${$('q').value}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
+const markerKey = () => `${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
 function drawAreaMarkers() {
   if (!areaMap) return;
   markerSig = markerKey();
@@ -1397,7 +1288,7 @@ for (const [btn, pan] of Object.entries(PANELS)) {
     const opening = $(pan).hidden;
     closePanels(pan);
     $(pan).hidden = !opening; $(btn).classList.toggle('open', opening);
-    if (opening && btn === 'bsearch') $('q').focus();
+    if (opening && btn === 'bsearch') $('jump').focus();
   };
 }
 $('areabtn').onclick = () => {
@@ -1416,7 +1307,6 @@ $('areafit').onclick = () => {
 };
 let showTimer;
 function scheduleShow() { clearTimeout(showTimer); showTimer = setTimeout(() => show(), 250); }
-$('q').addEventListener('input', scheduleShow);
 $('datesel').onchange = () => { $('customdates').hidden = $('datesel').value !== 'custom'; scheduleShow(); };
 $('dfrom').onchange = $('dto').onchange = scheduleShow;
 
@@ -2125,6 +2015,8 @@ function setView(v) {
   $('explore').hidden = v !== 'explore';
   $('treeTools').hidden = v === 'recent' || v === 'explore';
   $('jumpwrap').hidden = v === 'recent' || v === 'explore';
+  $('bsearch').hidden = v === 'recent' || v === 'explore';
+  if (v === 'recent' || v === 'explore') { $('psearch').hidden = true; $('bsearch').classList.remove('open'); }
   $('recentTools').hidden = v !== 'recent';
   $('filterwrap').hidden = v === 'explore';
   $('fbtns').hidden = v === 'explore';
@@ -2289,17 +2181,6 @@ $('rshuffle').onclick = () => { recentSeed = Math.floor(Math.random() * 2 ** 31)
 $('rdefault').onclick = () => { recentSeed = null; syncRecentTools(); show(true); };
 syncRecentTools();
 $('shuffle').onclick = () => { shuffleSeed = Math.floor(Math.random() * 2 ** 31); $('unshuffle').hidden = false; show(true); };
-function syncTreeLayoutBtn() {
-  $('tlayout').textContent = treeLayout === 'gallery' ? '☰' : '▦';
-  $('tlayout').title = treeLayout === 'gallery' ? 'Switch to detailed cards' : 'Switch to photo gallery';
-  $('tlayout').setAttribute('aria-label', $('tlayout').title);
-}
-$('tlayout').onclick = () => {
-  treeLayout = treeLayout === 'gallery' ? 'cards' : 'gallery';
-  try { localStorage.setItem(TLAYOUT_KEY, treeLayout); } catch {}
-  syncTreeLayoutBtn(); show(true);
-};
-syncTreeLayoutBtn();
 $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = true; show(true); };
 // ---------- swipe left/right to change tab ----------
 (() => {
