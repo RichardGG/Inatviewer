@@ -102,7 +102,8 @@
   #expsug button small, #jumpsug button small { color:var(--muted); }
   .flash { animation:flash 1.8s ease-out; }
   @keyframes flash { 0%, 40% { background:rgba(255,200,0,.4); outline:2px solid #e0a800; } 100% { background:transparent; outline:2px solid transparent; } }
-  .sp, details.g { scroll-margin-top:240px; }
+  .sp, .tile, details.g { scroll-margin-top:240px; }
+  #tree .rgrid { padding:4px 0 6px 3px; border-left:2px solid var(--line); }
   /* tabs + view controls: stuck to the top, slide away while scrolling down, return on scroll up */
   #totop { position:fixed; right:16px; bottom:20px; z-index:80; width:46px; height:46px; font-size:18px; background:var(--accent); color:#fff; border:0; box-shadow:0 3px 10px rgba(0,0,0,.35); }
   @keyframes slideInR { from { opacity:0; transform:translateX(36px); } to { opacity:1; transform:none; } }
@@ -289,6 +290,7 @@
     </div>
     <div class="toolbar">
       <span id="treeTools"><button class="secondary" id="expcol">Collapse all</button>
+      <button class="secondary" id="tlayout" title="Switch between detailed cards and a photo gallery">▦ Gallery</button>
       <button class="secondary" id="shuffle" title="Randomise the order of groups and species. Tap again for a new order.">🔀 Shuffle</button>
       <button class="secondary" id="unshuffle" title="Back to the default order" hidden>Default order</button></span>
       <span id="recentTools" hidden>
@@ -780,6 +782,9 @@ const TAXON_META = (names) => ({
 });
 // Optional shuffle: a stable pseudo-random order per (seed, id) so re-renders (e.g. starring a photo) don't reshuffle.
 let shuffleSeed = null;
+const TLAYOUT_KEY = 'inat_tree_layout';
+let treeLayout = 'cards'; // 'cards' | 'gallery' (photo tiles, still nested by group)
+try { treeLayout = localStorage.getItem(TLAYOUT_KEY) === 'gallery' ? 'gallery' : 'cards'; } catch {}
 function shuffleKey(id, seed = shuffleSeed) {
   let x = 2166136261;
   for (const c of `${seed}:${id}`) { x ^= c.charCodeAt(0); x = Math.imul(x, 16777619); }
@@ -986,13 +991,38 @@ function render(root, names, meta = TAXON_META(names)) {
       else gather(ch, rows, groups);
     }
   }
+  // Gallery layout: one photo tile per species (its favourite photo); species of a genus sit side by side under the genus heading.
+  function speciesTile(row) {
+    const cur = preferred(row), ph = photosOf(cur);
+    const t = document.createElement('div');
+    t.className = 'tile';
+    t.title = `${row.common || row.name} · ${row.obs.length} obs`;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'Open species');
+    if (ph.length) {
+      const im = document.createElement('img');
+      im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
+      im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
+      b.append(im);
+    }
+    const n = document.createElement('span'); n.className = 'badge'; n.textContent = `${row.obs.length} obs`; b.append(n);
+    const fs = favStats().get(row.tid);
+    if (fs && fs.newN > 0) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.textContent = `↻ ${fs.newN} new`; b.append(nt); }
+    b.onclick = () => openSpecies(row.tid, cur);
+    const cap = document.createElement('a');
+    cap.className = 'cap'; cap.textContent = row.common || row.name;
+    cap.href = `https://www.inaturalist.org/taxa/${row.tid}`; cap.target = '_blank'; cap.rel = 'noopener';
+    speciesLink(cap, row.tid);
+    t.append(b, cap);
+    return t;
+  }
   function fill(node, parentEl, depth) {
     const rows = [], groups = [];
     gather(node, rows, groups);
     if (rows.length) {
       const grid = document.createElement('div');
-      grid.className = 'spgrid';
-      for (const row of rows) grid.append(speciesEl(row));
+      grid.className = treeLayout === 'gallery' ? 'rgrid' : 'spgrid';
+      for (const row of rows) grid.append(treeLayout === 'gallery' ? speciesTile(row) : speciesEl(row));
       parentEl.append(grid);
     }
     for (const [ch, rank] of groups) parentEl.append(groupEl(ch, rank, depth));
@@ -2188,6 +2218,13 @@ $('rshuffle').onclick = () => { recentSeed = Math.floor(Math.random() * 2 ** 31)
 $('rdefault').onclick = () => { recentSeed = null; syncRecentTools(); show(true); };
 syncRecentTools();
 $('shuffle').onclick = () => { shuffleSeed = Math.floor(Math.random() * 2 ** 31); $('unshuffle').hidden = false; show(true); };
+function syncTreeLayoutBtn() { $('tlayout').textContent = treeLayout === 'gallery' ? '☰ Cards' : '▦ Gallery'; }
+$('tlayout').onclick = () => {
+  treeLayout = treeLayout === 'gallery' ? 'cards' : 'gallery';
+  try { localStorage.setItem(TLAYOUT_KEY, treeLayout); } catch {}
+  syncTreeLayoutBtn(); show(true);
+};
+syncTreeLayoutBtn();
 $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = true; show(true); };
 // ---------- sticky tab/control bar: hides while scrolling down, slides back in on any scroll up (like a mobile browser's toolbar) ----------
 (() => {
@@ -2277,6 +2314,12 @@ function buildJumpIndex() {
     if (!a) continue;
     const parent = s.closest('details.g'), p = parent && parent.querySelector(':scope > summary .nm');
     items.push({ el: s, group: false, label: a.textContent.trim(), sub: p ? `in ${p.textContent.trim()}` : '', hay: fold(a.textContent) });
+  }
+  for (const t of $('tree').querySelectorAll('.tile')) {
+    const a = t.querySelector('a.cap');
+    if (!a) continue;
+    const parent = t.closest('details.g'), p = parent && parent.querySelector(':scope > summary .nm');
+    items.push({ el: t, group: false, label: a.textContent.trim(), sub: p ? `in ${p.textContent.trim()}` : '', hay: fold(a.textContent) });
   }
   return items;
 }
