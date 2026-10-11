@@ -82,9 +82,14 @@
           border-radius:16px; padding:3px 6px 3px 12px; font-size:13px; margin:0 0 8px; }
   .chip button { padding:0 6px; background:none; color:var(--muted); font-size:16px; }
   #expmap { height:280px; border-radius:8px; z-index:0; }
-  #expsug button { display:flex; flex-direction:column; align-items:flex-start; width:100%; text-align:left; background:var(--card); color:var(--fg);
+  #jumpwrap { margin:0 0 10px; }
+  #jumpsug { max-height:60vh; overflow-y:auto; }
+  #jumpsug button, #expsug button { display:flex; flex-direction:column; align-items:flex-start; width:100%; text-align:left; background:var(--card); color:var(--fg);
                    border:1px solid var(--line); border-top:0; border-radius:0; padding:8px 12px; font-size:14px; }
-  #expsug button small { color:var(--muted); }
+  #expsug button small, #jumpsug button small { color:var(--muted); }
+  .flash { animation:flash 1.8s ease-out; }
+  @keyframes flash { 0%, 40% { background:rgba(255,200,0,.4); outline:2px solid #e0a800; } 100% { background:transparent; outline:2px solid transparent; } }
+  .sp, details.g { scroll-margin-top:190px; }
   .cls { padding:4px 12px; border-radius:16px; border:1px solid var(--line); background:var(--card); color:var(--fg); font-size:13px; }
   .clsrow { display:flex; gap:6px; overflow-x:auto; padding:0 0 6px; margin:0 0 8px; scrollbar-width:thin; }
   .clsrow .cls { flex:none; }
@@ -236,6 +241,11 @@
       <button id="tabTree" role="tab">Taxonomy</button>
       <button id="tabPlace" role="tab">Place</button>
       <button id="tabExplore" role="tab">Nearby</button>
+    </div>
+    <div id="jumpwrap" hidden>
+      <input type="search" id="jump" placeholder="Jump to a group or species…" autocomplete="off" spellcheck="false"
+             style="width:100%;padding:9px 12px;font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg)">
+      <div id="jumpsug" hidden></div>
     </div>
     <div class="toolbar">
       <span id="treeTools"><button class="secondary" id="expcol">Collapse all</button>
@@ -901,6 +911,7 @@ function render(root, names, meta = TAXON_META(names)) {
   fill(root, frag, 0);
   $('tree').replaceChildren(frag);
   if (typeof scheduleExpCol === 'function') scheduleExpCol();
+  jumpIndex = null; // rebuilt on next use
   return collect(root).size;
 }
 
@@ -1882,6 +1893,7 @@ function setView(v) {
   $('recent').hidden = v !== 'recent';
   $('explore').hidden = v !== 'explore';
   $('treeTools').hidden = v === 'recent' || v === 'explore';
+  $('jumpwrap').hidden = v === 'recent' || v === 'explore';
   $('recentTools').hidden = v !== 'recent';
   $('filterwrap').hidden = v === 'explore';
   $('locTools').hidden = v !== 'place';
@@ -2041,6 +2053,67 @@ $('rdefault').onclick = () => { recentSeed = null; syncRecentTools(); show(true)
 syncRecentTools();
 $('shuffle').onclick = () => { shuffleSeed = Math.floor(Math.random() * 2 ** 31); $('unshuffle').hidden = false; show(true); };
 $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = true; show(true); };
+// ---------- jump-to search (Taxonomy / Place): autocomplete over group and species names, then scroll to the item ----------
+let jumpIndex = null;
+function buildJumpIndex() {
+  const items = [];
+  for (const d of $('tree').querySelectorAll('details.g')) {
+    const nm = d.querySelector(':scope > summary .nm'), rank = d.dataset.rank || '';
+    if (nm) items.push({ el: d, group: true, label: nm.textContent.trim(), sub: rank, hay: fold(nm.textContent), rank });
+  }
+  for (const s of $('tree').querySelectorAll('.sp')) {
+    const a = s.querySelector('a.t');
+    if (!a) continue;
+    const parent = s.closest('details.g'), p = parent && parent.querySelector(':scope > summary .nm');
+    items.push({ el: s, group: false, label: a.textContent.trim(), sub: p ? `in ${p.textContent.trim()}` : '', hay: fold(a.textContent) });
+  }
+  return items;
+}
+const RANK_ORDER = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'continent', 'country', 'state', 'county', 'city', 'area'];
+function jumpMatches(q) {
+  const terms = fold(q).split(/\s+/).filter(Boolean);
+  if (!terms.length) return [];
+  if (!jumpIndex) jumpIndex = buildJumpIndex();
+  const hits = jumpIndex.filter(it => terms.every(t => it.hay.includes(t)));
+  const score = it => (it.hay.startsWith(terms[0]) || it.hay.includes(' ' + terms[0]) ? 0 : 10) + (it.group ? Math.max(0, RANK_ORDER.indexOf(it.rank)) / 100 : 1);
+  return hits.sort((a, b) => score(a) - score(b)).slice(0, 15);
+}
+function drawJump() {
+  const box = $('jumpsug'), q = $('jump').value.trim();
+  box.replaceChildren(); box.className = '';
+  if (q.length < 1) { box.hidden = true; return; }
+  const hits = jumpMatches(q);
+  if (!hits.length) { box.textContent = 'No matching groups or species.'; box.className = 'status'; box.hidden = false; return; }
+  for (const it of hits) {
+    const b = document.createElement('button'); b.type = 'button';
+    b.append(it.label);
+    const sm = document.createElement('small'); sm.textContent = it.group ? it.sub : it.sub || 'species'; b.append(sm);
+    b.onclick = () => jumpTo(it);
+    box.append(b);
+  }
+  box.hidden = false;
+}
+function jumpTo(it) {
+  $('jumpsug').hidden = true;
+  // open every ancestor group (and the target itself if it is a group) so the item is visible
+  if (it.group) it.el.open = true;
+  for (let d = it.el.parentElement && it.el.parentElement.closest('details.g'); d; d = d.parentElement && d.parentElement.closest('details.g')) d.open = true;
+  setTimeout(() => {
+    it.el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    const target = it.group ? it.el.querySelector(':scope > summary') : it.el;
+    target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
+    setTimeout(() => target.classList.remove('flash'), 2000);
+  }, 60);
+  log(`jump to ${it.label}`);
+}
+$('jump').addEventListener('input', drawJump);
+$('jump').addEventListener('focus', drawJump);
+$('jump').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { const b = $('jumpsug').querySelector('button'); if (b) b.click(); }
+  else if (e.key === 'Escape') { $('jump').value = ''; $('jumpsug').hidden = true; }
+});
+document.addEventListener('click', e => { if (!e.target.closest('#jumpwrap')) $('jumpsug').hidden = true; });
+
 // One button: collapses everything while anything is open, otherwise expands everything.
 let expColFrame;
 function syncExpCol() {
