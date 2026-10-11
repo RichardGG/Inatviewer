@@ -773,9 +773,7 @@ function render(root, names, meta = TAXON_META(names)) {
       const c = document.createElement('span'); c.className = 'count';
       c.textContent = `${row.obs.length} obs`;
       const acts = document.createElement('div'); acts.className = 'acts';
-      const star = mkBtn('ib on', '★', 'Preferred observation', () => {});
-      star.style.cursor = 'default';
-      acts.append(star, mkExt(cur));
+      acts.append(mkExt(cur)); // no star on the preferred observation itself; it's set from the other observations
       info.append(a, c, acts);
       if (others.length) {
         const more = document.createElement('button');
