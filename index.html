@@ -276,7 +276,6 @@
       <button class="secondary" id="shuffle" title="Randomise the order of groups and species. Tap again for a new order.">🔀 Shuffle</button>
       <button class="secondary" id="unshuffle" title="Back to the default order" hidden>Default order</button></span>
       <span id="recentTools" hidden>
-        <button class="secondary" id="rlayout" title="Switch between list and photo grid">▦ Grid</button>
         <button class="secondary" id="runique" title="One entry per species, using your starred (or newest) observation">◉ Unique species</button>
         <button class="secondary" id="rshuffle" title="Random order. Tap again for a new order.">🔀 Shuffle</button>
         <button class="secondary" id="rdefault" title="Back to newest first" hidden>Newest first</button>
@@ -1050,9 +1049,9 @@ const VIEW_KEY = 'inat_view_v2'; // v2: Recent is now the default tab
 let view = 'recent';
 try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent', 'explore'].includes(v) ? v : 'recent'; } catch {}
 
-const LAYOUT_KEY = 'inat_recent_layout_v2', UNIQUE_KEY = 'inat_recent_unique'; // v2: grid is now the default
-let recentLayout = 'grid', recentSeed = null, recentUnique = false;
-try { recentLayout = localStorage.getItem(LAYOUT_KEY) === 'list' ? 'list' : 'grid'; recentUnique = localStorage.getItem(UNIQUE_KEY) === '1'; } catch {}
+const UNIQUE_KEY = 'inat_recent_unique';
+let recentSeed = null, recentUnique = false;
+try { recentUnique = localStorage.getItem(UNIQUE_KEY) === '1'; } catch {}
 
 // One entry per species: my starred observation if there is one, otherwise the newest one with a photo.
 // _n = how many observations of the species, _last = date it was last seen.
@@ -1073,70 +1072,18 @@ const recentDate = o => o._last ?? o.date ?? '';
 
 function renderRecent(obs) {
   const el = $('recent');
-  const grid = recentLayout === 'grid';
   const shuffled = recentSeed != null;
   let list = recentUnique ? uniqueSpecies(obs) : [...obs];
-  if (grid) list = list.filter(o => photosOf(o).length); // the gallery is photos only
+  list = list.filter(o => photosOf(o).length); // the gallery is photos only
   list = shuffled ? list.sort((a, b) => shuffleKey(a.id, recentSeed) - shuffleKey(b.id, recentSeed))
                   : list.sort((a, b) => recentDate(b).localeCompare(recentDate(a)) || b.id - a.id);
-  const PAGE = grid ? 60 : 30;
+  const PAGE = 60;
   const gridEl = document.createElement('div'); gridEl.className = 'rgrid';
-  const target = () => grid ? gridEl : el;
   let shown = 0, lastKey = null;
   el.replaceChildren();
   const moreBtn = document.createElement('button');
   moreBtn.className = 'secondary'; moreBtn.style.marginTop = '10px';
 
-  function card(o) {
-    const ph = photosOf(o);
-    const wrap = document.createElement('div'); wrap.className = 'sp';
-    const d = document.createElement('div'); d.className = 'species';
-    const btn = document.createElement('button');
-    btn.className = 'imgbtn'; btn.type = 'button'; btn.title = 'View full screen';
-    if (ph.length) {
-      const img = document.createElement('img');
-      img.alt = ''; img.loading = 'lazy'; img.src = sized(ph[0], 'medium');
-      img.onerror = () => { if (img.src !== ph[0]) img.src = ph[0]; };
-      btn.append(img);
-      if (ph.length > 1) {
-        const b = document.createElement('span'); b.className = 'badge'; b.textContent = `1/${ph.length}`;
-        btn.append(b);
-      }
-      btn.onclick = () => openSpecies(o.tid, o);
-    }
-    const info = document.createElement('div'); info.className = 'info';
-    const a = document.createElement('a');
-    a.className = 't'; a.href = `https://www.inaturalist.org/taxa/${o.tid}`; a.target = '_blank'; a.rel = 'noopener';
-    speciesLink(a, o.tid);
-    if (o.common) a.append(o.common + ' ');
-    const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = o.name;
-    a.append(sci);
-    const dt = document.createElement('span'); dt.className = 'count';
-    dt.textContent = o._n != null ? `last seen ${o._last || 'date unknown'} · ${o._n} obs` : (o.date || 'date unknown');
-    const fs = favStats().get(o.tid);
-    const isNew = o._n != null ? !!(fs && fs.newN > 0) : isNewObs(o);
-    const acts = document.createElement('div'); acts.className = 'acts';
-    const star = document.createElement('button');
-    star.type = 'button'; star.className = 'ib'; star.title = star.ariaLabel = 'Use as preferred photo for this species';
-    const paint = () => { const on = prefs[o.tid] === o.id; star.textContent = on ? '★' : '☆'; star.classList.toggle('on', on); };
-    function setPreferred() {
-      setFav(o.tid, o.id);
-      log(`preferred observation for ${o.name} (taxon ${o.tid}) set to ${o.id}`);
-      paint();
-    }
-    star.onclick = setPreferred; paint();
-    const ext = obsLink(o);
-    const here = document.createElement('button');
-    here.type = 'button'; here.className = 'ib'; here.textContent = '🌍';
-    here.title = here.ariaLabel = 'Most observed species where this was seen';
-    here.onclick = () => exploreFromObs(o);
-    acts.append(star, ext, here);
-    info.append(a, dt);
-    if (isNew) { const nt = document.createElement('span'); nt.className = 'pillnew'; nt.textContent = o._n != null ? `↻ ${fs.newN} new since favourite` : '↻ new since favourite'; info.append(nt); }
-    info.append(acts);
-    d.append(btn, info); wrap.append(d);
-    return wrap;
-  }
   function tile(o) {
     const ph = photosOf(o);
     const t = document.createElement('div');
@@ -1170,16 +1117,16 @@ function renderRecent(obs) {
           : 'Date unknown (use "Re-download observations" to fill in dates)';
         frag.append(h); lastKey = key;
       }
-      frag.append(grid ? tile(o) : card(o));
+      frag.append(tile(o));
     }
     shown = Math.min(list.length, shown + PAGE);
-    target().insertBefore(frag, !grid && moreBtn.isConnected ? moreBtn : null);
+    gridEl.append(frag);
     if (shown < list.length) {
       moreBtn.textContent = `Show more (${list.length - shown} left)`;
       if (!moreBtn.isConnected) el.append(moreBtn);
     } else moreBtn.remove();
   }
-  if (grid) el.append(gridEl);
+  el.append(gridEl);
   moreBtn.onclick = more;
   more();
 }
@@ -1522,6 +1469,12 @@ async function openSpecies(id, focusObs) {
       const meta = [o.date || 'date unknown', placeLabel(o)].filter(Boolean).join(' · ');
       cap.append(el('span', 'count', meta));
       cap.append(obsLink(o)); // the favourite star lives on the observation tiles below
+      if ((o.pids || []).length) {
+        const here = el('button', 'ib', '🌍'); here.type = 'button';
+        here.title = here.ariaLabel = 'Most observed species where this was seen';
+        here.onclick = () => { detail.close(); setTimeout(() => exploreFromObs(o), 60); };
+        cap.append(here);
+      }
       if (isNewObs(o)) cap.append(el('span', 'pillnew', 'NEW since favourite'));
       heroBox.append(cap);
     }
@@ -2206,16 +2159,10 @@ function toast(msg) {
 })();
 
 function syncRecentTools() {
-  $('rlayout').textContent = recentLayout === 'grid' ? '☰ List' : '▦ Grid';
   $('rdefault').hidden = recentSeed == null;
   $('runique').classList.toggle('active', recentUnique);
   $('runique').setAttribute('aria-pressed', String(recentUnique));
 }
-$('rlayout').onclick = () => {
-  recentLayout = recentLayout === 'grid' ? 'list' : 'grid';
-  try { localStorage.setItem(LAYOUT_KEY, recentLayout); } catch {}
-  syncRecentTools(); show(true);
-};
 $('runique').onclick = () => {
   recentUnique = !recentUnique;
   try { localStorage.setItem(UNIQUE_KEY, recentUnique ? '1' : '0'); } catch {}
