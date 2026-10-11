@@ -129,6 +129,18 @@
   .dbody { flex:1; overflow-y:auto; padding:12px 16px 48px; }
   .dbody > * { max-width:720px; margin-left:auto; margin-right:auto; }
   .dbody h2 { font-size:1.25rem; margin:14px auto 6px; } .dbody h3 { font-size:1rem; margin:20px auto 8px; }
+  .herobox { max-width:640px !important; }
+  .carousel { position:relative; border-radius:10px; overflow:hidden; background:#111; }
+  .ctrack { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; }
+  .ctrack::-webkit-scrollbar { display:none; }
+  .cslide { flex:0 0 100%; scroll-snap-align:center; height:min(58vh, 440px); display:flex; align-items:center; justify-content:center; }
+  .cslide img { max-width:100%; max-height:100%; object-fit:contain; cursor:zoom-in; }
+  .ccnt { position:absolute; right:8px; bottom:8px; pointer-events:none; }
+  .cnav { position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.45); color:#fff; border:0; }
+  .cnav.prev { left:8px; } .cnav.next { right:8px; }
+  @media (hover:none) { .cnav { display:none; } }
+  .ccap { display:flex; align-items:center; gap:8px; margin:8px 0 0; flex-wrap:wrap; }
+  .mine .alt.sel { outline:3px solid var(--accent); outline-offset:-3px; }
   .dhero { width:100%; max-width:420px !important; aspect-ratio:1; object-fit:cover; border-radius:10px; display:block; background:var(--line); cursor:zoom-in; }
   .crumbs { font-size:12px; color:var(--muted); line-height:1.8; }
   .crumbs button { background:none; padding:0 2px; color:var(--accent); font-size:12px; }
@@ -794,14 +806,7 @@ function render(root, names, meta = TAXON_META(names)) {
     wrap.className = 'sp';
     let showAlts = false;
 
-    function openViewer(o, row) {
-      viewer.open({
-        obs: o, photos: photosOf(o),
-        title: row.common || row.name,
-        isPreferred: () => preferred(row).id === o.id,
-        setPreferred: () => { setPref(row, o); },
-      });
-    }
+    function openViewer(o, row) { openSpecies(o.tid, o); }
     function setPref(row, o) {
       setFav(row.tid, o.id);
       log(`preferred observation for ${row.name} (taxon ${row.tid}) set to ${o.id}`);
@@ -1097,11 +1102,7 @@ function renderRecent(obs) {
         const b = document.createElement('span'); b.className = 'badge'; b.textContent = `1/${ph.length}`;
         btn.append(b);
       }
-      btn.onclick = () => viewer.open({
-        obs: o, photos: ph, title: o.common || o.name,
-        isPreferred: () => prefs[o.tid] === o.id,
-        setPreferred,
-      });
+      btn.onclick = () => openSpecies(o.tid, o);
     }
     const info = document.createElement('div'); info.className = 'info';
     const a = document.createElement('a');
@@ -1149,11 +1150,7 @@ function renderRecent(obs) {
     b.append(im);
     if (ph.length > 1) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `1/${ph.length}`; b.append(n); }
     { const fs = favStats().get(o.tid); if (o._n != null ? (fs && fs.newN > 0) : isNewObs(o)) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.textContent = 'NEW'; b.append(nt); } }
-    b.onclick = () => viewer.open({
-      obs: o, photos: ph, title: o.common || o.name,
-      isPreferred: () => prefs[o.tid] === o.id,
-      setPreferred: () => { setFav(o.tid, o.id); log(`preferred observation for ${o.name} (taxon ${o.tid}) set to ${o.id}`); },
-    });
+    b.onclick = () => openSpecies(o.tid, o);
     // the name opens the species detail
     const cap = document.createElement('a');
     cap.className = 'cap'; cap.textContent = o.common || o.name;
@@ -1376,11 +1373,7 @@ $('dfrom').onchange = $('dto').onchange = scheduleShow;
 function obsPopup(o) {
   const ph = photosOf(o);
   const el = document.createElement('div'); el.className = 'mp';
-  const open = () => viewer.open({
-    obs: o, photos: ph, title: o.common || o.name,
-    isPreferred: () => prefs[o.tid] === o.id,
-    setPreferred: () => { setFav(o.tid, o.id); log(`preferred observation for ${o.name} set to ${o.id}`); },
-  });
+  const open = () => openSpecies(o.tid, o);
   if (ph.length) {
     const im = document.createElement('img');
     im.src = sized(ph[0], 'medium'); im.alt = ''; im.onclick = open;
@@ -1477,7 +1470,7 @@ async function loadTaxonDetail(id) {
   return slimT;
 }
 
-async function openSpecies(id) {
+async function openSpecies(id, focusObs) {
   const mineObs = state.obs.filter(o => o.tid === id || o.anc.includes(id));
   const hint = state.names[id] || mineObs.find(o => o.tid === id) || {};
   const body = $('dbody');
@@ -1486,6 +1479,72 @@ async function openSpecies(id) {
   $('dext').href = `https://www.inaturalist.org/taxa/${id}`;
   detail.open();
   body.scrollTop = 0;
+  const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
+
+  // ---- hero: a swipeable carousel of the focused observation's photos (rendered immediately from local data) ----
+  const photoObs = mineObs.filter(o => photosOf(o).length);
+  let focus = focusObs ? (mineObs.find(x => x.id === focusObs.id) || focusObs)
+                       : (photoObs.find(o => prefs[o.tid] === o.id) || photoObs[0] || null);
+  let taxonPhoto = '';
+  const heroBox = el('div', 'herobox');
+  body.append(heroBox);
+  const placeLabel = o => { const c = placeChain(o).filter(x => x !== UNKNOWN_LOC); return c.length ? PLACE_META.get(c[c.length - 1]).name : ''; };
+  let mineGrid = null, banner = null;
+
+  function renderHero(o) {
+    heroBox.replaceChildren();
+    const ph = o ? photosOf(o) : [];
+    const title = $('dtitle').textContent;
+    if (ph.length || taxonPhoto) {
+      const car = el('div', 'carousel'), track = el('div', 'ctrack');
+      const urls = ph.length ? ph : [taxonPhoto];
+      urls.forEach((u, i) => {
+        const s = el('div', 'cslide'), im = el('img'); im.alt = '';
+        im.src = ph.length ? sized(u, 'large') : u; if (i > 0) im.loading = 'lazy';
+        im.onerror = () => { if (im.src !== u) im.src = u; };
+        if (ph.length) im.onclick = () => viewer.open({ obs: o, photos: ph, title,
+          isPreferred: () => prefs[o.tid] === o.id, setPreferred: () => chooseFav(o) }, idx());
+        s.append(im); track.append(s);
+      });
+      const idx = () => Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+      car.append(track);
+      if (urls.length > 1) {
+        const cnt = el('span', 'badge ccnt', `1/${urls.length}`);
+        track.addEventListener('scroll', () => { cnt.textContent = `${idx() + 1}/${urls.length}`; });
+        const mk = (cls, txt, d) => { const b = el('button', 'ib cnav ' + cls, txt); b.type = 'button'; b.setAttribute('aria-label', d < 0 ? 'Previous photo' : 'Next photo');
+          b.onclick = () => track.scrollBy({ left: d * track.clientWidth, behavior: 'smooth' }); return b; };
+        car.append(cnt, mk('prev', '‹', -1), mk('next', '›', 1));
+      }
+      heroBox.append(car);
+    }
+    if (o) {
+      const cap = el('div', 'ccap');
+      const meta = [o.date || 'date unknown', placeLabel(o)].filter(Boolean).join(' · ');
+      cap.append(el('span', 'count', meta));
+      const st = el('button', 'ib' + (prefs[o.tid] === o.id ? ' on' : ''), prefs[o.tid] === o.id ? '★' : '☆');
+      st.type = 'button'; st.title = prefs[o.tid] === o.id ? 'This is your favourite' : 'Make this your favourite photo for the species';
+      st.onclick = () => chooseFav(o);
+      cap.append(st, obsLink(o));
+      if (isNewObs(o)) cap.append(el('span', 'pillnew', 'NEW since favourite'));
+      heroBox.append(cap);
+    }
+  }
+  function chooseFav(o) {
+    setFav(o.tid, o.id);
+    log(`preferred observation for ${o.name} set to ${o.id}`);
+    mineGrid?.querySelectorAll('.alt').forEach(c => { const s = c.querySelector('.star'); if (s) s.textContent = c.dataset.obs === String(o.id) ? '★' : '☆'; });
+    mineGrid?.querySelectorAll('.newtag').forEach(x => x.remove());
+    banner?.remove(); banner = null;
+    renderHero(focus || o);
+    show(true);
+  }
+  function selectObs(o) {
+    focus = o; renderHero(o);
+    mineGrid?.querySelectorAll('.alt').forEach(c => c.classList.toggle('sel', c.dataset.obs === String(o.id)));
+    body.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  renderHero(focus);
+
   const loading = document.createElement('p'); loading.className = 'status'; loading.textContent = 'Loading details…';
   body.append(loading);
 
@@ -1496,18 +1555,8 @@ async function openSpecies(id) {
   const name = t?.name || hint.name || `#${id}`, common = t?.common || hint.common || '';
   $('dtitle').textContent = common || name;
 
-  const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
-
-  // hero: my preferred photo if I have one, otherwise iNaturalist's default photo
-  const ordered = [...mineObs].filter(o => photosOf(o).length);
-  const star = ordered.find(o => prefs[o.tid] === o.id) || ordered[0];
-  const heroSrc = star ? sized(photosOf(star)[0], 'medium') : t?.photo;
-  if (heroSrc) {
-    const hero = el('img', 'dhero'); hero.src = heroSrc; hero.alt = '';
-    if (star) { hero.title = 'Your photo'; hero.onclick = () => viewer.open({ obs: star, photos: photosOf(star), title: common || name,
-      isPreferred: () => prefs[star.tid] === star.id, setPreferred: () => { setFav(star.tid, star.id); } }); }
-    body.append(hero);
-  }
+  taxonPhoto = t?.photo || '';
+  if (!focus && taxonPhoto) renderHero(null);
   const h2 = el('h2', '', common || name); body.append(h2);
   if (common) { const s = el('div', 'sci', name); s.style.margin = '-4px auto 6px'; body.append(s); }
   const tags = el('div');
@@ -1527,7 +1576,6 @@ async function openSpecies(id) {
   addTag(mc ? `✓ You have ${mc} observation${mc > 1 ? 's' : ''}` : 'Not yet seen by you');
   body.append(tags);
   const dstats = favStats().get(id);
-  let banner = null;
   if (dstats && dstats.newN > 0) {
     banner = el('div', 'banner');
     banner.append(`↻ ${dstats.newN} new observation${dstats.newN > 1 ? 's' : ''} since you chose your favourite. `);
@@ -1539,7 +1587,6 @@ async function openSpecies(id) {
     banner = el('div', 'banner', '☆ No favourite chosen yet. Tap the ☆ on a photo below to pick one.');
     body.append(banner);
   }
-  let mineGrid = null;
   if (err) body.append(Object.assign(el('p', 'status error', `Could not load details: ${err}`)));
 
   if (t?.ancestors?.length) {
@@ -1569,15 +1616,15 @@ async function openSpecies(id) {
     const grid = el('div', 'mine'); mineGrid = grid;
     for (const o of [...mineObs].sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id)) {
       const ph = photosOf(o);
-      const cell = el('div', 'alt');
-      const pic = el('button', 'pic'); pic.type = 'button';
+      const cell = el('div', 'alt'); cell.dataset.obs = o.id;
+      if (focus && o.id === focus.id) cell.classList.add('sel');
+      const pic = el('button', 'pic'); pic.type = 'button'; pic.title = 'Show in the carousel above';
       if (ph.length) {
         const im = el('img'); im.src = sized(ph[0], 'medium'); im.alt = ''; im.loading = 'lazy'; pic.append(im);
-        pic.onclick = () => viewer.open({ obs: o, photos: ph, title: common || name,
-          isPreferred: () => prefs[o.tid] === o.id, setPreferred: () => { setFav(o.tid, o.id); log(`preferred observation for ${o.name} set to ${o.id}`); } });
+        pic.onclick = () => selectObs(o);
       }
       const st = el('button', 'ib star', prefs[o.tid] === o.id ? '★' : '☆'); st.type = 'button'; st.title = 'Use as preferred photo';
-      st.onclick = () => { setFav(o.tid, o.id); grid.querySelectorAll('.star').forEach(s => s.textContent = '☆'); st.textContent = '★'; grid.querySelectorAll('.newtag').forEach(x => x.remove()); banner?.remove(); show(true); };
+      st.onclick = () => chooseFav(o);
       cell.append(pic, st, obsLink(o, 'ib ext'));
       if (isNewObs(o)) cell.append(el('span', 'newtag', 'NEW'));
       if (o.date) { const d = el('span', 'badge', o.date); d.style.left = '4px'; d.style.right = 'auto'; cell.append(d); }
