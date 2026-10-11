@@ -121,11 +121,15 @@
   .nb a { display:flex; align-items:center; gap:8px; margin:0 0 6px; color:#222; text-decoration:none; font-size:13px; }
   .nb img { width:48px; height:48px; border-radius:6px; object-fit:cover; flex:none; }
   .rgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(112px, 1fr)); gap:4px; }
+  @media (min-width: 900px) { main { max-width:1200px; } .rgrid { grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:8px; } .tile .cap { font-size:14px; padding:22px 10px 8px; } }
+  @media (min-width: 1500px) { main { max-width:1500px; } .rgrid { grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); } }
   .rgrid .dh { grid-column:1 / -1; }
-  .tile { position:relative; padding:0; border:0; border-radius:6px; overflow:hidden; background:var(--line); cursor:zoom-in; aspect-ratio:1; }
+  .tile { position:relative; border-radius:6px; overflow:hidden; background:var(--line); aspect-ratio:1; }
+  .tile .pic { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; border-radius:0; background:none; cursor:zoom-in; }
   .tile img { width:100%; height:100%; object-fit:cover; display:block; }
   .tile .cap { position:absolute; left:0; right:0; bottom:0; padding:14px 6px 4px; color:#fff; font-size:11px; text-align:left;
-               background:linear-gradient(transparent, rgba(0,0,0,.65)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+               background:linear-gradient(transparent, rgba(0,0,0,.65)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; text-decoration:none; z-index:1; }
+  .tile .cap:hover { text-decoration:underline; }
   .tile .badge { top:4px; right:4px; bottom:auto; }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   /* full-screen viewer */
@@ -216,14 +220,13 @@
     </div>
     </div><!-- /filterwrap -->
     <div class="tabs" role="tablist">
+      <button id="tabRecent" role="tab">Recent</button>
       <button id="tabTree" role="tab">Taxonomy</button>
       <button id="tabPlace" role="tab">Place</button>
-      <button id="tabRecent" role="tab">Recent</button>
       <button id="tabExplore" role="tab">Common here</button>
     </div>
     <div class="toolbar">
-      <span id="treeTools"><button class="secondary" id="expand">Expand all</button>
-      <button class="secondary" id="collapse">Collapse all</button>
+      <span id="treeTools"><button class="secondary" id="expcol">Collapse all</button>
       <button class="secondary" id="shuffle" title="Randomise the order of groups and species. Tap again for a new order.">🔀 Shuffle</button>
       <button class="secondary" id="unshuffle" title="Back to the default order" hidden>Default order</button></span>
       <span id="recentTools" hidden>
@@ -881,6 +884,7 @@ function render(root, names, meta = TAXON_META(names)) {
   }
   fill(root, frag, 0);
   $('tree').replaceChildren(frag);
+  if (typeof scheduleExpCol === 'function') scheduleExpCol();
   return collect(root).size;
 }
 
@@ -941,13 +945,13 @@ async function ensurePlaces() {
 }
 
 // ---------- recent view ----------
-const VIEW_KEY = 'inat_view';
-let view = 'tree';
-try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent', 'explore'].includes(v) ? v : 'tree'; } catch {}
+const VIEW_KEY = 'inat_view_v2'; // v2: Recent is now the default tab
+let view = 'recent';
+try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent', 'explore'].includes(v) ? v : 'recent'; } catch {}
 
-const LAYOUT_KEY = 'inat_recent_layout', UNIQUE_KEY = 'inat_recent_unique';
-let recentLayout = 'list', recentSeed = null, recentUnique = false;
-try { recentLayout = localStorage.getItem(LAYOUT_KEY) === 'grid' ? 'grid' : 'list'; recentUnique = localStorage.getItem(UNIQUE_KEY) === '1'; } catch {}
+const LAYOUT_KEY = 'inat_recent_layout_v2', UNIQUE_KEY = 'inat_recent_unique'; // v2: grid is now the default
+let recentLayout = 'grid', recentSeed = null, recentUnique = false;
+try { recentLayout = localStorage.getItem(LAYOUT_KEY) === 'list' ? 'list' : 'grid'; recentUnique = localStorage.getItem(UNIQUE_KEY) === '1'; } catch {}
 
 // One entry per species: my starred observation if there is one, otherwise the newest one with a photo.
 // _n = how many observations of the species, _last = date it was last seen.
@@ -1034,21 +1038,28 @@ function renderRecent(obs) {
   }
   function tile(o) {
     const ph = photosOf(o);
+    const t = document.createElement('div');
+    t.className = 'tile';
+    t.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'tile'; b.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
+    b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'View photos');
     const im = document.createElement('img');
     im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
     im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
     b.append(im);
-    const cap = document.createElement('span'); cap.className = 'cap'; cap.textContent = o.common || o.name;
-    b.append(cap);
     if (ph.length > 1) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `1/${ph.length}`; b.append(n); }
     b.onclick = () => viewer.open({
       obs: o, photos: ph, title: o.common || o.name,
       isPreferred: () => prefs[o.tid] === o.id,
       setPreferred: () => { prefs[o.tid] = o.id; savePrefs(); log(`preferred observation for ${o.name} (taxon ${o.tid}) set to ${o.id}`); },
     });
-    return b;
+    // the name opens the species detail
+    const cap = document.createElement('a');
+    cap.className = 'cap'; cap.textContent = o.common || o.name;
+    cap.href = `https://www.inaturalist.org/taxa/${o.tid}`; cap.target = '_blank'; cap.rel = 'noopener';
+    speciesLink(cap, o.tid);
+    t.append(b, cap);
+    return t;
   }
   function more() {
     const frag = document.createDocumentFragment();
@@ -1990,7 +2001,6 @@ function toast(msg) {
   tree.addEventListener('contextmenu', e => { if (e.target.closest('summary')) e.preventDefault(); });
 })();
 
-$('expand').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = true);
 function syncRecentTools() {
   $('rlayout').textContent = recentLayout === 'grid' ? '☰ List' : '▦ Grid';
   $('rdefault').hidden = recentSeed == null;
@@ -2012,7 +2022,20 @@ $('rdefault').onclick = () => { recentSeed = null; syncRecentTools(); show(true)
 syncRecentTools();
 $('shuffle').onclick = () => { shuffleSeed = Math.floor(Math.random() * 2 ** 31); $('unshuffle').hidden = false; show(true); };
 $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = true; show(true); };
-$('collapse').onclick = () => document.querySelectorAll('#tree details').forEach(d => d.open = false);
+// One button: collapses everything while anything is open, otherwise expands everything.
+let expColFrame;
+function syncExpCol() {
+  const open = [...document.querySelectorAll('#tree details.g')].some(d => d.open);
+  $('expcol').textContent = open ? 'Collapse all' : 'Expand all';
+}
+const scheduleExpCol = () => { cancelAnimationFrame(expColFrame); expColFrame = requestAnimationFrame(syncExpCol); };
+$('expcol').onclick = () => {
+  const ds = [...document.querySelectorAll('#tree details.g')];
+  const open = ds.some(d => d.open);
+  ds.forEach(d => { d.open = !open; });
+  syncExpCol();
+};
+$('tree').addEventListener('toggle', scheduleExpCol, true); // toggle doesn't bubble; catch it in the capture phase
 
 setView(view);
 $('follow').checked = !!area;
