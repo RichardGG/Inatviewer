@@ -2173,21 +2173,27 @@ $('rdefault').onclick = () => { recentSeed = null; syncRecentTools(); show(true)
 syncRecentTools();
 $('shuffle').onclick = () => { shuffleSeed = Math.floor(Math.random() * 2 ** 31); $('unshuffle').hidden = false; show(true); };
 $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = true; show(true); };
-// ---------- sticky tab/control bar that hides on scroll down and returns on scroll up ----------
+// ---------- sticky tab/control bar: hides while scrolling down, slides back in on any scroll up (like a mobile browser's toolbar) ----------
 (() => {
   const bar = $('stickybar');
   let lastY = scrollY, hidden = false, frame = 0;
   const setVar = () => document.documentElement.style.setProperty('--bar-h', hidden ? '0px' : `${bar.offsetHeight}px`);
+  function setHidden(v) {
+    if (v === hidden) return;
+    hidden = v;
+    bar.classList.toggle('hide', v);
+    if (v && bar.contains(document.activeElement)) document.activeElement.blur(); // a focused control must not keep it open
+    setVar();
+  }
   function update() {
     frame = 0;
     const y = scrollY, dy = y - lastY;
-    const stuck = bar.getBoundingClientRect().top <= 0.5 && y > 0;
-    bar.classList.toggle('stuck', stuck);
-    if (Math.abs(dy) >= 6 || y < 120) {
-      const next = y > 160 && dy > 0 && !bar.contains(document.activeElement); // hide only after scrolling down past the top
-      if (Math.abs(dy) >= 6) lastY = y;
-      if (next !== hidden && (Math.abs(dy) >= 6 || y < 120)) { hidden = next; bar.classList.toggle('hide', hidden); setVar(); }
-    }
+    bar.classList.toggle('stuck', y > 0 && bar.getBoundingClientRect().top <= 0.5);
+    if (y < 80) { lastY = y; setHidden(false); return; }       // near the top: always show
+    if (Math.abs(dy) < 4) return;                               // ignore jitter, keep the reference point
+    lastY = y;
+    if (dy > 0) { if (y > 120 && $('jumpsug').hidden) setHidden(true); }  // scrolling down: tuck away
+    else setHidden(false);                                                  // scrolling up: bring back
   }
   addEventListener('scroll', () => { if (!frame) frame = requestAnimationFrame(update); }, { passive: true });
   addEventListener('resize', setVar);
