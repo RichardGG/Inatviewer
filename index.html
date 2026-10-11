@@ -26,7 +26,7 @@
   /* tree: shallow nesting + sticky group headings (offset per depth, set via --d) */
   details.g { margin:0; padding-left:3px; border-left:2px solid var(--line); }
   #tree > details.g { padding-left:0; border-left:0; }
-  details.g > summary { --h:30px; position:sticky; top:calc(var(--bar-h, 0px) + var(--d) * var(--h)); transition:top .2s; z-index:calc(40 - var(--d));
+  details.g > summary { --h:30px; position:sticky; top:calc(var(--d) * var(--h)); z-index:calc(40 - var(--d));
     height:var(--h); display:flex; align-items:center; gap:6px; cursor:pointer; list-style:none;
     background:var(--card); border-bottom:1px solid var(--line); white-space:nowrap; font-size:14px; }
   details.g > summary::-webkit-details-marker { display:none; }
@@ -81,7 +81,7 @@
     main { padding-bottom:calc(84px + env(safe-area-inset-bottom)); }
     #toast { bottom:calc(88px + env(safe-area-inset-bottom)) !important; }
   }
-  .dh { position:sticky; top:var(--bar-h, 0px); transition:top .2s; z-index:5; background:var(--card); padding:6px 0; font-size:13px; font-weight:600;
+  .dh { position:sticky; top:0; z-index:5; background:var(--card); padding:6px 0; font-size:13px; font-weight:600;
         color:var(--muted); border-bottom:1px solid var(--line); }
   #recent .sp { border-left:0; padding-left:0; }
   [hidden] { display:none !important; }
@@ -108,8 +108,7 @@
   @keyframes slideInL { from { opacity:0; transform:translateX(-36px); } to { opacity:1; transform:none; } }
   .swipe-next #tree, .swipe-next #recent, .swipe-next #explore { animation:slideInR .22s ease-out; }
   .swipe-prev #tree, .swipe-prev #recent, .swipe-prev #explore { animation:slideInL .22s ease-out; }
-  #stickybar { position:sticky; top:0; z-index:60; background:var(--bg); margin:0 -16px 6px; padding:6px 16px 0; transition:top .22s ease, box-shadow .2s; }
-  #stickybar.stuck:not(.hide) { box-shadow:0 2px 8px rgba(0,0,0,.18); }
+  #controls { margin:0 0 6px; }
   .cls { padding:4px 12px; border-radius:16px; border:1px solid var(--line); background:var(--card); color:var(--fg); font-size:13px; }
   .clsrow { display:flex; gap:6px; overflow-x:auto; padding:0 0 6px; margin:0 0 8px; scrollbar-width:thin; }
   .clsrow .cls { flex:none; }
@@ -274,7 +273,7 @@
       </div>
     </div>
     </div><!-- /filterwrap -->
-    <div id="stickybar">
+    <div id="controls">
     <div class="tabs" role="tablist">
       <button id="tabRecent" role="tab">Recent</button>
       <button id="tabTree" role="tab">Taxonomy</button>
@@ -298,7 +297,7 @@
       </span>
       <span id="summary" class="status" style="align-self:center"></span>
     </div>
-    </div><!-- /stickybar -->
+    </div><!-- /controls -->
     <div id="locTools" class="row" style="margin:0 0 10px" hidden>
       <span id="locnote" class="status"></span>
     </div>
@@ -2234,35 +2233,6 @@ $('tlayout').onclick = () => {
 };
 syncTreeLayoutBtn();
 $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = true; show(true); };
-// ---------- sticky tab/control bar: hides while scrolling down, slides back in on any scroll up (like a mobile browser's toolbar) ----------
-(() => {
-  const bar = $('stickybar');
-  let lastY = scrollY, hidden = false, frame = 0;
-  const setVar = () => document.documentElement.style.setProperty('--bar-h', hidden ? '0px' : `${bar.offsetHeight}px`);
-  function setHidden(v) {
-    if (v === hidden) return;
-    hidden = v;
-    bar.classList.toggle('hide', v);
-    bar.style.top = v ? `-${bar.offsetHeight + 16}px` : '0px';
-    if (v && bar.contains(document.activeElement)) document.activeElement.blur(); // a focused control must not keep it open
-    setVar();
-  }
-  function update() {
-    frame = 0;
-    const y = scrollY, dy = y - lastY;
-    bar.classList.toggle('stuck', y > 0 && bar.getBoundingClientRect().top <= 0.5);
-    if (y < 80) { lastY = y; setHidden(false); return; }       // near the top: always show
-    if (Math.abs(dy) < 4) return;                               // ignore jitter, keep the reference point
-    lastY = y;
-    if (dy > 0) { if (y > 120 && $('jumpsug').hidden) setHidden(true); }  // scrolling down: tuck away
-    else setHidden(false);                                                  // scrolling up: bring back
-  }
-  addEventListener('scroll', () => { if (!frame) frame = requestAnimationFrame(update); }, { passive: true });
-  addEventListener('resize', setVar);
-  new ResizeObserver(setVar).observe(bar);
-  setVar();
-})();
-
 // ---------- swipe left/right to change tab ----------
 (() => {
   const order = ['recent', 'tree', 'place', 'explore'];
