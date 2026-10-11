@@ -229,8 +229,12 @@
 <main>
   <header class="top">
     <h1>iNat Viewer</h1>
-    <button class="ib" id="acct" aria-label="Account and sync" title="Account &amp; sync" aria-expanded="false"><i data-i="settings"></i></button>
+    <span class="ibgroup">
+      <button class="ib" id="share" aria-label="Share link" title="Share a link to this view" hidden><i data-i="share-2"></i></button>
+      <button class="ib" id="acct" aria-label="Account and sync" title="Account &amp; sync" aria-expanded="false"><i data-i="settings"></i></button>
+    </span>
   </header>
+  <div id="viewing" class="banner" hidden></div>
   <div id="status" class="status" role="status"></div>
 
   <div class="card" id="login" hidden>
@@ -259,6 +263,13 @@
       <button id="forget" class="secondary">Log out</button>
       <button id="full" class="secondary" title="Re-download all observations (picks up edits, new IDs and extra photos). Cached taxonomy is reused, so only observations are fetched.">Re-download observations</button>
     </div>
+    <div style="margin:12px 0 0">
+      <label for="viewuser"><strong>View someone else's observations</strong></label>
+      <div class="row" style="margin-top:6px">
+        <input id="viewuser" placeholder="iNaturalist username" autocomplete="off" spellcheck="false" style="flex:1;min-width:0;padding:8px 10px;font:inherit;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">
+        <button id="viewgo" class="secondary">View</button>
+      </div>
+    </div>
     <p class="status" id="favhint" hidden>Your cached observations don't include iNaturalist favourites yet. Use "Re-download observations" once to read them; favourited photos then become the thumbnails.</p>
     <details style="margin:10px 0 0;padding:0;border:0" id="logwrap">
       <summary class="status">Debug log</summary>
@@ -281,6 +292,7 @@
         <button class="ib tb" id="bdate" aria-label="Date" title="Date"><i data-i="calendar"></i></button>
         <button class="ib tb" id="areabtn" aria-label="Map area" title="Map area" aria-expanded="false"><i data-i="map-pin"></i></button>
         <button class="ib tb" id="bclass" aria-label="Groups" title="Groups (birds, plants…)"><i data-i="paw-print"></i></button>
+        <button class="ib tb" id="bcmp" aria-label="Compare" title="Compare with another user" hidden><i data-i="git-compare"></i></button>
         <button class="ib tb" id="bfav" aria-label="Favourites" title="Favourite photos"><i data-i="star"></i></button>
       </div>
       <span class="sp1"></span>
@@ -299,6 +311,7 @@
     </div>
     <div id="controls">
     <div id="summary" class="status"></div>
+    <button class="secondary" id="loadall" hidden style="margin:0 0 8px">Load full history</button>
     <div id="filterwrap">
       <div id="chips"></div>
       <div class="card fpanel" id="psearch" hidden>
@@ -322,6 +335,11 @@
       </div>
       <div class="card fpanel" id="pclass" hidden>
         <div id="fclasses" class="clsrow" role="group" aria-label="Filter by group (none selected = all)"></div>
+      </div>
+      <div class="card fpanel" id="pcmp" hidden>
+        <div id="cmpchips" class="clsrow" role="group" aria-label="Compare"></div>
+        <p class="status" id="cmpnote" style="margin:6px 0 0"></p>
+        <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
       </div>
       <div class="card fpanel" id="pfav" hidden>
         <div id="ffav" class="clsrow" role="group" aria-label="Favourite photo status"></div>
@@ -405,6 +423,10 @@ const $ = id => document.getElementById(id);
 // Lucide icons (https://lucide.dev, ISC licence), inlined so there is no network dependency.
 const ICONS = {"clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
 ICONS.heart = '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>';
+ICONS['share-2'] = "<circle cx=\"18\" cy=\"5\" r=\"3\"/> <circle cx=\"6\" cy=\"12\" r=\"3\"/> <circle cx=\"18\" cy=\"19\" r=\"3\"/> <line x1=\"8.59\" x2=\"15.42\" y1=\"13.51\" y2=\"17.49\"/> <line x1=\"15.41\" x2=\"8.59\" y1=\"6.51\" y2=\"10.49\"/>";
+ICONS['git-compare'] = "<circle cx=\"18\" cy=\"18\" r=\"3\"/> <circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M13 6h3a2 2 0 0 1 2 2v7\"/> <path d=\"M11 18H8a2 2 0 0 1-2-2V9\"/>";
+ICONS['users'] = "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/> <path d=\"M16 3.128a4 4 0 0 1 0 7.744\"/> <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/> <circle cx=\"9\" cy=\"7\" r=\"4\"/>";
+ICONS['user-round'] = "<circle cx=\"12\" cy=\"8\" r=\"5\"/> <path d=\"M20 21a8 8 0 0 0-16 0\"/>";
 function ic(name, size = 20, filled = false) {
   return `<svg class="lc" xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 }
@@ -449,7 +471,7 @@ async function oauthLogin() {
   try { localStorage.setItem(CLIENT_KEY, id); } catch {}
   const verifier = rand(48), st = rand(16);
   const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
-  try { sessionStorage.setItem('inat_pkce', JSON.stringify({ verifier, st })); } catch (e) { log('sessionStorage failed: ' + e, 'e'); }
+  try { sessionStorage.setItem('inat_pkce', JSON.stringify({ verifier, st })); sessionStorage.setItem('inat_resume', location.search); } catch (e) { log('sessionStorage failed: ' + e, 'e'); }
   const url = `${OAUTH.authorize}?` + new URLSearchParams({
     client_id: id, redirect_uri: redirectUri(), response_type: 'code',
     code_challenge: challenge, code_challenge_method: 'S256', state: st,
@@ -462,7 +484,8 @@ async function oauthLogin() {
 async function oauthCallback() {
   const q = new URLSearchParams(location.search);
   if (!q.has('code') && !q.has('error')) return false;
-  history.replaceState({}, '', redirectUri());
+  history.replaceState({}, '', redirectUri() + startSearch); // restore the shared-link parameters
+  try { sessionStorage.removeItem('inat_resume'); } catch {}
   if (q.has('error')) { status(`OAuth error: ${q.get('error_description') || q.get('error')}`, true); log(`oauth error: ${q}`, 'e'); return true; }
   let saved = {};
   try { saved = JSON.parse(sessionStorage.getItem('inat_pkce') || '{}'); sessionStorage.removeItem('inat_pkce'); } catch {}
@@ -559,11 +582,12 @@ function hasFavTid(tid) {
   if (sig !== faveTidSig) { faveTids = new Set(); for (const o of state.obs) if (o.fav) faveTids.add(o.tid); faveTidSig = sig; }
   return faveTids.has(tid);
 }
-const isNewObs = o => { const m = prefMeta[o.tid]; return !!(m && hasFavTid(o.tid) && o.id > m.max); };
+const isNewObs = o => { const m = prefMeta[o.tid]; return !isOther() && !!(m && hasFavTid(o.tid) && o.id > m.max); };
 
 // Toggle the iNaturalist fave of an observation (optimistic, reverted on failure; needs a login).
 // onChange runs right after the optimistic update and again after a revert.
 async function toggleFav(o, onChange = () => {}) {
+  if (isOther()) { toast("Favourites can't be changed while viewing someone else's observations."); return false; }
   const want = !isFavObs(o);
   const token = $('token').value.trim().replace(/^Bearer\s+/i, '');
   if (!token) { // faves live on iNaturalist, so they need a login
@@ -641,6 +665,12 @@ const idb = {
       });
     } catch (e) { log(`IndexedDB set(${k}) failed: ${e}`, 'w'); }
   },
+  async del(k) {
+    try {
+      const db = await this.open();
+      await new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = res; t.onerror = () => rej(t.error); });
+    } catch (e) { log(`IndexedDB del(${k}) failed: ${e}`, 'w'); }
+  },
   async clear() {
     try {
       const db = await this.open();
@@ -652,21 +682,59 @@ const idb = {
   },
 };
 
-// State: user {id, login}, obs [slim records], names {taxonId: {id,name,rank,common}}
-let state = { user: null, obs: [], names: {}, places: {}, updated: null };
+// ---------- whose observations are shown ----------
+// A shared link looks like ?u=<login>&tab=… ; after the OAuth redirect the query is restored from sessionStorage.
+let startSearch = location.search;
+try { if (/[?&]code=/.test(startSearch)) startSearch = sessionStorage.getItem('inat_resume') || ''; } catch {}
+const urlParams = new URLSearchParams(startSearch);
+const lc = s => (s || '').toLowerCase();
+let viewLogin = (urlParams.get('u') || '').trim();
+let meLogin = ''; try { meLogin = localStorage.getItem('inat_me') || ''; } catch {}
+const isOther = () => !!viewLogin && lc(viewLogin) !== lc(meLogin); // true: read-only view of someone else
+const dsKey = login => 'ds:' + lc(login);
+// The other person's observations, used for comparing: me while viewing a shared link, else the last person I viewed.
+let cmp = { login: '', obs: [] };
+
+// State = the dataset being viewed: user {id, login}, obs [slim records], complete (whole history loaded?), plus the shared taxon/place names.
+let state = { user: null, obs: [], complete: true, total: null, names: {}, places: {}, updated: null };
 
 async function loadCache() {
-  const [user, obs, names, updated, places] = await Promise.all(['user', 'obs', 'names', 'updated', 'places'].map(k => idb.get(k)));
-  if (user && obs) state = { user, obs, names: names || {}, places: places || {}, updated };
-  log(`cache: ${state.obs.length} observations, ${Object.keys(state.names).length} taxa` +
-      (state.updated ? `, saved ${state.updated}` : ' (empty)'));
+  const [names, places] = await Promise.all([idb.get('names'), idb.get('places')]);
+  state.names = names || {}; state.places = places || {};
+  // migrate the single-user cache of earlier versions into a per-user dataset
+  const [lu, lo, lupd] = await Promise.all(['user', 'obs', 'updated'].map(k => idb.get(k)));
+  if (lu && lo) {
+    if (!(await idb.get(dsKey(lu.login)))) await idb.set(dsKey(lu.login), { user: lu, obs: lo, complete: true, updated: lupd });
+    if (!meLogin) { meLogin = lu.login; try { localStorage.setItem('inat_me', meLogin); } catch {} }
+    await Promise.all(['user', 'obs', 'updated'].map(k => idb.del(k)));
+    log(`migrated cache to per-user storage for ${lu.login}`);
+  }
+  const target = viewLogin || meLogin;
+  if (target) {
+    const ds = await idb.get(dsKey(target));
+    if (ds) Object.assign(state, { user: ds.user, obs: ds.obs || [], complete: ds.complete !== false, total: ds.total ?? null, updated: ds.updated });
+    else state.user = { id: null, login: target };
+  }
+  await loadCompare();
+  log(`cache: ${state.obs.length} observations for ${state.user?.login || '(nobody yet)'}, ${Object.keys(state.names).length} taxa` +
+      (state.updated ? `, saved ${state.updated}` : ' (empty)') + (cmp.login ? `; compare with ${cmp.login} (${cmp.obs.length})` : ''));
 }
-async function saveCache() {
-  state.updated = new Date().toISOString();
-  await Promise.all([idb.set('user', state.user), idb.set('obs', state.obs),
-                     idb.set('names', state.names), idb.set('places', state.places), idb.set('updated', state.updated)]);
-  log(`cache saved (${state.obs.length} obs, ${Object.keys(state.names).length} taxa)`);
+// Load the comparison partner's cached observations (never fetches).
+async function loadCompare() {
+  let partner = '';
+  if (isOther()) partner = meLogin;
+  else { try { partner = localStorage.getItem('inat_partner') || ''; } catch {} }
+  cmp = { login: partner, obs: [] };
+  if (partner) { const ds = await idb.get(dsKey(partner)); cmp.obs = ds?.obs || []; }
 }
+async function saveDataset(ds = state) {
+  ds.updated = new Date().toISOString();
+  const jobs = [idb.set('names', state.names), idb.set('places', state.places)];
+  if (ds.user?.login) jobs.push(idb.set(dsKey(ds.user.login), { user: ds.user, obs: ds.obs, complete: ds.complete, total: ds.total, updated: ds.updated }));
+  await Promise.all(jobs);
+  log(`cache saved (${ds.user?.login || '?'}: ${ds.obs.length} obs, ${Object.keys(state.names).length} taxa)`);
+}
+const saveCache = () => saveDataset(state);
 
 function status(msg, err) {
   $('status').textContent = msg;
@@ -740,28 +808,53 @@ function slim(o) {
   };
 }
 
-async function fetchNewObservations(token, userId, afterId) {
-  const fresh = []; // also appended to state.obs and saved after every page
+// Newer observations first-in-id order after afterId (also used for the very first full load of my own account).
+async function fetchNewObservations(token, userParam, afterId, ds = state) {
+  const fresh = []; // also appended to ds.obs and saved after every page
   let lastId = afterId, total = null, skipped = 0;
   for (;;) {
-    const d = await api(`/observations?user_id=${userId}&per_page=200&order_by=id&order=asc&id_above=${lastId}`, token);
+    const d = await api(`/observations?user_id=${userParam}&per_page=200&order_by=id&order=asc&id_above=${lastId}`, token);
     if (total === null) total = d.total_results;
     if (!d.results.length) break;
+    if (!ds.user?.id && d.results[0].user) ds.user = { id: d.results[0].user.id, login: d.results[0].user.login };
     const page = [];
     for (const o of d.results) {
       if (o.taxon?.ancestor_ids?.length) page.push(slim(o)); else skipped++;
     }
     fresh.push(...page);
-    state.obs.push(...page);
+    ds.obs.push(...page);
     lastId = d.results[d.results.length - 1].id;
-    await saveCache(); // resume point: next run continues from the highest cached id
-    if (!$('results').hidden || fresh.length === page.length) show();
+    await saveDataset(ds); // resume point: next run continues from the highest cached id
+    if (ds === state && (!$('results').hidden || fresh.length === page.length)) show();
     status(`Fetched ${fresh.length + skipped} of ${total} new observations…`);
     if (d.results.length < 200) break;
     await sleep(700);
   }
   log(`fetched ${fresh.length} new identified observations (${skipped} unidentified skipped)`);
   return fresh;
+}
+
+// Older observations, newest first, below beforeId (0 = from the newest). Stops after `cap` observations;
+// ds.complete becomes true once the beginning of the account has been reached.
+async function fetchOlder(token, userParam, beforeId, cap, ds = state) {
+  let lastId = beforeId, added = 0, first = true;
+  for (;;) {
+    const d = await api(`/observations?user_id=${userParam}&per_page=200&order_by=id&order=desc` + (lastId ? `&id_below=${lastId}` : ''), token);
+    if (first) { ds.total = d.total_results; first = false; }
+    if (!d.results.length) { ds.complete = true; break; }
+    if (!ds.user?.id && d.results[0].user) ds.user = { id: d.results[0].user.id, login: d.results[0].user.login };
+    for (const o of d.results) if (o.taxon?.ancestor_ids?.length) { ds.obs.push(slim(o)); added++; }
+    lastId = d.results[d.results.length - 1].id;
+    await saveDataset(ds);
+    if (ds === state) show();
+    status(`Fetched ${ds.obs.length} of ${ds.total ?? '?'} observations…`);
+    if (d.results.length < 200) { ds.complete = true; break; }
+    if (added >= cap) break;
+    await sleep(700);
+  }
+  await saveDataset(ds);
+  log(`fetched ${added} older observations (complete=${ds.complete})`);
+  return added;
 }
 
 async function fetchMissingTaxa(ids) {
@@ -812,6 +905,7 @@ const viewer = {
   el: $('viewer'), track: $('vtrack'), isOpen: false, ctx: null, idx: 0,
   open(ctx, start = 0) {
     this.ctx = ctx;
+    $('vstar').hidden = isOther();
     this.track.replaceChildren();
     ctx.photos.forEach((url, i) => {
       const s = document.createElement('div'); s.className = 'slide';
@@ -1205,6 +1299,7 @@ function syncYearOptions() {
 
 // ---- class filter (my observations): matched on ancestor taxon ids, or names once the taxonomy is loaded ----
 const filterClasses = new Set();
+let cmpMode = ''; // '' | 'missing' (species the other person hasn't seen) | 'common' (seen by both)
 let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
                     47158: 'Insecta', 47119: 'Arachnida', 47115: 'Mollusca', 47126: 'Plantae', 47170: 'Fungi' };
@@ -1219,9 +1314,10 @@ function classMatch(o) {
 // Observations passing the date, group and favourite-status filters, before the area filter.
 function textFiltered() {
   const range = dateRange();
-  if (!range && !filterClasses.size && !favMode) return state.obs;
-  const stats = favMode ? favStats() : null;
+  if (!range && !filterClasses.size && !favMode && !cmpMode) return state.obs;
+  const stats = favMode ? favStats() : null, other = cmpMode ? cmpSpecies() : null;
   return state.obs.filter(o => {
+    if (cmpMode) { const has = other.has(speciesIdOf(o) ?? o.tid); if (cmpMode === 'missing' ? has : !has) return false; }
     if (favMode) { const s = stats.get(o.tid); if (!(favMode === 'need' ? needsFav(s) : s && s.newN > 0)) return false; }
     if (range && !(o.date && o.date >= range[0] && o.date <= range[1])) return false;
     if (filterClasses.size && !classMatch(o)) return false;
@@ -1277,8 +1373,9 @@ function drawChips() {
     () => { filterClasses.clear(); try { localStorage.setItem('inat_fclass', ''); } catch {} drawFilterChips(); scheduleShow(); }, 'Clear group filter');
   if (favMode) add(favMode === 'need' ? 'star' : 'refresh-cw', favMode === 'need' ? 'Needs favourite' : 'New since favourite',
     () => { favMode = ''; drawFilterChips(); scheduleShow(); }, 'Clear favourite filter');
+  if (cmpMode) add('git-compare', cmpLabel(cmpMode), () => { cmpMode = ''; drawCmpChips(); scheduleShow(); }, 'Clear comparison');
   const has = (id, on) => $(id).classList.toggle('has', !!on);
-  has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
+  has('bcmp', cmpMode); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
 }
 // Largest circle that fits inside the map's current view (with a little margin).
 function viewportCircle() {
@@ -1297,7 +1394,7 @@ function drawArea(a = area) {
 let suppressMove = false;
 function moveMap(fn) { suppressMove = true; try { fn(); } finally { suppressMove = false; } }
 
-const markerKey = () => `${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
+const markerKey = () => `${cmpMode}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
 function drawAreaMarkers() {
   if (!areaMap) return;
   markerSig = markerKey();
@@ -1339,7 +1436,7 @@ async function openAreaPanel(open) {
   drawAreaMarkers();
 }
 // Icon bar: each filter icon opens its own small panel (one at a time); the map-area panel is one of them too.
-const PANELS = { bsearch: 'psearch', bdate: 'pdate', bclass: 'pclass', bfav: 'pfav' };
+const PANELS = { bsearch: 'psearch', bdate: 'pdate', bclass: 'pclass', bcmp: 'pcmp', bfav: 'pfav' };
 function closePanels(except) {
   for (const [btn, pan] of Object.entries(PANELS)) if (pan !== except) { $(pan).hidden = true; $(btn).classList.remove('open'); }
   if (except !== 'areapanel' && !$('areapanel').hidden) { openAreaPanel(false); $('areabtn').classList.remove('open'); }
@@ -1350,6 +1447,7 @@ for (const [btn, pan] of Object.entries(PANELS)) {
     closePanels(pan);
     $(pan).hidden = !opening; $(btn).classList.toggle('open', opening);
     if (opening && btn === 'bsearch') $('jump').focus();
+    if (opening && btn === 'bcmp') drawCmpChips();
   };
 }
 $('areabtn').onclick = () => {
@@ -1392,10 +1490,12 @@ function obsPopup(o) {
   if (ph.length) {
     const v = document.createElement('button'); v.className = 'secondary';
     v.textContent = ph.length > 1 ? `View ${ph.length} photos` : 'View photo'; v.onclick = open; acts.append(v);
+    if (!isOther()) {
     const st = document.createElement('button'); st.type = 'button'; st.className = 'ib';
     const paint = () => { const on = isFavObs(o); setIcon(st, 'star', 18, on); st.classList.toggle('on', on); };
     st.title = 'Favourite on iNaturalist'; st.onclick = () => toggleFav(o, () => { paint(); show(true); });
     paint(); acts.append(st);
+    }
   }
   acts.append(obsLink(o));
   el.append(t, d, acts);
@@ -1585,7 +1685,12 @@ async function openSpecies(id, focusObs) {
     if (t.obsCount) addTag(`${t.obsCount.toLocaleString()} observations on iNaturalist`);
   }
   const mc = mineObs.length;
-  addTag(mc ? `✓ You have ${mc} observation${mc > 1 ? 's' : ''}` : 'Not yet seen by you');
+  const who = isOther() ? `@${state.user?.login || viewLogin}` : 'You';
+  addTag(mc ? `✓ ${who} ${isOther() ? 'has' : 'have'} ${mc} observation${mc > 1 ? 's' : ''}` : `Not yet seen by ${isOther() ? who : 'you'}`);
+  if (cmp.obs.length) {
+    const n = cmp.obs.filter(o => o.tid === id || o.anc.includes(id)).length, whoCmp = isOther() ? 'You' : `@${cmp.login}`;
+    addTag(n ? `✓ ${whoCmp} ${isOther() ? 'have' : 'has'} ${n}` : `Not seen by ${isOther() ? 'you' : `@${cmp.login}`}`);
+  }
   body.append(tags);
   const dstats = favStats().get(id);
   if (dstats && dstats.newN > 0) {
@@ -1636,7 +1741,7 @@ async function openSpecies(id, focusObs) {
         const im = el('img'); im.src = sized(ph[0], 'medium'); im.alt = ''; im.loading = 'lazy'; pic.append(im);
         pic.onclick = () => selectObs(o);
       }
-      const st = el('button', 'ib star'); setIcon(st, 'star', 16, isFavObs(o)); st.type = 'button'; st.title = 'Favourite on iNaturalist';
+      const st = el('button', 'ib star'); setIcon(st, 'star', 16, isFavObs(o)); st.type = 'button'; st.title = 'Favourite on iNaturalist'; st.hidden = isOther();
       st.onclick = () => starTap(o);
       cell.append(pic, st, obsLink(o, 'ib ext'));
       if (isNewObs(o)) cell.append(el('span', 'newtag', 'NEW'));
@@ -1738,15 +1843,17 @@ function speciesIdOf(o) {
   if (state.names[o.tid]?.rank === 'species') return o.tid;
   return o.anc.find(id => state.names[id]?.rank === 'species') || null;
 }
+// "Mine" for Nearby's seen/not-seen badges: the logged-in user's observations (the comparison dataset while viewing someone else).
+const myObs = () => isOther() ? cmp.obs : state.obs;
 function mySpeciesCounts() {
   const m = new Map();
-  for (const o of state.obs) { const id = speciesIdOf(o) ?? o.tid; m.set(id, (m.get(id) || 0) + 1); }
+  for (const o of myObs()) { const id = speciesIdOf(o) ?? o.tid; m.set(id, (m.get(id) || 0) + 1); }
   return m;
 }
 // My preferred photo for each species id: the starred observation if there is one, else the first with a photo.
 function myPhotoBySpecies() {
   const bySpecies = new Map();
-  for (const o of state.obs) {
+  for (const o of myObs()) {
     const id = speciesIdOf(o) ?? o.tid;
     if (!bySpecies.has(id)) bySpecies.set(id, []);
     bySpecies.get(id).push(o);
@@ -1990,7 +2097,7 @@ function renderExplore() {
   $('expnote').textContent = explore.err ? explore.err
     : explore.loading && !explore.items.length ? `Loading species for ${sel.name}…`
     : `${sel.name}: ${explore.total.toLocaleString()} species. You've seen ${seenN} of the top ${explore.items.length} shown.` +
-      (state.obs.length ? '' : ' (Load your observations to see which you have seen.)');
+      (myObs().length ? '' : isOther() ? ' (Open the compare panel to load your own observations and see which you have seen.)' : ' (Load your observations to see which you have seen.)');
   const frag = document.createDocumentFragment();
   for (const it of rows) {
     const t = it.taxon, n = mine.get(t.id);
@@ -2075,6 +2182,118 @@ drawFilterChips();
 $('expres').onchange = $('expmonth').onchange = () => loadExplore();
 $('expfilter').onchange = renderExplore;
 
+// ---------- viewing someone else's observations, comparing, sharing ----------
+let cmpSig = '', cmpSet = new Set();
+function cmpSpecies() {
+  const sig = `${cmp.login}|${cmp.obs.length}|${Object.keys(state.names).length}`;
+  if (sig !== cmpSig) { cmpSet = new Set(cmp.obs.map(o => speciesIdOf(o) ?? o.tid)); cmpSig = sig; }
+  return cmpSet;
+}
+// the comparison partner as shown in labels: "me" when looking at a shared link, "@login" when looking at my own list
+function cmpLabel(mode) { return mode === 'missing' ? `Not seen by ${isOther() ? 'me' : '@' + cmp.login}` : 'Seen by both of us'; }
+function drawCmpChips() {
+  const box = $('cmpchips'), ready = cmp.obs.length > 0;
+  box.replaceChildren();
+  for (const mode of ['missing', 'common']) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'cls' + (cmpMode === mode ? ' on' : ''); b.textContent = cmpLabel(mode); b.disabled = !ready;
+    b.setAttribute('aria-pressed', String(cmpMode === mode));
+    b.onclick = () => { cmpMode = cmpMode === mode ? '' : mode; drawCmpChips(); scheduleShow(); };
+    box.append(b);
+  }
+  const token = $('token').value.trim();
+  $('cmpload').hidden = !(isOther() && !ready && token);
+  $('cmpnote').textContent = ready ? `Comparing with ${isOther() ? 'your own' : '@' + cmp.login + "'s"} observations (${cmp.obs.length}).`
+    : isOther() ? (token ? 'Your own observations are not loaded yet.' : 'Log in (⚙) to compare with your own observations.')
+    : "View someone else's observations (⚙ → View someone else) to compare with them.";
+}
+// Fetch my own observations as the comparison dataset while viewing a shared link.
+async function loadMine() {
+  const token = $('token').value.trim().replace(/^Bearer\s+/i, '');
+  if (!token) { status('Log in to load your own observations.', true); setPanel(true); return; }
+  setBusy(true);
+  try {
+    status('Loading your observations for comparison…');
+    const me = (await api('/users/me', token)).results[0];
+    meLogin = me.login; try { localStorage.setItem('inat_me', meLogin); } catch {}
+    const cached = await idb.get(dsKey(me.login));
+    const ds = { user: { id: me.id, login: me.login }, obs: cached?.obs || [], complete: true, total: null };
+    await fetchNewObservations(token, me.id, ds.obs.reduce((m, o) => Math.max(m, o.id), 0), ds);
+    const ids = new Set(); ds.obs.forEach(o => o.anc.forEach(i => ids.add(i)));
+    await fetchMissingTaxa(ids);
+    await saveDataset(ds);
+    await loadCompare();
+    drawCmpChips(); refreshViewing(); show(true);
+    status(`Loaded ${ds.obs.length} of your observations.`);
+  } catch (e) { log(`loadMine failed: ${e.stack || e}`, 'e'); status(e.message, true); }
+  finally { setBusy(false); }
+}
+$('cmpload').onclick = loadMine;
+
+function refreshViewing() {
+  const other = isOther(), box = $('viewing');
+  box.hidden = !other;
+  if (other) {
+    box.replaceChildren();
+    box.insertAdjacentHTML('beforeend', ic('users', 16));
+    box.append(` Viewing @${state.user?.login || viewLogin}'s observations (read-only). `);
+    if (meLogin) { const b = document.createElement('button'); b.className = 'secondary'; b.textContent = 'Back to mine'; b.onclick = () => { location.href = redirectUri(); }; box.append(b); }
+  }
+  $('share').hidden = !(other || state.user?.login || meLogin);
+  $('bfav').hidden = other;
+  if (other && !$('pfav').hidden) { $('pfav').hidden = true; $('bfav').classList.remove('open'); }
+  $('bcmp').hidden = !(other || cmp.login);
+  $('loadall').hidden = state.complete !== false;
+  $('loadall').textContent = `Load full history${state.total ? ` (${state.total.toLocaleString()} observations)` : ''}`;
+}
+$('loadall').onclick = () => refresh({ moreHistory: true });
+$('viewgo').onclick = () => {
+  const name = $('viewuser').value.trim().replace(/^@/, '').replace(/^https?:\/\/www\.inaturalist\.org\/people\//, '').replace(/\/.*$/, '');
+  if (!name) return;
+  location.href = redirectUri() + '?u=' + encodeURIComponent(name);
+};
+$('viewuser').addEventListener('keydown', e => { if (e.key === 'Enter') $('viewgo').click(); });
+
+// Shared link: whose observations, plus the current tab and filters.
+function buildShareUrl() {
+  const u = isOther() ? viewLogin : (state.user?.login || meLogin);
+  if (!u) return '';
+  const p = new URLSearchParams({ u });
+  if (['recent', 'tree', 'place'].includes(view)) p.set('tab', view);
+  const dv = $('datesel').value;
+  if (dv !== 'all') { p.set('date', dv); if (dv === 'custom') { if ($('dfrom').value) p.set('from', $('dfrom').value); if ($('dto').value) p.set('to', $('dto').value); } }
+  if (filterClasses.size) p.set('cls', [...filterClasses].join(','));
+  if (area) p.set('area', `${area.lat.toFixed(4)},${area.lng.toFixed(4)},${Math.round(area.r)}`);
+  if (cmpMode) p.set('cmp', cmpMode);
+  if (recentUnique) p.set('uniq', '1');
+  return `${redirectUri()}?${p}`;
+}
+$('share').onclick = async () => {
+  const url = buildShareUrl();
+  if (!url) return toast('Log in or view someone first.');
+  log(`share link: ${url}`);
+  try { if (navigator.share) { await navigator.share({ title: 'iNat Viewer', url }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(url); toast('Link copied'); } catch { window.prompt('Copy this link', url); }
+};
+// Apply tab/filters from the address (shared link). Called once at startup.
+function applyUrlState() {
+  const g = k => urlParams.get(k);
+  const tab = g('tab');
+  if (['recent', 'tree', 'place'].includes(tab)) view = tab;
+  const dv = g('date');
+  if (dv && /^(week|month|year|custom|y\d{4})$/.test(dv)) {
+    const sel = $('datesel');
+    if (![...sel.options].some(o => o.value === dv)) { const op = new Option(dv.slice(1), dv); sel.insertBefore(op, [...sel.options].find(o => o.value === 'custom')); }
+    sel.value = dv; $('customdates').hidden = dv !== 'custom';
+    if (g('from')) $('dfrom').value = g('from'); if (g('to')) $('dto').value = g('to');
+  }
+  if (g('cls')) { filterClasses.clear(); g('cls').split(',').filter(c => EXP_CLASSES.some(x => x[0] === c)).forEach(c => filterClasses.add(c)); drawFilterChips(); }
+  const ar = (g('area') || '').split(',').map(Number);
+  if (ar.length === 3 && ar.every(Number.isFinite) && ar[2] > 0) { area = { lat: ar[0], lng: ar[1], r: ar[2] }; $('follow').checked = true; }
+  if (['missing', 'common'].includes(g('cmp'))) cmpMode = g('cmp');
+  if (g('uniq') === '1') { recentUnique = true; syncRecentTools(); }
+}
+
 const scrollPos = {}; // scroll offset remembered per tab
 function setView(v) {
   if (v !== view) scrollPos[view] = scrollY;
@@ -2119,6 +2338,7 @@ function updateFavHint() {
   if (missing && !favHintToasted) { favHintToasted = true; toast('Re-download observations (⚙) to use your iNaturalist favourites'); }
 }
 function show(keepStatus) {
+  refreshViewing();
   if (view === 'explore') { renderExplore(); $('summary').textContent = ''; $('results').hidden = false; return; }
   if (!state.obs.length) return;
   const t0 = performance.now();
@@ -2147,50 +2367,72 @@ function show(keepStatus) {
     (view === 'recent' ? $('recent') : $('tree')).replaceChildren(empty);
   }
   $('results').hidden = false;
-  $('summary').textContent = `${state.user.login}: ${species} species · ${obs.length}${filtered ? ` of ${state.obs.length}` : ''} identified observations`;
+  $('summary').textContent = `${state.user.login}: ${species} species · ${obs.length}${filtered ? ` of ${state.obs.length}` : ''} identified observations${state.complete === false ? ` · newest ${state.obs.length}${state.total ? ' of ' + state.total.toLocaleString() : ''}` : ''}`;
   $('summary').title = state.updated ? `Updated ${new Date(state.updated).toLocaleString()}` : ''; // kept out of the sticky bar's text to save height
   log(`rendered in ${Math.round(performance.now() - t0)}ms (${species} species)`);
 }
 
 // ---------- refresh ----------
-async function refresh({ full = false, retried = false } = {}) {
+const FIRST_LOAD_CAP = 3000; // someone else's account: newest observations first, the rest on request
+async function refresh({ full = false, retried = false, moreHistory = false } = {}) {
   try { await ensureFreshJwt(); } catch (e) { log(`jwt refresh failed: ${e}`, 'e'); }
   const token = $('token').value.trim().replace(/^Bearer\s+/i, '');
-  if (!token) return status(state.obs.length ? 'Showing cached data (no token to refresh).' : 'Log in with iNaturalist (or paste an API token) first.', true);
-  store.set(token);
-  $('load').disabled = $('full').disabled = true;
+  const other = isOther();
+  if (!token && !other) return status(state.obs.length ? 'Showing cached data (no token to refresh).' : 'Log in with iNaturalist (or paste an API token) first.', true);
+  if (token) store.set(token);
+  setBusy(true);
   try {
-    status('Checking token…');
-    const me = (await api('/users/me', token)).results[0];
-    log(`authenticated as ${me.login} (id ${me.id})`);
-    if (full || state.user?.id !== me.id) {
-      if (state.user && state.user.id !== me.id) log('different user than cache; discarding cache', 'w');
-      state = { user: null, obs: [], names: state.names, places: state.places, updated: null };
+    let fresh = [];
+    if (!other) {
+      status('Checking token…');
+      const me = (await api('/users/me', token)).results[0];
+      log(`authenticated as ${me.login} (id ${me.id})`);
+      meLogin = me.login; try { localStorage.setItem('inat_me', meLogin); } catch {}
+      if (full || state.user?.id !== me.id) {
+        if (state.user?.id && state.user.id !== me.id) log('different user than cache; discarding cache', 'w');
+        Object.assign(state, { user: null, obs: [], complete: true, total: null });
+      }
+      state.user = { id: me.id, login: me.login };
+      const lastId = state.obs.reduce((m, o) => Math.max(m, o.id), 0);
+      fresh = await fetchNewObservations(token, me.id, lastId);
+      state.complete = true;
+    } else {
+      const userParam = encodeURIComponent(viewLogin);
+      try { localStorage.setItem('inat_partner', viewLogin); } catch {}
+      if (token && !meLogin) { // learn who I am so my own observations can be used for comparing
+        try { const me = (await api('/users/me', token)).results[0]; meLogin = me.login; localStorage.setItem('inat_me', meLogin); await loadCompare(); } catch (e) { log(`could not read own login: ${e.message}`, 'w'); }
+      }
+      if (full) Object.assign(state, { obs: [], complete: false, total: null });
+      if (!state.obs.length) { state.complete = false; await fetchOlder(token, userParam, 0, FIRST_LOAD_CAP); }
+      else if (moreHistory && !state.complete) { await fetchOlder(token, userParam, state.obs.reduce((m, o) => Math.min(m, o.id), Infinity), Infinity); }
+      else fresh = await fetchNewObservations(token, userParam, state.obs.reduce((m, o) => Math.max(m, o.id), 0));
+      if (!state.obs.length) throw new Error(`No public observations found for “${viewLogin}”. Check the username.`);
     }
-    state.user = { id: me.id, login: me.login };
-    const lastId = state.obs.reduce((m, o) => Math.max(m, o.id), 0);
-    const fresh = await fetchNewObservations(token, me.id, lastId);
     const ids = new Set();
     state.obs.forEach(o => o.anc.forEach(i => ids.add(i)));
     await fetchMissingTaxa(ids);
     backfillPrefMeta(); // first read of iNaturalist faves: don't flag existing observations as new
     await saveCache();
+    await loadCompare();
     show();
-    status(fresh.length ? `Done. ${fresh.length} new observations.` : 'Done. Already up to date.');
+    status(fresh.length ? `Done. ${fresh.length} new observations.` : state.complete ? 'Done. Already up to date.' : `Done. Showing the newest ${state.obs.length}${state.total ? ` of ${state.total}` : ''}.`);
   } catch (e) {
     log(`refresh failed: ${e.stack || e}`, 'e');
     if (!retried && /Token rejected/.test(e.message) && localStorage.getItem(OAUTH_KEY)) {
       log('401 with OAuth login: minting a fresh API token and retrying once', 'w');
-      try { await mintJwt(localStorage.getItem(OAUTH_KEY)); $('load').disabled = $('full').disabled = false; return refresh({ full, retried: true }); }
+      try { await mintJwt(localStorage.getItem(OAUTH_KEY)); setBusy(false); return refresh({ full, retried: true, moreHistory }); }
       catch (e2) { log(`re-mint failed: ${e2}`, 'e'); }
     }
     if (state.obs.length) show();
-    status(e.message + (state.obs.length ? ' Progress was saved; click Load to resume.' : ''), true);
+    let msg = e.message;
+    if (other && !token && /Token rejected/.test(msg)) msg = 'iNaturalist needs a login to read observations. Log in (⚙) and try again.';
+    status(msg + (state.obs.length ? ' Progress was saved; click Load to resume.' : ''), true);
     $('logwrap').open = true;
   } finally {
-    $('load').disabled = $('full').disabled = false;
+    setBusy(false);
   }
 }
+function setBusy(b) { $('load').disabled = $('full').disabled = b; $('loadall').disabled = b; }
 
 $('load').onclick = () => refresh();
 $('full').onclick = () => refresh({ full: true });
@@ -2203,7 +2445,7 @@ $('oauth').onclick = oauthLogin;
 $('redirecturi').textContent = redirectUri();
 $('clientid').value = clientId();
 $('clearcache').onclick = async () => {
-  await idb.clear(); state = { user: null, obs: [], names: {}, places: {}, updated: null };
+  await idb.clear(); state = { user: null, obs: [], complete: true, total: null, names: {}, places: {}, updated: null }; cmp = { login: '', obs: [] };
   $('results').hidden = true; log('all cached data cleared'); status('Cache cleared.');
 };
 $('copylog').onclick = () => navigator.clipboard?.writeText($('log').innerText).then(() => status('Log copied.'));
@@ -2418,8 +2660,12 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: ${navigator.userAgent}`);
+  log(`start: ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  applyUrlState();
+  setView(view);
+  drawChips();
   await loadCache();
+  drawCmpChips();
   backfillPrefMeta();
   if (state.obs.length) { show(); status('Showing cached data; refreshing…'); }
   await oauthCallback();
@@ -2427,8 +2673,8 @@ drawChips();
   if (cached) $('token').value = cached;
   authLabel();
   let hasOauth = false; try { hasOauth = !!localStorage.getItem(OAUTH_KEY); } catch {}
-  setPanel(!(cached || hasOauth)); // collapsed once signed in
-  if (cached || hasOauth) refresh().then(authLabel);
+  setPanel(!(cached || hasOauth) && !isOther()); // collapsed once signed in (or when just viewing a shared link)
+  if (cached || hasOauth || isOther()) refresh().then(authLabel);
   else if (state.obs.length) status('Showing cached data. Log in to refresh.');
 })();
 </script>
