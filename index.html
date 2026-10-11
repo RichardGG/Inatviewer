@@ -67,7 +67,7 @@
   .tabs { display:flex; gap:0; margin:0 0 10px; }
   .tabs button { flex:1; background:transparent; color:var(--muted); border:1px solid var(--line); border-radius:0; padding:9px 2px; font-size:13px; }
   .tabs button:first-child { border-radius:8px 0 0 8px; } .tabs button:last-child { border-radius:0 8px 8px 0; border-left:0; }
-  button.secondary.active { border-color:var(--accent); color:var(--accent); font-weight:600; }
+  button.secondary.active, .tb.active { border-color:var(--accent); color:var(--accent); font-weight:600; }
   .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
   /* phones: tabs become a fixed bottom navigation bar */
   @media (max-width: 899px) {
@@ -90,8 +90,10 @@
   .filters { display:flex; gap:8px; align-items:center; margin:0 0 8px; }
   .filters input[type=search] { flex:1; min-width:0; padding:9px 12px; font:inherit; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); }
   input[type=date] { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); }
+  #chips { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 8px; }
+  #chips:empty { display:none; }
   .chip { display:inline-flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--accent); color:var(--fg);
-          border-radius:16px; padding:3px 6px 3px 12px; font-size:13px; margin:0 0 8px; }
+          border-radius:16px; padding:3px 6px 3px 12px; font-size:13px; margin:0; }
   .chip button { padding:0 6px; background:none; color:var(--muted); font-size:16px; }
   #expmap { height:280px; border-radius:8px; z-index:0; }
   #jumpwrap { margin:0 0 10px; position:relative; }
@@ -109,6 +111,16 @@
   .swipe-next #tree, .swipe-next #recent, .swipe-next #explore { animation:slideInR .22s ease-out; }
   .swipe-prev #tree, .swipe-prev #recent, .swipe-prev #explore { animation:slideInL .22s ease-out; }
   #controls { margin:0 0 6px; }
+  #iconbar { display:flex; align-items:center; gap:4px; margin:0 0 6px; flex-wrap:wrap; }
+  .ibgroup { display:inline-flex; gap:4px; align-items:center; }
+  .sp1 { flex:1; }
+  .tb { width:38px; height:38px; font-size:17px; position:relative; }
+  .tb.active, .tb.open { border-color:var(--accent); color:var(--accent); }
+  .tb.has::after { content:''; position:absolute; top:3px; right:3px; width:9px; height:9px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); }
+  #summary { margin:0 0 8px; min-height:1.2em; }
+  .fpanel { margin:0 0 10px; padding:12px; }
+  .fpanel input[type=search], #psearch input[type=search] { width:100%; padding:9px 12px; font:inherit; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--fg); }
+  .fpanel .clsrow { flex-wrap:wrap; overflow:visible; margin:0; padding:0; }
   .cls { padding:4px 12px; border-radius:16px; border:1px solid var(--line); background:var(--card); color:var(--fg); font-size:13px; }
   .clsrow { display:flex; gap:6px; overflow-x:auto; padding:0 0 6px; margin:0 0 8px; scrollbar-width:thin; }
   .clsrow .cls { flex:none; }
@@ -247,32 +259,6 @@
   </div>
 
   <div id="results" hidden>
-    <div id="filterwrap">
-    <div class="filters">
-      <input type="search" id="q" placeholder="Search common species name…" autocomplete="off" spellcheck="false">
-      <select id="datesel" aria-label="Date filter" style="max-width:110px">
-        <option value="all">All dates</option><option value="week">This week</option>
-        <option value="month">This month</option><option value="year">This year</option>
-        <option value="custom">Custom…</option>
-      </select>
-      <button class="ib" id="areabtn" aria-label="Filter by map area" title="Filter by map area" aria-expanded="false">📍</button>
-    </div>
-    <div id="customdates" class="row" style="margin:0 0 8px" hidden>
-      <label class="status">From <input type="date" id="dfrom"></label>
-      <label class="status">to <input type="date" id="dto"></label>
-    </div>
-    <div id="fclasses" class="clsrow" role="group" aria-label="Filter by group (none selected = all)"></div>
-    <div id="chips"></div>
-    <div class="card" id="areapanel" hidden>
-      <p class="status" style="margin:0 0 8px">Pan and zoom the map: the orange circle always fits the current view. Turn the filter on and only observations inside the circle are shown in every view.</p>
-      <div id="areamap"></div>
-      <div class="row">
-        <label style="display:flex;align-items:center;gap:8px;flex:1;min-width:150px"><input type="checkbox" id="follow"> Filter to the map view</label>
-        <span id="radiuslabel" class="status"></span>
-        <button class="secondary" id="areafit">Show all</button>
-      </div>
-    </div>
-    </div><!-- /filterwrap -->
     <div id="controls">
     <div class="tabs" role="tablist">
       <button id="tabRecent" role="tab">Recent</button>
@@ -280,22 +266,68 @@
       <button id="tabPlace" role="tab">Place</button>
       <button id="tabExplore" role="tab">Nearby</button>
     </div>
-    <div id="jumpwrap" hidden>
-      <input type="search" id="jump" placeholder="Jump to a group or species…" autocomplete="off" spellcheck="false"
-             style="width:100%;padding:9px 12px;font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg)">
-      <div id="jumpsug" hidden></div>
+    <div id="iconbar">
+      <div id="fbtns" class="ibgroup">
+        <button class="ib tb" id="bsearch" aria-label="Search" title="Search">🔍</button>
+        <button class="ib tb" id="bdate" aria-label="Date" title="Date">📅</button>
+        <button class="ib tb" id="areabtn" aria-label="Map area" title="Map area" aria-expanded="false">📍</button>
+        <button class="ib tb" id="bclass" aria-label="Groups" title="Groups (birds, plants…)">🐾</button>
+        <button class="ib tb" id="bfav" aria-label="Favourites" title="Favourite photos">☆</button>
+      </div>
+      <span class="sp1"></span>
+      <div class="ibgroup">
+        <span id="treeTools" class="ibgroup">
+          <button class="ib tb" id="expcol" aria-label="Collapse all" title="Collapse all">⊟</button>
+          <button class="ib tb" id="tlayout" aria-label="Gallery" title="Switch between detailed cards and a photo gallery">▦</button>
+          <button class="ib tb" id="shuffle" aria-label="Shuffle" title="Randomise the order of groups and species. Tap again for a new order.">🔀</button>
+          <button class="ib tb" id="unshuffle" aria-label="Default order" title="Back to the default order" hidden>↺</button>
+        </span>
+        <span id="recentTools" class="ibgroup" hidden>
+          <button class="ib tb" id="runique" aria-label="Unique species" title="One entry per species, using your starred (or newest) observation">◉</button>
+          <button class="ib tb" id="rshuffle" aria-label="Shuffle" title="Random order. Tap again for a new order.">🔀</button>
+          <button class="ib tb" id="rdefault" aria-label="Newest first" title="Back to newest first" hidden>↺</button>
+        </span>
+      </div>
     </div>
-    <div class="toolbar">
-      <span id="treeTools"><button class="secondary" id="expcol">Collapse all</button>
-      <button class="secondary" id="tlayout" title="Switch between detailed cards and a photo gallery">▦ Gallery</button>
-      <button class="secondary" id="shuffle" title="Randomise the order of groups and species. Tap again for a new order.">🔀 Shuffle</button>
-      <button class="secondary" id="unshuffle" title="Back to the default order" hidden>Default order</button></span>
-      <span id="recentTools" hidden>
-        <button class="secondary" id="runique" title="One entry per species, using your starred (or newest) observation">◉ Unique species</button>
-        <button class="secondary" id="rshuffle" title="Random order. Tap again for a new order.">🔀 Shuffle</button>
-        <button class="secondary" id="rdefault" title="Back to newest first" hidden>Newest first</button>
-      </span>
-      <span id="summary" class="status" style="align-self:center"></span>
+    <div id="summary" class="status"></div>
+    <div id="filterwrap">
+      <div id="chips"></div>
+      <div class="card fpanel" id="psearch" hidden>
+        <input type="search" id="q" placeholder="Filter by common species name…" autocomplete="off" spellcheck="false">
+        <div id="jumpwrap" hidden>
+          <p class="status" style="margin:10px 0 4px">Jump to a group or species in the list</p>
+          <input type="search" id="jump" placeholder="Jump to…" autocomplete="off" spellcheck="false"
+                 style="width:100%;padding:9px 12px;font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)">
+          <div id="jumpsug" hidden></div>
+        </div>
+      </div>
+      <div class="card fpanel" id="pdate" hidden>
+        <select id="datesel" aria-label="Date filter" style="width:100%">
+          <option value="all">All dates</option><option value="week">This week</option>
+          <option value="month">This month</option><option value="year">This year</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <div id="customdates" class="row" style="margin:8px 0 0" hidden>
+          <label class="status">From <input type="date" id="dfrom"></label>
+          <label class="status">to <input type="date" id="dto"></label>
+        </div>
+      </div>
+      <div class="card fpanel" id="pclass" hidden>
+        <div id="fclasses" class="clsrow" role="group" aria-label="Filter by group (none selected = all)"></div>
+      </div>
+      <div class="card fpanel" id="pfav" hidden>
+        <div id="ffav" class="clsrow" role="group" aria-label="Favourite photo status"></div>
+        <p class="status" style="margin:6px 0 0">Find species that still need a favourite photo, or have new observations since you chose one.</p>
+      </div>
+      <div class="card" id="areapanel" hidden>
+        <p class="status" style="margin:0 0 8px">Pan and zoom the map: the orange circle always fits the current view. Turn the filter on and only observations inside the circle are shown in every view.</p>
+        <div id="areamap"></div>
+        <div class="row">
+          <label style="display:flex;align-items:center;gap:8px;flex:1;min-width:150px"><input type="checkbox" id="follow"> Filter to the map view</label>
+          <span id="radiuslabel" class="status"></span>
+          <button class="secondary" id="areafit">Show all</button>
+        </div>
+      </div>
     </div>
     </div><!-- /controls -->
     <div id="locTools" class="row" style="margin:0 0 10px" hidden>
@@ -1273,16 +1305,28 @@ function setArea(a) {
   $('follow').checked = !!a;
   drawArea(); drawChips(); scheduleShow();
 }
+// Active-filter chips (each removable) plus the dot on the icon of every filter that is in use.
 function drawChips() {
   const c = $('chips');
   c.replaceChildren();
-  $('areabtn').style.borderColor = area ? 'var(--accent)' : '';
-  if (!area) return;
-  const chip = document.createElement('span'); chip.className = 'chip';
-  chip.append(`📍 within ${fmtDist(area.r)} of ${area.lat.toFixed(3)}, ${area.lng.toFixed(3)}`);
-  const x = document.createElement('button'); x.textContent = '×'; x.title = 'Clear area filter'; x.setAttribute('aria-label', 'Clear area filter');
-  x.onclick = () => setArea(null);
-  chip.append(x); c.append(chip);
+  const add = (text, clear, label) => {
+    const chip = document.createElement('span'); chip.className = 'chip';
+    chip.append(text);
+    const x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.title = label; x.setAttribute('aria-label', label);
+    x.onclick = clear;
+    chip.append(x); c.append(chip);
+  };
+  const q = $('q').value.trim(), dv = $('datesel').value;
+  if (q) add(`🔍 “${q}”`, () => { $('q').value = ''; scheduleShow(); }, 'Clear search');
+  if (dv !== 'all') add(`📅 ${dv === 'custom' ? `${$('dfrom').value || '…'} → ${$('dto').value || '…'}` : $('datesel').selectedOptions[0].textContent}`,
+    () => { $('datesel').value = 'all'; $('customdates').hidden = true; scheduleShow(); }, 'Clear date filter');
+  if (area) add(`📍 within ${fmtDist(area.r)}`, () => setArea(null), 'Clear area filter');
+  if (filterClasses.size) add(`🐾 ${[...filterClasses].map(k => EXP_CLASSES.find(x => x[0] === k)[1]).join(', ')}`,
+    () => { filterClasses.clear(); try { localStorage.setItem('inat_fclass', ''); } catch {} drawFilterChips(); scheduleShow(); }, 'Clear group filter');
+  if (favMode) add(favMode === 'need' ? '☆ Needs favourite' : '↻ New since favourite',
+    () => { favMode = ''; drawFilterChips(); scheduleShow(); }, 'Clear favourite filter');
+  const has = (id, on) => $(id).classList.toggle('has', !!on);
+  has('bsearch', q); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
 }
 // Largest circle that fits inside the map's current view (with a little margin).
 function viewportCircle() {
@@ -1342,7 +1386,25 @@ async function openAreaPanel(open) {
   drawArea();
   drawAreaMarkers();
 }
-$('areabtn').onclick = () => openAreaPanel($('areapanel').hidden);
+// Icon bar: each filter icon opens its own small panel (one at a time); the map-area panel is one of them too.
+const PANELS = { bsearch: 'psearch', bdate: 'pdate', bclass: 'pclass', bfav: 'pfav' };
+function closePanels(except) {
+  for (const [btn, pan] of Object.entries(PANELS)) if (pan !== except) { $(pan).hidden = true; $(btn).classList.remove('open'); }
+  if (except !== 'areapanel' && !$('areapanel').hidden) { openAreaPanel(false); $('areabtn').classList.remove('open'); }
+}
+for (const [btn, pan] of Object.entries(PANELS)) {
+  $(btn).onclick = () => {
+    const opening = $(pan).hidden;
+    closePanels(pan);
+    $(pan).hidden = !opening; $(btn).classList.toggle('open', opening);
+    if (opening && btn === 'bsearch') $('q').focus();
+  };
+}
+$('areabtn').onclick = () => {
+  closePanels('areapanel');
+  const opening = $('areapanel').hidden;
+  openAreaPanel(opening); $('areabtn').classList.toggle('open', opening);
+};
 $('follow').onchange = () => {
   if (!areaMap) { $('follow').checked = false; return; }
   setArea($('follow').checked ? viewportCircle() : null);
@@ -2024,7 +2086,7 @@ drawClassChips();
 loadSet(filterClasses, 'inat_fclass');
 // Favourite-status chips (mutually exclusive), appended to the class chip row with live species counts.
 function favChips(box) {
-  const sep = document.createElement('span'); sep.className = 'status'; sep.textContent = '|'; sep.style.flex = 'none'; box.append(sep);
+  box.replaceChildren();
   for (const [mode, id] of [['need', 'favneed'], ['new', 'favnew']]) {
     const b = document.createElement('button');
     b.type = 'button'; b.id = id; b.className = 'cls fav' + (favMode === mode ? ' on' : '');
@@ -2044,7 +2106,7 @@ function refreshFavChips() {
   $('favnew').textContent = `↻ New since favourite · ${fresh}`;
   $('favnew').title = 'Species with observations added after you chose the favourite';
 }
-function drawFilterChips() { drawChips2($('fclasses'), filterClasses, 'inat_fclass', () => scheduleShow(), favChips); }
+function drawFilterChips() { drawChips2($('fclasses'), filterClasses, 'inat_fclass', () => scheduleShow()); favChips($('ffav')); }
 drawFilterChips();
 $('expres').onchange = $('expmonth').onchange = () => loadExplore();
 $('expfilter').onchange = renderExplore;
@@ -2065,6 +2127,7 @@ function setView(v) {
   $('jumpwrap').hidden = v === 'recent' || v === 'explore';
   $('recentTools').hidden = v !== 'recent';
   $('filterwrap').hidden = v === 'explore';
+  $('fbtns').hidden = v === 'explore';
   $('locTools').hidden = v !== 'place';
   if (v === 'explore') { initExpMap(); renderExplore(); if (explore.selected && !explore.items.length && !explore.loading) loadExplore(); }
   if (state.obs.length) show();
@@ -2089,6 +2152,7 @@ function show(keepStatus) {
   const t0 = performance.now();
   syncYearOptions();
   refreshFavChips();
+  drawChips();
   const obs = filteredObs();
   const filtered = obs.length !== state.obs.length;
   let species;
@@ -2225,7 +2289,11 @@ $('rshuffle').onclick = () => { recentSeed = Math.floor(Math.random() * 2 ** 31)
 $('rdefault').onclick = () => { recentSeed = null; syncRecentTools(); show(true); };
 syncRecentTools();
 $('shuffle').onclick = () => { shuffleSeed = Math.floor(Math.random() * 2 ** 31); $('unshuffle').hidden = false; show(true); };
-function syncTreeLayoutBtn() { $('tlayout').textContent = treeLayout === 'gallery' ? '☰ Cards' : '▦ Gallery'; }
+function syncTreeLayoutBtn() {
+  $('tlayout').textContent = treeLayout === 'gallery' ? '☰' : '▦';
+  $('tlayout').title = treeLayout === 'gallery' ? 'Switch to detailed cards' : 'Switch to photo gallery';
+  $('tlayout').setAttribute('aria-label', $('tlayout').title);
+}
 $('tlayout').onclick = () => {
   treeLayout = treeLayout === 'gallery' ? 'cards' : 'gallery';
   try { localStorage.setItem(TLAYOUT_KEY, treeLayout); } catch {}
@@ -2317,6 +2385,7 @@ function drawJump() {
 }
 function jumpTo(it) {
   $('jumpsug').hidden = true;
+  closePanels('');
   // open every ancestor group (and the target itself if it is a group) so the item is visible
   if (it.group) it.el.open = true;
   for (let d = it.el.parentElement && it.el.parentElement.closest('details.g'); d; d = d.parentElement && d.parentElement.closest('details.g')) d.open = true;
@@ -2340,7 +2409,9 @@ document.addEventListener('click', e => { if (!e.target.closest('#jumpwrap')) $(
 let expColFrame;
 function syncExpCol() {
   const open = [...document.querySelectorAll('#tree details.g')].some(d => d.open);
-  $('expcol').textContent = open ? 'Collapse all' : 'Expand all';
+  $('expcol').textContent = open ? '⊟' : '⊞';
+  $('expcol').title = open ? 'Collapse all' : 'Expand all';
+  $('expcol').setAttribute('aria-label', $('expcol').title);
 }
 const scheduleExpCol = () => { cancelAnimationFrame(expColFrame); expColFrame = requestAnimationFrame(syncExpCol); };
 $('expcol').onclick = () => {
