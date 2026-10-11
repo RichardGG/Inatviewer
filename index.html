@@ -1673,7 +1673,20 @@ async function openSpecies(id, focusObs) {
       .bindPopup(() => obsPopup(o), { minWidth: 200 }).addTo(m));
   }
   m.on('click', e => nearbyPopup(m, e.latlng, id));
-  if (dots.length) m.fitBounds(L.latLngBounds(pts).pad(0.2), { maxZoom: 11 }); else m.setView([20, 0], 2);
+  // Frame the region where the species is observed: first my own dots, then (once iNaturalist answers)
+  // the extent of all its observations plus my dots, unless the user has already moved the map.
+  let touched = false;
+  for (const ev of ['mousedown', 'touchstart', 'wheel']) mapDiv.addEventListener(ev, () => { touched = true; }, { passive: true });
+  const fit = (bounds, maxZoom) => { m.invalidateSize(); m.fitBounds(bounds, { maxZoom, animate: false, padding: [20, 20] }); };
+  if (pts.length) fit(L.latLngBounds(pts).pad(0.2), 11); else m.setView([20, 0], 2);
+  api(`/observations?taxon_id=${id}&per_page=1&return_bounds=true`).then(d => {
+    const b = d.total_bounds;
+    log(`range bounds for taxon ${id}: ${b ? JSON.stringify(b) : 'none returned'}`);
+    if (touched || !detail.isOpen || !b || ![b.swlat, b.swlng, b.nelat, b.nelng].every(Number.isFinite)) return;
+    const all = L.latLngBounds([[b.swlat, b.swlng], [b.nelat, b.nelng]]);
+    pts.forEach(p => all.extend(p));
+    fit(all.pad(0.05), 8);
+  }).catch(e => log(`range bounds lookup failed: ${e.message}`, 'w'));
   setTimeout(() => m.invalidateSize(), 50);
 }
 
