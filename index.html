@@ -97,6 +97,12 @@
   .cls { padding:4px 12px; border-radius:16px; border:1px solid var(--line); background:var(--card); color:var(--fg); font-size:13px; }
   .clsrow { display:flex; gap:6px; overflow-x:auto; padding:0 0 6px; margin:0 0 8px; scrollbar-width:thin; }
   .clsrow .cls { flex:none; }
+  .cls.fav { border-style:dashed; }
+  .newtag { position:absolute; top:6px; left:50%; transform:translateX(-50%); z-index:2; background:#d9480f; color:#fff; font-size:10px; font-weight:700; padding:1px 7px; border-radius:8px; pointer-events:none; }
+  .pillnew { display:inline-block; width:fit-content; background:#d9480f; color:#fff; border:0; font-size:12px; padding:2px 10px; border-radius:10px; cursor:pointer; }
+  .pillnofav { display:inline-block; width:fit-content; border:1px dashed var(--muted); color:var(--muted); font-size:12px; padding:1px 9px; border-radius:10px; }
+  .banner { margin:10px auto; padding:8px 12px; border-radius:8px; border:1px solid #d9480f; background:rgba(217,72,15,.08); font-size:13px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .tile .newtag { top:6px; }
   .cls.on { background:var(--accent); border-color:var(--accent); color:#fff; }
   .pill { display:inline-flex; flex-direction:column; align-items:flex-start; margin:0 6px 6px 0; padding:5px 10px; border-radius:10px;
           border:1px solid var(--line); background:var(--card); color:var(--fg); font-size:13px; line-height:1.25; }
@@ -453,6 +459,49 @@ function savePrefs() {
   try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) { log('could not save preferences: ' + e, 'w'); }
 }
 
+// ---------- favourites bookkeeping: which species lack a favourite, and which have new observations since it was set ----------
+// prefMeta[tid] = { max: highest observation id of that taxon when the favourite was chosen (or last reviewed), t: time }.
+// An observation is "new" if its id is above that mark.
+const META_KEY = 'inat_pref_meta';
+let prefMeta = {}, favVer = 0, favSig = '', favCache = null;
+try { prefMeta = JSON.parse(localStorage.getItem(META_KEY) || '{}') || {}; } catch { prefMeta = {}; }
+const savePrefMeta = () => { try { localStorage.setItem(META_KEY, JSON.stringify(prefMeta)); } catch {} };
+function maxObsId(tid) { let m = 0; for (const o of state.obs) if (o.tid === tid && o.id > m) m = o.id; return m; }
+function setFav(tid, obsId) {
+  prefs[tid] = obsId; savePrefs();
+  prefMeta[tid] = { max: maxObsId(tid), t: Date.now() }; savePrefMeta();
+  favVer++;
+}
+function dismissNew(tid) { prefMeta[tid] = { max: maxObsId(tid), t: Date.now() }; savePrefMeta(); favVer++; }
+// Favourites chosen before this feature existed have no mark: treat everything cached today as already reviewed.
+function backfillPrefMeta() {
+  let changed = false;
+  for (const tid of Object.keys(prefs)) {
+    if (prefMeta[tid]) continue;
+    const m = maxObsId(+tid);
+    if (m) { prefMeta[tid] = { max: m, t: Date.now() }; changed = true; }
+  }
+  if (changed) { savePrefMeta(); favVer++; }
+}
+const isNewObs = o => { const m = prefMeta[o.tid]; return !!(prefs[o.tid] && m && o.id > m.max); };
+// Per-taxon stats: observation count, how many have photos, whether a favourite exists, how many are new.
+function favStats() {
+  const sig = `${state.obs.length}|${favVer}`;
+  if (sig === favSig) return favCache;
+  const m = new Map();
+  for (const o of state.obs) {
+    let s = m.get(o.tid);
+    if (!s) m.set(o.tid, s = { n: 0, nPhoto: 0, hasFav: false, newN: 0 });
+    s.n++;
+    if (photosOf(o).length) s.nPhoto++;
+    if (prefs[o.tid] === o.id) s.hasFav = true;
+    if (isNewObs(o)) s.newN++;
+  }
+  favSig = sig; favCache = m;
+  return m;
+}
+const needsFav = s => !!s && s.nPhoto >= 2 && !s.hasFav;
+
 // ---------- data cache (IndexedDB) ----------
 const idb = {
   db: null,
@@ -752,7 +801,7 @@ function render(root, names, meta = TAXON_META(names)) {
       });
     }
     function setPref(row, o) {
-      prefs[row.tid] = o.id; savePrefs();
+      setFav(row.tid, o.id);
       log(`preferred observation for ${row.name} (taxon ${row.tid}) set to ${o.id}`);
       draw();
     }
@@ -790,7 +839,18 @@ function render(root, names, meta = TAXON_META(names)) {
       c.textContent = `${row.obs.length} obs`;
       const acts = document.createElement('div'); acts.className = 'acts';
       acts.append(mkExt(cur)); // no star on the preferred observation itself; it's set from the other observations
-      info.append(a, c, acts);
+      info.append(a, c);
+      const fs = favStats().get(row.tid);
+      if (fs && fs.newN > 0) {
+        const p = document.createElement('button'); p.type = 'button'; p.className = 'pillnew';
+        p.textContent = `↻ ${fs.newN} new since favourite`; p.title = 'Open details to review';
+        p.onclick = () => openSpecies(row.tid);
+        info.append(p);
+      } else if (needsFav(fs)) {
+        const p = document.createElement('span'); p.className = 'pillnofav'; p.textContent = '☆ no favourite chosen';
+        info.append(p);
+      }
+      info.append(acts);
       if (others.length) {
         const more = document.createElement('button');
         more.type = 'button'; more.className = 'more';
@@ -823,6 +883,7 @@ function render(root, names, meta = TAXON_META(names)) {
           pic.onclick = () => openViewer(o, row);
           const st = mkBtn('ib star', '☆', 'Set as preferred', () => setPref(row, o));
           cell.append(pic, st, mkExt(o, 'ib ext'));
+          if (isNewObs(o)) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.textContent = 'NEW'; cell.append(nt); }
           grid.append(cell);
         }
         wrap.append(grid);
@@ -1049,12 +1110,14 @@ function renderRecent(obs) {
     a.append(sci);
     const dt = document.createElement('span'); dt.className = 'count';
     dt.textContent = o._n != null ? `last seen ${o._last || 'date unknown'} · ${o._n} obs` : (o.date || 'date unknown');
+    const fs = favStats().get(o.tid);
+    const isNew = o._n != null ? !!(fs && fs.newN > 0) : isNewObs(o);
     const acts = document.createElement('div'); acts.className = 'acts';
     const star = document.createElement('button');
     star.type = 'button'; star.className = 'ib'; star.title = star.ariaLabel = 'Use as preferred photo for this species';
     const paint = () => { const on = prefs[o.tid] === o.id; star.textContent = on ? '★' : '☆'; star.classList.toggle('on', on); };
     function setPreferred() {
-      prefs[o.tid] = o.id; savePrefs();
+      setFav(o.tid, o.id);
       log(`preferred observation for ${o.name} (taxon ${o.tid}) set to ${o.id}`);
       paint();
     }
@@ -1065,7 +1128,9 @@ function renderRecent(obs) {
     here.title = here.ariaLabel = 'Most observed species where this was seen';
     here.onclick = () => exploreFromObs(o);
     acts.append(star, ext, here);
-    info.append(a, dt, acts);
+    info.append(a, dt);
+    if (isNew) { const nt = document.createElement('span'); nt.className = 'pillnew'; nt.textContent = o._n != null ? `↻ ${fs.newN} new since favourite` : '↻ new since favourite'; info.append(nt); }
+    info.append(acts);
     d.append(btn, info); wrap.append(d);
     return wrap;
   }
@@ -1081,10 +1146,11 @@ function renderRecent(obs) {
     im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
     b.append(im);
     if (ph.length > 1) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `1/${ph.length}`; b.append(n); }
+    { const fs = favStats().get(o.tid); if (o._n != null ? (fs && fs.newN > 0) : isNewObs(o)) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.textContent = 'NEW'; b.append(nt); } }
     b.onclick = () => viewer.open({
       obs: o, photos: ph, title: o.common || o.name,
       isPreferred: () => prefs[o.tid] === o.id,
-      setPreferred: () => { prefs[o.tid] = o.id; savePrefs(); log(`preferred observation for ${o.name} (taxon ${o.tid}) set to ${o.id}`); },
+      setPreferred: () => { setFav(o.tid, o.id); log(`preferred observation for ${o.name} (taxon ${o.tid}) set to ${o.id}`); },
     });
     // the name opens the species detail
     const cap = document.createElement('a');
@@ -1164,6 +1230,7 @@ function syncYearOptions() {
 
 // ---- class filter (my observations): matched on ancestor taxon ids, or names once the taxonomy is loaded ----
 const filterClasses = new Set();
+let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
                     47158: 'Insecta', 47119: 'Arachnida', 47115: 'Mollusca', 47126: 'Plantae', 47170: 'Fungi' };
 const CLASS_NAMES = new Set(Object.values(CLASS_IDS));
@@ -1178,8 +1245,10 @@ function classMatch(o) {
 function textFiltered() {
   const terms = fold($('q').value).split(/\s+/).filter(Boolean);
   const range = dateRange();
-  if (!terms.length && !range && !filterClasses.size) return state.obs;
+  if (!terms.length && !range && !filterClasses.size && !favMode) return state.obs;
+  const stats = favMode ? favStats() : null;
   return state.obs.filter(o => {
+    if (favMode) { const s = stats.get(o.tid); if (!(favMode === 'need' ? needsFav(s) : s && s.newN > 0)) return false; }
     if (range && !(o.date && o.date >= range[0] && o.date <= range[1])) return false;
     if (filterClasses.size && !classMatch(o)) return false;
     if (!terms.length) return true;
@@ -1244,7 +1313,7 @@ function drawArea(a = area) {
 let suppressMove = false;
 function moveMap(fn) { suppressMove = true; try { fn(); } finally { suppressMove = false; } }
 
-const markerKey = () => `${$('q').value}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${state.obs.length}|${textFiltered().length}`;
+const markerKey = () => `${$('q').value}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
 function drawAreaMarkers() {
   if (!areaMap) return;
   markerSig = markerKey();
@@ -1308,7 +1377,7 @@ function obsPopup(o) {
   const open = () => viewer.open({
     obs: o, photos: ph, title: o.common || o.name,
     isPreferred: () => prefs[o.tid] === o.id,
-    setPreferred: () => { prefs[o.tid] = o.id; savePrefs(); log(`preferred observation for ${o.name} set to ${o.id}`); },
+    setPreferred: () => { setFav(o.tid, o.id); log(`preferred observation for ${o.name} set to ${o.id}`); },
   });
   if (ph.length) {
     const im = document.createElement('img');
@@ -1328,7 +1397,7 @@ function obsPopup(o) {
     v.textContent = ph.length > 1 ? `View ${ph.length} photos` : 'View photo'; v.onclick = open; acts.append(v);
     const st = document.createElement('button'); st.type = 'button'; st.className = 'ib';
     const paint = () => { const on = prefs[o.tid] === o.id; st.textContent = on ? '★' : '☆'; st.classList.toggle('on', on); };
-    st.title = 'Use as preferred photo'; st.onclick = () => { prefs[o.tid] = o.id; savePrefs(); paint(); };
+    st.title = 'Use as preferred photo'; st.onclick = () => { setFav(o.tid, o.id); paint(); };
     paint(); acts.append(st);
   }
   acts.append(obsLink(o));
@@ -1434,7 +1503,7 @@ async function openSpecies(id) {
   if (heroSrc) {
     const hero = el('img', 'dhero'); hero.src = heroSrc; hero.alt = '';
     if (star) { hero.title = 'Your photo'; hero.onclick = () => viewer.open({ obs: star, photos: photosOf(star), title: common || name,
-      isPreferred: () => prefs[star.tid] === star.id, setPreferred: () => { prefs[star.tid] = star.id; savePrefs(); } }); }
+      isPreferred: () => prefs[star.tid] === star.id, setPreferred: () => { setFav(star.tid, star.id); } }); }
     body.append(hero);
   }
   const h2 = el('h2', '', common || name); body.append(h2);
@@ -1455,6 +1524,20 @@ async function openSpecies(id) {
   const mc = mineObs.length;
   addTag(mc ? `✓ You have ${mc} observation${mc > 1 ? 's' : ''}` : 'Not yet seen by you');
   body.append(tags);
+  const dstats = favStats().get(id);
+  let banner = null;
+  if (dstats && dstats.newN > 0) {
+    banner = el('div', 'banner');
+    banner.append(`↻ ${dstats.newN} new observation${dstats.newN > 1 ? 's' : ''} since you chose your favourite. `);
+    const keep = el('button', 'secondary', 'Keep my favourite'); keep.type = 'button';
+    keep.onclick = () => { dismissNew(id); banner.remove(); mineGrid?.querySelectorAll('.newtag').forEach(x => x.remove()); show(true); };
+    banner.append(keep);
+    body.append(banner);
+  } else if (needsFav(dstats)) {
+    banner = el('div', 'banner', '☆ No favourite chosen yet. Tap the ☆ on a photo below to pick one.');
+    body.append(banner);
+  }
+  let mineGrid = null;
   if (err) body.append(Object.assign(el('p', 'status error', `Could not load details: ${err}`)));
 
   if (t?.ancestors?.length) {
@@ -1481,7 +1564,7 @@ async function openSpecies(id) {
     const dates = mineObs.map(o => o.date).filter(Boolean).sort();
     body.append(el('h3', '', `My observations (${mineObs.length})`));
     if (dates.length) body.append(el('p', 'status', `First ${dates[0]} · Latest ${dates[dates.length - 1]}`));
-    const grid = el('div', 'mine');
+    const grid = el('div', 'mine'); mineGrid = grid;
     for (const o of [...mineObs].sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id)) {
       const ph = photosOf(o);
       const cell = el('div', 'alt');
@@ -1489,11 +1572,12 @@ async function openSpecies(id) {
       if (ph.length) {
         const im = el('img'); im.src = sized(ph[0], 'medium'); im.alt = ''; im.loading = 'lazy'; pic.append(im);
         pic.onclick = () => viewer.open({ obs: o, photos: ph, title: common || name,
-          isPreferred: () => prefs[o.tid] === o.id, setPreferred: () => { prefs[o.tid] = o.id; savePrefs(); log(`preferred observation for ${o.name} set to ${o.id}`); } });
+          isPreferred: () => prefs[o.tid] === o.id, setPreferred: () => { setFav(o.tid, o.id); log(`preferred observation for ${o.name} set to ${o.id}`); } });
       }
       const st = el('button', 'ib star', prefs[o.tid] === o.id ? '★' : '☆'); st.type = 'button'; st.title = 'Use as preferred photo';
-      st.onclick = () => { prefs[o.tid] = o.id; savePrefs(); grid.querySelectorAll('.star').forEach(s => s.textContent = '☆'); st.textContent = '★'; show(true); };
+      st.onclick = () => { setFav(o.tid, o.id); grid.querySelectorAll('.star').forEach(s => s.textContent = '☆'); st.textContent = '★'; grid.querySelectorAll('.newtag').forEach(x => x.remove()); banner?.remove(); show(true); };
       cell.append(pic, st, obsLink(o, 'ib ext'));
+      if (isNewObs(o)) cell.append(el('span', 'newtag', 'NEW'));
       if (o.date) { const d = el('span', 'badge', o.date); d.style.left = '4px'; d.style.right = 'auto'; cell.append(d); }
       grid.append(cell);
     }
@@ -1864,7 +1948,7 @@ const EXP_CLASSES = [['Aves', 'Birds'], ['Mammalia', 'Mammals'], ['Reptilia', 'R
 const expClasses = new Set();
 try { (localStorage.getItem('inat_expclass') || '').split(',').filter(c => EXP_CLASSES.some(x => x[0] === c)).forEach(c => expClasses.add(c)); } catch {}
 // Draw a row of toggle chips bound to a Set of class keys; persists to localStorage and calls onChange.
-function drawChips2(box, set, storeKey, onChange) {
+function drawChips2(box, set, storeKey, onChange, extra) {
   box.replaceChildren();
   for (const [val, label] of EXP_CLASSES) {
     const b = document.createElement('button');
@@ -1873,17 +1957,40 @@ function drawChips2(box, set, storeKey, onChange) {
     b.onclick = () => {
       set.has(val) ? set.delete(val) : set.add(val);
       try { localStorage.setItem(storeKey, [...set].join(',')); } catch {}
-      drawChips2(box, set, storeKey, onChange); onChange();
+      drawChips2(box, set, storeKey, onChange, extra); onChange();
     };
     box.append(b);
   }
+  if (extra) extra(box);
 }
 const loadSet = (set, key) => { try { (localStorage.getItem(key) || '').split(',').filter(c => EXP_CLASSES.some(x => x[0] === c)).forEach(c => set.add(c)); } catch {} };
 function drawClassChips() { drawChips2($('expclasses'), expClasses, 'inat_expclass', () => loadExplore()); }
 drawClassChips();
 // Same chips as a filter on my own observations (Recent, Taxonomy, Place).
 loadSet(filterClasses, 'inat_fclass');
-function drawFilterChips() { drawChips2($('fclasses'), filterClasses, 'inat_fclass', () => scheduleShow()); }
+// Favourite-status chips (mutually exclusive), appended to the class chip row with live species counts.
+function favChips(box) {
+  const sep = document.createElement('span'); sep.className = 'status'; sep.textContent = '|'; sep.style.flex = 'none'; box.append(sep);
+  for (const [mode, id] of [['need', 'favneed'], ['new', 'favnew']]) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.id = id; b.className = 'cls fav' + (favMode === mode ? ' on' : '');
+    b.setAttribute('aria-pressed', String(favMode === mode));
+    b.onclick = () => { favMode = favMode === mode ? '' : mode; drawFilterChips(); scheduleShow(); };
+    box.append(b);
+  }
+  refreshFavChips();
+}
+function refreshFavChips() {
+  if (!$('favneed')) return;
+  const st = favStats();
+  let need = 0, fresh = 0;
+  for (const s of st.values()) { if (needsFav(s)) need++; if (s.newN > 0) fresh++; }
+  $('favneed').textContent = `☆ Needs favourite · ${need}`;
+  $('favneed').title = 'Species with 2 or more photos but no favourite chosen';
+  $('favnew').textContent = `↻ New since favourite · ${fresh}`;
+  $('favnew').title = 'Species with observations added after you chose the favourite';
+}
+function drawFilterChips() { drawChips2($('fclasses'), filterClasses, 'inat_fclass', () => scheduleShow(), favChips); }
 drawFilterChips();
 $('expres').onchange = $('expmonth').onchange = () => loadExplore();
 $('expfilter').onchange = renderExplore;
@@ -1916,6 +2023,7 @@ function show(keepStatus) {
   if (!state.obs.length) return;
   const t0 = performance.now();
   syncYearOptions();
+  refreshFavChips();
   const obs = filteredObs();
   const filtered = obs.length !== state.obs.length;
   let species;
@@ -2163,6 +2271,7 @@ drawChips();
 (async () => {
   log(`start: ${navigator.userAgent}`);
   await loadCache();
+  backfillPrefMeta();
   if (state.obs.length) { show(); status('Showing cached data; refreshing…'); }
   await oauthCallback();
   const cached = store.get();
