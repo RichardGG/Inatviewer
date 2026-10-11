@@ -27,7 +27,7 @@
   /* tree: shallow nesting + sticky group headings (offset per depth, set via --d) */
   details.g { margin:0; padding-left:3px; border-left:2px solid var(--line); }
   #tree > details.g { padding-left:0; border-left:0; }
-  details.g > summary { --h:30px; position:sticky; top:calc(var(--d) * var(--h)); z-index:calc(40 - var(--d));
+  details.g > summary { --h:30px; position:sticky; top:calc(var(--bar-h, 0px) + var(--d) * var(--h)); transition:top .2s; z-index:calc(40 - var(--d));
     height:var(--h); display:flex; align-items:center; gap:6px; cursor:pointer; list-style:none;
     background:var(--card); border-bottom:1px solid var(--line); white-space:nowrap; font-size:14px; }
   details.g > summary::-webkit-details-marker { display:none; }
@@ -85,7 +85,7 @@
     main { padding-bottom:calc(84px + env(safe-area-inset-bottom)); }
     #toast { bottom:calc(88px + env(safe-area-inset-bottom)) !important; }
   }
-  .dh { position:sticky; top:0; z-index:5; background:var(--card); padding:6px 0; font-size:13px; font-weight:600;
+  .dh { position:sticky; top:var(--bar-h, 0px); transition:top .2s; z-index:5; background:var(--card); padding:6px 0; font-size:13px; font-weight:600;
         color:var(--muted); border-bottom:1px solid var(--line); }
   #recent .sp { border-left:0; padding-left:0; }
   [hidden] { display:none !important; }
@@ -118,7 +118,8 @@
   .swipe-next #tree, .swipe-next #recent, .swipe-next #explore { animation:slideInR .22s ease-out; }
   .swipe-prev #tree, .swipe-prev #recent, .swipe-prev #explore { animation:slideInL .22s ease-out; }
   #controls { margin:0 0 6px; }
-  #iconbar { display:flex; align-items:center; gap:2px; margin:0 -16px 8px; padding:0 10px; flex-wrap:wrap; background:var(--card); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  #iconbar { position:sticky; top:0; z-index:60; display:flex; align-items:center; gap:2px; margin:0 -16px 8px; padding:0 10px; flex-wrap:wrap; background:var(--card); border-top:1px solid var(--line); border-bottom:1px solid var(--line); transition:top .22s ease, box-shadow .2s; }
+  #iconbar.stuck { box-shadow:0 2px 8px rgba(0,0,0,.18); }
   .ibgroup { display:inline-flex; gap:2px; align-items:center; }
   .sp1 { flex:1; }
   /* flat nav-bar buttons (no circles): muted icon, accent colour + underline when open/active */
@@ -266,7 +267,6 @@
   </div>
 
   <div id="results" hidden>
-    <div id="controls">
     <div class="tabs" role="tablist">
       <button id="tabRecent" role="tab"><i data-i="clock"></i><span>Recent</span></button>
       <button id="tabTree" role="tab"><i data-i="list-tree"></i><span>Taxonomy</span></button>
@@ -295,6 +295,7 @@
         </span>
       </div>
     </div>
+    <div id="controls">
     <div id="summary" class="status"></div>
     <div id="filterwrap">
       <div id="chips"></div>
@@ -2200,6 +2201,35 @@ $('rdefault').onclick = () => { recentSeed = null; syncRecentTools(); show(true)
 syncRecentTools();
 $('shuffle').onclick = () => { shuffleSeed = Math.floor(Math.random() * 2 ** 31); $('unshuffle').hidden = false; show(true); };
 $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = true; show(true); };
+// ---------- the icon bar sticks to the top: it tucks away when scrolling down and returns on any scroll up ----------
+(() => {
+  const bar = $('iconbar');
+  let lastY = scrollY, hidden = false, frame = 0;
+  const setVar = () => document.documentElement.style.setProperty('--bar-h', hidden ? '0px' : `${bar.offsetHeight}px`);
+  const panelOpen = () => !$('jumpsug').hidden || [...document.querySelectorAll('.fpanel, #areapanel')].some(p => !p.hidden);
+  function setHidden(v) {
+    if (v === hidden) return;
+    hidden = v;
+    bar.style.top = v ? `-${bar.offsetHeight + 4}px` : '0px';
+    if (v && bar.contains(document.activeElement)) document.activeElement.blur();
+    setVar();
+  }
+  function update() {
+    frame = 0;
+    const y = scrollY, dy = y - lastY;
+    bar.classList.toggle('stuck', y > 0 && bar.getBoundingClientRect().top <= 0.5 && !hidden);
+    if (y < 80) { lastY = y; setHidden(false); return; }
+    if (Math.abs(dy) < 4) return;
+    lastY = y;
+    if (dy > 0) { if (y > 120 && !panelOpen()) setHidden(true); }
+    else setHidden(false);
+  }
+  addEventListener('scroll', () => { if (!frame) frame = requestAnimationFrame(update); }, { passive: true });
+  addEventListener('resize', setVar);
+  new ResizeObserver(setVar).observe(bar);
+  setVar();
+})();
+
 // ---------- swipe left/right to change tab ----------
 (() => {
   const order = ['recent', 'tree', 'place', 'explore'];
