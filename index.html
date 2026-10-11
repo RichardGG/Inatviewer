@@ -91,6 +91,7 @@
   @keyframes flash { 0%, 40% { background:rgba(255,200,0,.4); outline:2px solid #e0a800; } 100% { background:transparent; outline:2px solid transparent; } }
   .sp, details.g { scroll-margin-top:240px; }
   /* tabs + view controls: stuck to the top, slide away while scrolling down, return on scroll up */
+  #totop { position:fixed; right:16px; bottom:20px; z-index:80; width:46px; height:46px; font-size:18px; background:var(--accent); color:#fff; border:0; box-shadow:0 3px 10px rgba(0,0,0,.35); }
   #stickybar { position:sticky; top:0; z-index:60; background:var(--bg); margin:0 -16px 6px; padding:6px 16px 0; transition:transform .22s ease, box-shadow .2s; }
   #stickybar.hide { transform:translateY(-130%); }
   #stickybar.stuck:not(.hide) { box-shadow:0 2px 8px rgba(0,0,0,.18); }
@@ -305,6 +306,7 @@
   </div>
 </main>
 
+<button id="totop" class="ib" aria-label="Jump to top" title="Jump to top" hidden>▲</button>
 <div id="toast"></div>
 
 <div id="detail" role="dialog" aria-modal="true" aria-label="Species details">
@@ -2187,6 +2189,15 @@ $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = tru
   addEventListener('resize', setVar);
   new ResizeObserver(setVar).observe(bar);
   setVar();
+})();
+
+// ---------- jump to top ----------
+(() => {
+  const btn = $('totop');
+  let frame = 0;
+  const update = () => { frame = 0; btn.hidden = scrollY < 700; };
+  addEventListener('scroll', () => { if (!frame) frame = requestAnimationFrame(update); }, { passive: true });
+  btn.onclick = () => scrollTo({ top: 0, behavior: 'smooth' });
 })();
 
 // ---------- jump-to search (Taxonomy / Place): autocomplete over group and species names, then scroll to the item ----------
