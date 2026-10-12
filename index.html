@@ -2065,7 +2065,9 @@ async function openSpecies(id, focusObs, ctx) {
   let touched = false;
   for (const ev of ['mousedown', 'touchstart', 'wheel']) mapDiv.addEventListener(ev, () => { touched = true; }, { passive: true });
   const fit = (bounds, maxZoom) => { m.invalidateSize(); m.fitBounds(bounds, { maxZoom, animate: false, padding: [20, 20] }); };
-  if (pts.length) fit(L.latLngBounds(pts).pad(0.2), 11); else m.setView([20, 0], 2);
+  const searchArea = view === 'explore' ? nearbyAreaLayer() : null; // opened from Nearby: frame the area that was searched
+  if (searchArea) { searchArea.layer.addTo(m); touched = true; fit(searchArea.bounds.pad(0.05), 14); }
+  else if (pts.length) fit(L.latLngBounds(pts).pad(0.2), 11); else m.setView([20, 0], 2);
   api(`/observations?taxon_id=${id}&per_page=1&return_bounds=true`).then(d => {
     const b = d.total_bounds;
     log(`range bounds for taxon ${id}: ${b ? JSON.stringify(b) : 'none returned'}`);
@@ -2193,6 +2195,16 @@ async function drawPlaceShape() {
     const b = expShape.getBounds();
     if (b.isValid()) { expMapObj.fitBounds(b, { animate: false, padding: [12, 12] }); if (explore.items.length && !explore.cachedAt) saveSearch(); }
   } catch (e) { log(`place boundary failed: ${e.message}`, 'w'); }
+}
+// A copy of the current Nearby search area (radius circle or place outline) for use on another map; null if there isn't one.
+function nearbyAreaLayer() {
+  const style = { color: '#d9480f', weight: 2, fillColor: '#d9480f', fillOpacity: 0.08, interactive: false };
+  if (explore.selected === 'r' && explore.point) {
+    const c = L.latLng(explore.point.lat, explore.point.lng);
+    return { layer: L.circle(c, { radius: explore.radius * 1000, ...style }), bounds: c.toBounds(explore.radius * 2000) };
+  }
+  if (expShape) { const layer = L.geoJSON(expShape.toGeoJSON(), { style: () => style }); return { layer, bounds: layer.getBounds() }; }
+  return null;
 }
 // Find the iNaturalist places that contain a point and select the default level.
 async function lookupPoint(lat, lng, label, mode = 'r') {
