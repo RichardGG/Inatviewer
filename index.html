@@ -1070,7 +1070,7 @@ function render(root, names, meta = TAXON_META(names)) {
       r.obs.push(o);
     }
     const rows = [...byTaxon.values()];
-    if (raritySort) { const rn = r => { const x = rarityOf(r.obs[0]); return x ? x.n : Infinity; }; return rows.sort((a, b) => rn(a) - rn(b) || a.name.localeCompare(b.name)); }
+    if (raritySort) { const rc = rarityCmp(); return rows.sort((a, b) => rc(rarityOf(a.obs[0]), rarityOf(b.obs[0])) || a.name.localeCompare(b.name)); }
     return shuffleSeed == null ? rows.sort((a, b) => a.name.localeCompare(b.name)) : rows.sort((a, b) => shuffleKey(a.tid) - shuffleKey(b.tid));
   }
   const preferred = row => thumbObs(row.obs);
@@ -1285,8 +1285,8 @@ function renderRecent(obs) {
   const shuffled = recentSeed != null;
   let list = recentUnique ? uniqueSpecies(obs) : [...obs];
   list = list.filter(o => photosOf(o).length); // the gallery is photos only
-  const rn = o => { const x = rarityOf(o); return x ? x.n : Infinity; };
-  list = raritySort ? list.sort((a, b) => rn(a) - rn(b) || recentDate(b).localeCompare(recentDate(a)))
+  const rc = rarityCmp();
+  list = raritySort ? list.sort((a, b) => rc(rarityOf(a), rarityOf(b)) || recentDate(b).localeCompare(recentDate(a)))
        : shuffled ? list.sort((a, b) => shuffleKey(a.id, recentSeed) - shuffleKey(b.id, recentSeed))
                   : list.sort((a, b) => recentDate(b).localeCompare(recentDate(a)) || b.id - a.id);
   const PAGE = 60;
@@ -1405,7 +1405,7 @@ function rarityBadge(r) {
 // rarity[speciesId] = { n: observations on iNaturalist, iucn: IUCN level (10 LC … 70 EX) or 0, st: status label, thr: threatened flag, t: fetched at }
 let rarity = {};
 const RARITY_TTL = 30 * 864e5;
-let rareMax = 0, rareConcern = false, raritySort = false, rarityBusy = false;
+let rareMax = 0, rareConcern = false, raritySort = '', rarityBusy = false;
 const rarityOf = o => { const id = speciesIdOf(o); return id ? rarity[id] : undefined; };
 // Prefer the global IUCN assessment, then other global lists, then place-specific ones.
 function pickStatus(t) {
@@ -1414,6 +1414,14 @@ function pickStatus(t) {
   const isIucn = c => /iucn/i.test(c.authority || '');
   const rank = c => (!c.place && isIucn(c) ? 0 : !c.place ? 1 : isIucn(c) ? 2 : 3);
   return all.sort((a, b) => rank(a) - rank(b))[0] || null;
+}
+// Comparator for the active sort on rarity records (unknown species last): 'rare' = fewest observations, 'threat' = most threatened, then fewest observations.
+function rarityCmp() {
+  const lvl = r => r.iucn >= 20 && r.iucn <= 50 ? 100 - r.iucn : r.thr ? 60 : 1000; // CR 50 → 50, EN → 60, VU → 70, NT → 80; flagged-only sits between EN and VU
+  return (a, b) => {
+    if (!a || !b) return a ? -1 : b ? 1 : 0;
+    return (raritySort === 'threat' ? lvl(a) - lvl(b) : 0) || a.n - b.n;
+  };
 }
 const isConcern = r => !!r && (r.iucn >= 20 || r.thr);
 const fmtCount = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
@@ -1529,7 +1537,7 @@ function drawChips() {
     () => { favMode = ''; drawFilterChips(); scheduleShow(); }, 'Clear favourite filter');
   if (rareMax) add('gem', `Under ${rareMax.toLocaleString()} observations worldwide`, () => { rareMax = 0; drawRarityChips(); scheduleShow(); }, 'Clear rarity filter');
   if (rareConcern) add('shield-alert', 'Conservation concern', () => { rareConcern = false; drawRarityChips(); scheduleShow(); }, 'Clear conservation filter');
-  if (raritySort) add('gem', 'Rarest first', () => { raritySort = false; drawRarityChips(); scheduleShow(); }, 'Clear rarity sort');
+  if (raritySort) add(raritySort === 'threat' ? 'shield-alert' : 'gem', raritySort === 'threat' ? 'Most threatened first' : 'Rarest first', () => { raritySort = ''; drawRarityChips(); scheduleShow(); }, 'Clear rarity sort');
   if (cmpMode) add('git-compare', cmpLabel(cmpMode), () => { cmpMode = ''; drawCmpChips(); scheduleShow(); }, 'Clear comparison');
   const has = (id, on) => $(id).classList.toggle('has', !!on);
   has('brare', rarityActive() || raritySort); has('bcmp', cmpMode); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
@@ -2337,7 +2345,7 @@ drawClassChips();
 // Same chips as a filter on my own observations (Recent, Taxonomy, Place).
 loadSet(filterClasses, 'inat_fclass');
 // Shuffling replaces any rarity sort.
-function stopRaritySort() { if (raritySort) { raritySort = false; drawRarityChips(); drawChips(); } }
+function stopRaritySort() { if (raritySort) { raritySort = ''; drawRarityChips(); drawChips(); } }
 // Rarity panel: threshold chips, conservation, sort, and the data-loading status.
 function drawRarityChips() {
   const box = $('rarechips'), opts = $('rareopts');
@@ -2354,11 +2362,13 @@ function drawRarityChips() {
     b.type = 'button'; b.className = 'cls' + (on ? ' on' : ''); b.innerHTML = ic(icon, 14) + ' ' + text; b.setAttribute('aria-pressed', String(on)); b.onclick = fn; opts.append(b);
   };
   mk('shield-alert', 'Conservation concern', rareConcern, () => { rareConcern = !rareConcern; drawRarityChips(); scheduleShow(); });
-  mk('gem', 'Rarest first', raritySort, () => {
-    raritySort = !raritySort;
-    if (raritySort) { recentSeed = null; shuffleSeed = null; $('unshuffle').hidden = true; syncRecentTools(); } // sorting and shuffling exclude each other
-    drawRarityChips(); scheduleShow();
-  });
+  for (const [mode, icon, text] of [['rare', 'gem', 'Rarest first'], ['threat', 'shield-alert', 'Most threatened first']]) {
+    mk(icon, text, raritySort === mode, () => {
+      raritySort = raritySort === mode ? '' : mode; // the two sorts exclude each other
+      if (raritySort) { recentSeed = null; shuffleSeed = null; $('unshuffle').hidden = true; syncRecentTools(); } // sorting and shuffling exclude each other
+      drawRarityChips(); scheduleShow();
+    });
+  }
   refreshRarityUI();
 }
 function refreshRarityUI() {
@@ -2550,7 +2560,7 @@ function buildShareUrl() {
   if (cmpMode) p.set('cmp', cmpMode);
   if (rareMax) p.set('rare', rareMax);
   if (rareConcern) p.set('concern', '1');
-  if (raritySort) p.set('rsort', '1');
+  if (raritySort) p.set('rsort', raritySort);
   if (recentUnique) p.set('uniq', '1');
   return `${redirectUri()}?${p}`;
 }
@@ -2579,7 +2589,7 @@ function applyUrlState() {
   if (['missing', 'common'].includes(g('cmp'))) cmpMode = g('cmp');
   if ([100, 1000, 10000, 100000].includes(+g('rare'))) rareMax = +g('rare');
   if (g('concern') === '1') rareConcern = true;
-  if (g('rsort') === '1') raritySort = true;
+  if (g('rsort') === '1' || g('rsort') === 'rare') raritySort = 'rare'; else if (g('rsort') === 'threat') raritySort = 'threat';
   if (g('uniq') === '1') { recentUnique = true; syncRecentTools(); }
 }
 
