@@ -1322,8 +1322,9 @@ function renderRecent(obs) {
   function more() {
     const frag = document.createDocumentFragment();
     for (const o of list.slice(shown, shown + PAGE)) {
-      const key = shuffled ? '' : recentDate(o);
-      if (!shuffled && key !== lastKey) {
+      const grouped = !shuffled && !raritySort; // date headings only make sense in date order
+      const key = grouped ? recentDate(o) : '';
+      if (grouped && key !== lastKey) {
         const h = document.createElement('div'); h.className = 'dh';
         h.textContent = key ? new Date(key + 'T00:00:00').toLocaleDateString(undefined,
           { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
@@ -2327,6 +2328,8 @@ function drawClassChips() { drawChips2($('expclasses'), expClasses, 'inat_expcla
 drawClassChips();
 // Same chips as a filter on my own observations (Recent, Taxonomy, Place).
 loadSet(filterClasses, 'inat_fclass');
+// Shuffling replaces any rarity sort.
+function stopRaritySort() { if (raritySort) { raritySort = false; drawRarityChips(); drawChips(); } }
 // Rarity panel: threshold chips, conservation, sort, and the data-loading status.
 function drawRarityChips() {
   const box = $('rarechips'), opts = $('rareopts');
@@ -2343,7 +2346,11 @@ function drawRarityChips() {
     b.type = 'button'; b.className = 'cls' + (on ? ' on' : ''); b.innerHTML = ic(icon, 14) + ' ' + text; b.setAttribute('aria-pressed', String(on)); b.onclick = fn; opts.append(b);
   };
   mk('shield-alert', 'Conservation concern', rareConcern, () => { rareConcern = !rareConcern; drawRarityChips(); scheduleShow(); });
-  mk('gem', 'Rarest first', raritySort, () => { raritySort = !raritySort; drawRarityChips(); scheduleShow(); });
+  mk('gem', 'Rarest first', raritySort, () => {
+    raritySort = !raritySort;
+    if (raritySort) { recentSeed = null; shuffleSeed = null; $('unshuffle').hidden = true; syncRecentTools(); } // sorting and shuffling exclude each other
+    drawRarityChips(); scheduleShow();
+  });
   refreshRarityUI();
 }
 function refreshRarityUI() {
@@ -2776,10 +2783,10 @@ $('runique').onclick = () => {
   try { localStorage.setItem(UNIQUE_KEY, recentUnique ? '1' : '0'); } catch {}
   syncRecentTools(); show(true);
 };
-$('rshuffle').onclick = () => { recentSeed = Math.floor(Math.random() * 2 ** 31); syncRecentTools(); show(true); };
+$('rshuffle').onclick = () => { recentSeed = Math.floor(Math.random() * 2 ** 31); stopRaritySort(); syncRecentTools(); show(true); };
 $('rdefault').onclick = () => { recentSeed = null; syncRecentTools(); show(true); };
 syncRecentTools();
-$('shuffle').onclick = () => { shuffleSeed = Math.floor(Math.random() * 2 ** 31); $('unshuffle').hidden = false; show(true); };
+$('shuffle').onclick = () => { shuffleSeed = Math.floor(Math.random() * 2 ** 31); $('unshuffle').hidden = false; stopRaritySort(); show(true); };
 $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = true; show(true); };
 // ---------- the icon bar sticks to the top: it tucks away when scrolling down and returns on any scroll up ----------
 (() => {
