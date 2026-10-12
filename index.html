@@ -396,12 +396,6 @@
       <p class="status" style="margin:8px 0">Tap anywhere on the map to choose a spot. You can then set a radius around it, or switch to one of the places that contain it.</p>
       <div id="expmap" style="margin-bottom:10px"></div>
       <div id="exppills"></div>
-      <div id="expradiusrow" class="row" style="margin:0 0 6px" hidden>
-        <label class="status">Radius
-          <select id="expradius"><option>1</option><option>2</option><option>5</option><option>10</option><option>25</option><option>50</option><option>100</option></select> km
-        </label>
-        <span class="status">around the chosen point</span>
-      </div>
       <div id="expclasses" class="row" style="margin:6px 0 2px" role="group" aria-label="Taxonomic groups (none selected = all)"></div>
       <div class="row" style="margin:6px 0 4px">
         <label class="status"><input type="checkbox" id="expres" checked> Research grade only</label>
@@ -2356,11 +2350,24 @@ function renderExplore() {
     pills.append(b);
   };
   const radiusSel = explore.point ? { id: 'r', rank: 'radius', name: `${explore.radius} km around ${explore.point.label}` } : null;
-  if (radiusSel) addPill(radiusSel, false);
+  if (radiusSel) { // the radius chip carries its own km dropdown
+    const b = document.createElement('div');
+    b.className = 'pill' + (explore.selected === 'r' ? ' on' : ''); b.tabIndex = 0; b.setAttribute('role', 'button');
+    const s = document.createElement('small'); s.textContent = 'radius';
+    const row = document.createElement('span'); row.style.cssText = 'display:inline-flex;align-items:center;gap:4px';
+    const sel = document.createElement('select'); sel.id = 'expradius'; sel.setAttribute('aria-label', 'Radius in km');
+    sel.style.cssText = 'font:inherit;padding:0 2px;border-radius:6px';
+    for (const k of [1, 2, 5, 10, 25, 50, 100]) { const o = document.createElement('option'); o.value = o.textContent = String(k); sel.append(o); }
+    sel.value = String(explore.radius);
+    sel.onclick = e => e.stopPropagation();
+    sel.onchange = () => { explore.radius = +sel.value; explore.selected = 'r'; saveExplore(); loadExplore(); };
+    row.append(sel, ` km around ${explore.point.label}`);
+    b.append(s, row);
+    b.onclick = () => { if (explore.selected !== 'r') { explore.selected = 'r'; saveExplore(); loadExplore(); } };
+    pills.append(b);
+  }
   explore.chain.forEach(p => addPill(p, false));
   explore.extra.forEach(p => addPill(p, true));
-  $('expradiusrow').hidden = explore.selected !== 'r';
-  $('expradius').value = String(explore.radius);
   drawExpCircle();
 
   const sel = explore.selected === 'r' ? radiusSel : [...explore.chain, ...explore.extra].find(p => p.id === explore.selected);
@@ -2410,7 +2417,6 @@ function renderExplore() {
   $('expmore').textContent = `Show more (${explore.total - explore.items.length} left)`;
 }
 $('expmore').onclick = () => loadExplore(true);
-$('expradius').onchange = () => { explore.radius = +$('expradius').value; saveExplore(); loadExplore(); };
 // Taxonomic group chips: select any number; none selected means all groups.
 const EXP_CLASSES = [['Aves', 'Birds'], ['Mammalia', 'Mammals'], ['Reptilia', 'Reptiles'], ['Amphibia', 'Amphibians'], ['Actinopterygii', 'Fish'],
   ['Insecta', 'Insects'], ['Arachnida', 'Arachnids'], ['Mollusca', 'Molluscs'], ['Plantae', 'Plants'], ['Fungi', 'Fungi']];
