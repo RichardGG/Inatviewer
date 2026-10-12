@@ -1713,7 +1713,7 @@ async function openSpecies(id, focusObs) {
     keep.onclick = () => { dismissNew(id); banner.remove(); mineGrid?.querySelectorAll('.newtag').forEach(x => x.remove()); show(true); };
     banner.append(keep);
     body.append(banner);
-  } else if (needsFav(dstats)) {
+  } else if (needsFav(dstats) && !isOther()) { // the "no favourite yet" prompt only makes sense for my own observations
     banner = el('div', 'banner'); banner.insertAdjacentHTML('beforeend', ic('star', 16)); banner.append(' No favourite chosen yet. Tap the star on a photo below to pick one.');
     body.append(banner);
   }
@@ -2345,7 +2345,7 @@ $('tabExplore').onclick = () => tabTap('explore');
 
 let favHintToasted = false;
 function updateFavHint() {
-  const missing = state.obs.length > 0 && state.obs.every(o => o.fav === undefined);
+  const missing = !isOther() && state.obs.length > 0 && state.obs.every(o => o.fav === undefined);
   $('favhint').hidden = !missing;
   if (missing && !favHintToasted) { favHintToasted = true; toast('Re-download observations (⚙) to use your iNaturalist favourites'); }
 }
