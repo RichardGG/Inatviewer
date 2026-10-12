@@ -2221,6 +2221,7 @@ async function lookupPoint(lat, lng, label, mode = 'r') {
     const mk = p => ({ id: p.id, name: p.name || p.display_name, rank: placeRank({ level: p.admin_level ?? null }), level: p.admin_level ?? null });
     const chain = standard.filter(p => p.admin_level != null).sort((a, b) => a.admin_level - b.admin_level).map(mk);
     const extra = [...standard.filter(p => p.admin_level == null), ...community].slice(0, 12).map(mk);
+    if (explore.point.label === 'selected point') { const c = chain.find(p => p.level === 30); if (c) explore.point.label = c.name; } // name the spot after its city
     log(`places/nearby: ${standard.length} standard, ${community.length} community → ${chain.length} admin levels`);
     status('');
     setExplore(chain, extra, mode === 'r' ? 'r' : (pickDefaultLevel(chain) || extra[0]?.id || 'r'));
@@ -2378,6 +2379,18 @@ const searchLabel = () => {
   if (explore.selected === 'r') return `${explore.radius} km around ${explore.point?.label || 'a point'}`;
   return [...explore.chain, ...explore.extra].find(p => p.id === explore.selected)?.name || 'Place';
 };
+// Title and surrounding place names (finest first) for a saved search, worked out from the place chain stored with it.
+function searchWhere(e) {
+  const chain = (e.chain || []).slice().sort((a, b) => (a.level ?? 0) - (b.level ?? 0));
+  if (e.selected === 'r') {
+    const own = e.point?.label === 'my location', city = chain.find(p => p.level === 30) || chain[chain.length - 1];
+    const use = own ? null : city;
+    return { title: `${e.radius} km around ${own ? 'my location' : (use?.name || e.point?.label || 'a point')}`, where: chain.filter(p => p !== use).slice(-2).reverse().map(p => p.name) };
+  }
+  const sel = [...chain, ...(e.extra || [])].find(p => p.id === e.selected);
+  const up = chain.filter(p => p.id !== e.selected && (sel?.level == null || p.level < sel.level));
+  return { title: sel?.name || e.label, where: up.slice(-2).reverse().map(p => p.name) };
+}
 async function loadSearches() { return (await idb.get('nearby')) || []; }
 async function saveSearch() {
   if (!explore.selected || !explore.items.length || (explore.selected === 'r' && !explore.point)) return;
@@ -2432,10 +2445,10 @@ async function drawHistory() {
   for (const e of list) {
     const row = document.createElement('div'); row.className = 'hr';
     const go = document.createElement('button'); go.type = 'button'; go.className = 'go';
-    const f = e.filters || {};
-    const bits = [`${e.total.toLocaleString()} species`, f.date && f.date !== 'all' ? (f.date === 'custom' ? `${f.from || '…'} → ${f.to || '…'}` : f.date.replace(/^y/, '')) : '',
+    const { title, where } = searchWhere(e), f = e.filters || {};
+    const bits = [where.join(', '), `${e.total.toLocaleString()} species`, f.date && f.date !== 'all' ? (f.date === 'custom' ? `${f.from || '…'} → ${f.to || '…'}` : f.date.replace(/^y/, '')) : '',
       (f.classes || []).map(k => EXP_CLASSES.find(x => x[0] === k)?.[1] || k).join(', '), ago(new Date(e.t).toISOString())].filter(Boolean);
-    go.append(e.label); const sm = document.createElement('small'); sm.textContent = bits.join(' · '); go.append(sm);
+    go.append(title); const sm = document.createElement('small'); sm.textContent = bits.join(' · '); go.append(sm);
     go.onclick = () => restoreSearch(e);
     const del = document.createElement('button'); del.type = 'button'; del.className = 'del'; del.title = 'Remove'; del.setAttribute('aria-label', 'Remove'); del.innerHTML = ic('x', 16);
     del.onclick = async () => { await idb.set('nearby', (await loadSearches()).filter(x => x.id !== e.id)); drawHistory(); };
