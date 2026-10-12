@@ -161,6 +161,7 @@
   .xrow a { color:var(--fg); text-decoration:none; } .xrow a:hover { text-decoration:underline; }
   .seen { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; background:var(--accent); color:#fff; width:fit-content; }
   .unseen { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; border:1px solid #d9480f; color:#d9480f; width:fit-content; }
+  .ib[hidden] { display:none; }
   #detail { position:fixed; inset:0; z-index:900; background:var(--bg); color:var(--fg); display:none; flex-direction:column; }
   #detail.open { display:flex; }
   .dpanel { flex:1; min-height:0; display:flex; flex-direction:column; background:var(--bg); }
@@ -421,7 +422,10 @@
  <div class="dpanel">
   <div class="dbar">
     <button class="ib" id="dclose" aria-label="Close"><i data-i="x"></i></button>
+    <button class="ib" id="dprev" aria-label="Previous species" hidden><i data-i="chevron-left"></i></button>
     <div class="dtitle" id="dtitle"></div>
+    <span class="count" id="dpos"></span>
+    <button class="ib" id="dnext" aria-label="Next species" hidden><i data-i="chevron-right"></i></button>
     <a class="ib" id="dext" target="_blank" rel="noopener" aria-label="Open on iNaturalist"><i data-i="external-link"></i></a>
   </div>
   <div class="dbody" id="dbody"></div>
@@ -1157,7 +1161,7 @@ function render(root, names, meta = TAXON_META(names)) {
   // Gallery layout: one photo tile per species (its favourite photo); species of a genus sit side by side under the genus heading.
   function speciesTile(row) {
     const cur = preferred(row), ph = photosOf(cur);
-    const t = document.createElement('div');
+    const t = document.createElement('div'); markBrow(t, row.tid, cur && cur.id);
     t.className = 'tile';
     t.title = `${row.common || row.name} · ${row.obs.length} obs`;
     const b = document.createElement('button');
@@ -1299,7 +1303,7 @@ function renderRecent(obs) {
   function tile(o) {
     const ph = photosOf(o);
     const t = document.createElement('div');
-    t.className = 'tile';
+    t.className = 'tile'; markBrow(t, o.tid, o.id);
     t.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'View photos');
@@ -1698,6 +1702,48 @@ async function nearbyPopup(map, latlng, taxonId) {
   } catch (e) { log(`nearby observations failed: ${e.message}`, 'e'); popup.setContent('Could not load observations.'); }
 }
 
+// ---------- browsing species in view order ----------
+// Tiles/rows that open the detail carry data-brow; the visible ones in the same tab give the swipe order.
+let browse = null, browseFrom = null;
+const markBrow = (el, tid, oid) => { el.dataset.brow = tid; if (oid != null) el.dataset.oid = oid; };
+document.addEventListener('click', e => { browseFrom = e.target.closest ? e.target.closest('[data-brow]') : null; setTimeout(() => { browseFrom = null; }, 0); }, true);
+function buildBrowse(from) {
+  const box = from.closest('#recent, #explore, #results');
+  if (!box) return null;
+  const items = [...box.querySelectorAll('[data-brow]')].filter(n => n.offsetParent || n === from)
+    .map(n => ({ tid: +n.dataset.brow, oid: n.dataset.oid || '', node: n }));
+  const i = items.findIndex(x => x.node === from);
+  return i < 0 || items.length < 2 ? null : { items, i, start: i, box };
+}
+function browseGo(d) {
+  if (!browse) return;
+  const j = browse.i + d;
+  if (j < 0 || j >= browse.items.length) return;
+  const it = browse.items[j];
+  openSpecies(it.tid, it.oid ? state.obs.find(x => String(x.id) === it.oid) : undefined, { ...browse, i: j });
+}
+function drawBrowseNav() {
+  $('dprev').hidden = $('dnext').hidden = !browse;
+  $('dpos').textContent = browse ? `${browse.i + 1}/${browse.items.length}` : '';
+  if (browse) { $('dprev').disabled = browse.i === 0; $('dnext').disabled = browse.i === browse.items.length - 1; }
+}
+$('dprev').onclick = () => browseGo(-1);
+$('dnext').onclick = () => browseGo(1);
+document.addEventListener('keydown', e => {
+  if (!detail.isOpen || viewer.isOpen || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+  if (e.key === 'ArrowLeft') browseGo(-1); else if (e.key === 'ArrowRight') browseGo(1);
+});
+{ // swipe the detail body left/right for the next/previous species (photo carousel and map keep their own gestures)
+  let sx = 0, sy = 0, ok = false;
+  const body = $('dbody');
+  body.addEventListener('touchstart', e => { ok = e.touches.length === 1 && !e.target.closest('.ctrack, .leaflet-container, [data-noswipe]'); sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  body.addEventListener('touchend', e => {
+    if (!ok || !browse) return;
+    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) > 70 && Math.abs(dy) < Math.abs(dx) * 0.6) browseGo(dx < 0 ? 1 : -1);
+  }, { passive: true });
+}
+
 // ---------- species detail (opens from any view) ----------
 const detail = {
   el: $('detail'), isOpen: false,
@@ -1707,7 +1753,16 @@ const detail = {
     if (!this.isOpen) history.pushState({ detail: 1 }, '');
     this.isOpen = true;
   },
-  hide() { this.el.classList.remove('open'); if (!viewer.isOpen) document.body.style.overflow = ''; this.isOpen = false; },
+  hide() {
+    this.el.classList.remove('open'); if (!viewer.isOpen) document.body.style.overflow = ''; this.isOpen = false;
+    const b = browse; browse = null;
+    if (b && b.i !== b.start) { // after swiping through species, leave the list scrolled to the last one viewed
+      const it = b.items[b.i];
+      const sel = `[data-brow="${it.tid}"]` + (it.oid ? `[data-oid="${it.oid}"]` : '');
+      const n = it.node.isConnected ? it.node : b.box.querySelector(sel);
+      if (n) requestAnimationFrame(() => n.scrollIntoView({ block: 'center' }));
+    }
+  },
   close() { if (this.isOpen) history.back(); },
 };
 $('dclose').onclick = () => detail.close();
@@ -1747,7 +1802,9 @@ async function loadTaxonDetail(id) {
   return slimT;
 }
 
-async function openSpecies(id, focusObs) {
+async function openSpecies(id, focusObs, ctx) {
+  if (ctx === undefined) ctx = browseFrom ? buildBrowse(browseFrom) : null;
+  browse = ctx || null;
   const mineObs = state.obs.filter(o => o.tid === id || o.anc.includes(id));
   const hint = state.names[id] || mineObs.find(o => o.tid === id) || {};
   const body = $('dbody');
@@ -1755,6 +1812,7 @@ async function openSpecies(id, focusObs) {
   $('dtitle').textContent = hint.common || hint.name || 'Species';
   $('dext').href = `https://www.inaturalist.org/taxa/${id}`;
   detail.open();
+  drawBrowseNav();
   body.scrollTop = 0;
   const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
 
@@ -1967,7 +2025,7 @@ async function openSpecies(id, focusObs) {
   mapBox.append(el('p', 'status', 'Orange dots are your observations; the heat layer shows all iNaturalist observations (approximate range).'));
   const mapDiv = el('div'); mapDiv.id = 'dmap'; mapDiv.style.marginTop = '8px'; mapBox.append(mapDiv);
   try { await ensureLeaflet(); } catch (e) { mapBox.append(el('p', 'status error', 'Map failed to load.')); return; }
-  if (!detail.isOpen) return;
+  if (!detail.isOpen || !mapDiv.isConnected) return;
   const m = L.map(mapDiv, { worldCopyJump: true, preferCanvas: true });
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(m);
   const heat = L.tileLayer(`https://api.inaturalist.org/v1/colored_heatmap/{z}/{x}/{y}.png?taxon_id=${id}`, { opacity: 0.7, maxNativeZoom: 12 });
@@ -2290,7 +2348,7 @@ function renderExplore() {
   const frag = document.createDocumentFragment();
   for (const it of rows) {
     const t = it.taxon, n = mine.get(t.id);
-    const row = document.createElement('div'); row.className = 'xrow';
+    const row = document.createElement('div'); row.className = 'xrow'; markBrow(row, t.id);
     const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy';
     const mp = myPhoto.get(t.id);
     const src = mp ? sized(mp.url, 'medium') : (t.default_photo?.medium_url || t.default_photo?.square_url);
