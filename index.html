@@ -162,6 +162,8 @@
   .seen { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; background:var(--accent); color:#fff; width:fit-content; }
   .unseen { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; border:1px solid #d9480f; color:#d9480f; width:fit-content; }
   .ib[hidden] { display:none; }
+  .leaflet-bar a.gpsbtn { display:flex; align-items:center; justify-content:center; width:30px; height:30px; color:#333; }
+  .leaflet-bar a.gpsbtn svg { display:block; }
   #detail { position:fixed; inset:0; z-index:900; background:var(--bg); color:var(--fg); display:none; flex-direction:column; }
   #detail.open { display:flex; }
   .dpanel { flex:1; min-height:0; display:flex; flex-direction:column; background:var(--bg); }
@@ -388,9 +390,6 @@
     <div class="card" id="tree"></div>
     <div class="card" id="recent" hidden></div>
     <div class="card" id="explore" hidden>
-      <div class="row" style="margin:0 0 8px">
-        <button id="expgps" class="withicon"><i data-i="locate-fixed" data-s="18"></i> My location</button>
-      </div>
       <input type="search" id="expq" placeholder="Search any place: town, park, address, region…" autocomplete="off" spellcheck="false"
              style="width:100%;padding:9px 12px;font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)">
       <div id="expsug" hidden></div>
@@ -2296,6 +2295,19 @@ async function initExpMap() {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(expMapObj);
+    // standard white map button (below the zoom buttons) for "use my location"
+    const GpsControl = L.Control.extend({
+      options: { position: 'topleft' },
+      onAdd() {
+        const box = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        const a = L.DomUtil.create('a', 'gpsbtn', box);
+        a.href = '#'; a.role = 'button'; a.title = 'My location'; a.setAttribute('aria-label', 'Use my location'); a.innerHTML = ic('locate-fixed', 18);
+        L.DomEvent.disableClickPropagation(box);
+        L.DomEvent.on(a, 'click', e => { L.DomEvent.preventDefault(e); useMyLocation(); });
+        return box;
+      },
+    });
+    new GpsControl().addTo(expMapObj);
     expMapObj.on('click', e => lookupPoint(e.latlng.lat, e.latlng.lng, 'selected point'));
     const pts = state.obs.map(parseLoc).filter(Boolean);
     if (explore.point) expMapObj.setView([explore.point.lat, explore.point.lng], 9);
@@ -2397,7 +2409,6 @@ function renderExplore() {
   $('expmore').hidden = explore.loading || explore.items.length >= explore.total;
   $('expmore').textContent = `Show more (${explore.total - explore.items.length} left)`;
 }
-$('expgps').onclick = useMyLocation;
 $('expmore').onclick = () => loadExplore(true);
 $('expradius').onchange = () => { explore.radius = +$('expradius').value; saveExplore(); loadExplore(); };
 // Taxonomic group chips: select any number; none selected means all groups.
