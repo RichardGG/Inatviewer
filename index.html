@@ -99,6 +99,11 @@
   .chip svg, .cls svg { margin-right:2px; }
   .cls { display:inline-flex; align-items:center; gap:4px; }
   .banner svg { flex:none; }
+  .cons { display:flex; align-items:center; gap:10px; margin:10px auto; padding:8px 12px; border-radius:8px; border:1px solid var(--line); }
+  .cons svg { flex:none; } .cons .status { margin:0; font-size:12px; }
+  .cons.ok { border-color:#2f7d32; color:#2f7d32; } .cons.near { border-color:#b9770e; color:#b9770e; }
+  .cons.threat { border-color:#d9480f; color:#d9480f; } .cons.crit { border-color:#c92a2a; color:#c92a2a; background:rgba(201,42,42,.06); }
+  .cons.unk { color:var(--muted); } .cons strong { color:var(--fg); }
   .chip { display:inline-flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--accent); color:var(--fg);
           border-radius:16px; padding:3px 6px 3px 12px; font-size:13px; margin:0; }
   .chip button { padding:0 6px; background:none; color:var(--muted); font-size:16px; }
@@ -451,6 +456,7 @@ ICONS['trash-2'] = "<path d=\"M10 11v6\"/> <path d=\"M14 11v6\"/> <path d=\"M19 
 ICONS.eye = "<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>";
 ICONS['gem'] = "<path d=\"M10.5 3 8 9l4 13 4-13-2.5-6\"/> <path d=\"M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z\"/> <path d=\"M2 9h20\"/>";
 ICONS['shield-alert'] = "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"/> <path d=\"M12 8v4\"/> <path d=\"M12 16h.01\"/>";
+ICONS['shield-check'] = "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"/> <path d=\"m9 12 2 2 4-4\"/>";
 function ic(name, size = 20, filled = false) {
   return `<svg class="lc" xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 }
@@ -1715,7 +1721,7 @@ async function loadTaxonDetail(id) {
     // wikipedia_summary is HTML; keep plain text only
     wiki: t.wikipedia_summary ? (new DOMParser().parseFromString(t.wikipedia_summary, 'text/html').body.textContent || '').trim() : '',
     ancestors: (t.ancestors || []).map(a => ({ id: a.id, name: a.name, rank: a.rank, common: a.preferred_common_name || '' })),
-    status: t.conservation_status ? { name: t.conservation_status.status_name || t.conservation_status.status, iucn: t.conservation_status.iucn } : null,
+    status: (() => { const cs = t.conservation_status || (t.conservation_statuses || [])[0]; return cs ? { name: cs.status_name || cs.status, code: cs.status || '', iucn: cs.iucn || 0, authority: cs.authority || '', place: cs.place?.display_name || '' } : null; })(),
     threatened: !!t.threatened, extinct: !!t.extinct, endemic: !!t.endemic, introduced: !!t.introduced, native: !!t.native,
     obsCount: t.observations_count || 0,
   };
@@ -1828,8 +1834,7 @@ async function openSpecies(id, focusObs) {
   const addTag = (txt, warn) => tags.append(el('span', 'tag' + (warn ? ' warn' : ''), txt));
   if (t) {
     addTag(t.rank);
-    if (t.status?.name) addTag(`${t.status.name}${t.status.iucn ? '' : ''}`, true);
-    else if (t.threatened) addTag('threatened', true);
+    if (!t.status?.name && t.threatened) addTag('threatened', true);
     if (t.extinct) addTag('extinct', true);
     if (t.endemic) addTag('endemic');
     if (t.introduced) addTag('introduced');
@@ -1844,6 +1849,21 @@ async function openSpecies(id, focusObs) {
     addTag(n ? `✓ ${myName(p.login) === 'me' ? 'You have' : `@${p.login} has`} ${n}` : `Not seen by ${myName(p.login) === 'me' ? 'you' : '@' + p.login}`);
   }
   body.append(tags);
+  // conservation status: from the species data, or from the rarity lookup if that is all we have
+  const cs = t?.status?.name ? t.status : (rarity[id]?.st ? { name: rarity[id].st, iucn: rarity[id].iucn, code: '', authority: '', place: '' } : null);
+  if (cs) {
+    const IUCN = { 5: 'Data deficient', 10: 'Least concern', 20: 'Near threatened', 30: 'Vulnerable', 40: 'Endangered', 50: 'Critically endangered', 60: 'Extinct in the wild', 70: 'Extinct' };
+    const lvl = cs.iucn >= 50 ? 'crit' : cs.iucn >= 30 ? 'threat' : cs.iucn >= 20 ? 'near' : cs.iucn >= 10 ? 'ok' : 'unk';
+    const row = el('div', 'cons ' + lvl);
+    row.insertAdjacentHTML('beforeend', ic(lvl === 'ok' ? 'shield-check' : 'shield-alert', 18));
+    const txt = el('div');
+    const title = (IUCN[cs.iucn] || cs.name || 'Conservation status').replace(/^./, c => c.toUpperCase());
+    txt.append(el('strong', '', title + (cs.code ? ` (${cs.code})` : '')));
+    const sub = [cs.authority || 'Conservation status', cs.place ? `in ${cs.place}` : 'global'].join(' · ');
+    txt.append(el('div', 'status', sub));
+    row.append(txt);
+    body.append(row);
+  }
   const dstats = favStats().get(id);
   if (dstats && dstats.newN > 0) {
     banner = el('div', 'banner');
