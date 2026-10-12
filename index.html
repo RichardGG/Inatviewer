@@ -137,6 +137,8 @@
   .clsrow .cls { flex:none; }
   .cls.fav { border-style:dashed; }
   .favtag { position:absolute; right:6px; bottom:6px; z-index:2; color:#e0245e; filter:drop-shadow(0 1px 2px rgba(0,0,0,.6)); pointer-events:none; display:flex; }
+  .raretag { position:absolute; left:6px; top:6px; z-index:2; display:inline-flex; align-items:center; gap:3px; padding:1px 7px; border-radius:10px; font-size:11px; font-weight:700; color:#fff; background:#5b6b73; pointer-events:none; }
+  .raretag.legend { background:#7b2cbf; } .raretag.rare { background:#d9480f; } .raretag.concern { background:#c92a2a; }
   .newtag { position:absolute; top:6px; left:50%; transform:translateX(-50%); z-index:2; background:#d9480f; color:#fff; font-size:10px; font-weight:700; padding:1px 7px; border-radius:8px; pointer-events:none; }
   .pillnew { display:inline-block; width:fit-content; background:#d9480f; color:#fff; border:0; font-size:12px; padding:2px 10px; border-radius:10px; cursor:pointer; }
   .pillnofav { display:inline-block; width:fit-content; border:1px dashed var(--muted); color:var(--muted); font-size:12px; padding:1px 9px; border-radius:10px; }
@@ -300,6 +302,7 @@
         <button class="ib tb" id="bdate" aria-label="Date" title="Date"><i data-i="calendar"></i></button>
         <button class="ib tb" id="areabtn" aria-label="Map area" title="Map area" aria-expanded="false"><i data-i="map-pin"></i></button>
         <button class="ib tb" id="bclass" aria-label="Groups" title="Groups (birds, plants…)"><i data-i="paw-print"></i></button>
+        <button class="ib tb" id="brare" aria-label="Rarity" title="Rare species" hidden><i data-i="gem"></i></button>
         <button class="ib tb" id="bcmp" aria-label="Compare" title="Compare with another user" hidden><i data-i="git-compare"></i></button>
         <button class="ib tb" id="bfav" aria-label="Favourites" title="Favourite photos"><i data-i="star"></i></button>
       </div>
@@ -350,6 +353,13 @@
         <div id="cmpchips" class="clsrow" role="group" aria-label="Compare" style="margin-top:8px"></div>
         <p class="status" id="cmpnote" style="margin:6px 0 0"></p>
         <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
+      </div>
+      <div class="card fpanel" id="prare" hidden>
+        <p class="status" style="margin:0 0 6px">Show only species with fewer observations on iNaturalist than:</p>
+        <div id="rarechips" class="clsrow" role="group" aria-label="Rarity thresholds"></div>
+        <div id="rareopts" class="clsrow" role="group" style="margin-top:8px"></div>
+        <p class="status" id="rarenote" style="margin:8px 0 0"></p>
+        <button class="secondary" id="rarecheck" hidden style="margin-top:8px">Check rarity</button>
       </div>
       <div class="card fpanel" id="pfav" hidden>
         <div id="ffav" class="clsrow" role="group" aria-label="Favourite photo status"></div>
@@ -439,6 +449,8 @@ ICONS['users'] = "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/> <path 
 ICONS['user-round'] = "<circle cx=\"12\" cy=\"8\" r=\"5\"/> <path d=\"M20 21a8 8 0 0 0-16 0\"/>";
 ICONS['trash-2'] = "<path d=\"M10 11v6\"/> <path d=\"M14 11v6\"/> <path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\"/> <path d=\"M3 6h18\"/> <path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\"/>";
 ICONS.eye = "<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>";
+ICONS['gem'] = "<path d=\"M10.5 3 8 9l4 13 4-13-2.5-6\"/> <path d=\"M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z\"/> <path d=\"M2 9h20\"/>";
+ICONS['shield-alert'] = "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"/> <path d=\"M12 8v4\"/> <path d=\"M12 16h.01\"/>";
 function ic(name, size = 20, filled = false) {
   return `<svg class="lc" xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 }
@@ -739,6 +751,7 @@ async function loadCache() {
     if (ds) Object.assign(state, { user: ds.user, obs: ds.obs || [], complete: ds.complete !== false, total: ds.total ?? null, updated: ds.updated });
     else state.user = { id: null, login: target };
   }
+  rarity = (await idb.get('rarity')) || {};
   await loadPeople();
   await touchViewed(state.user?.login || target);
   await loadCompare();
@@ -1051,6 +1064,7 @@ function render(root, names, meta = TAXON_META(names)) {
       r.obs.push(o);
     }
     const rows = [...byTaxon.values()];
+    if (raritySort) { const rn = r => { const x = rarityOf(r.obs[0]); return x ? x.n : Infinity; }; return rows.sort((a, b) => rn(a) - rn(b) || a.name.localeCompare(b.name)); }
     return shuffleSeed == null ? rows.sort((a, b) => a.name.localeCompare(b.name)) : rows.sort((a, b) => shuffleKey(a.tid) - shuffleKey(b.tid));
   }
   const preferred = row => thumbObs(row.obs);
@@ -1149,6 +1163,7 @@ function render(root, names, meta = TAXON_META(names)) {
       b.append(im);
     }
     const n = document.createElement('span'); n.className = 'badge'; n.textContent = `${row.obs.length} obs`; b.append(n);
+    { const rb = rarityBadge(rarityOf(row.obs[0])); if (rb) b.append(rb); }
     const fs = favStats().get(row.tid);
     if (fs && fs.newN > 0) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.innerHTML = `${ic('refresh-cw', 10)} ${fs.newN} new`; b.append(nt); }
     b.onclick = () => openSpecies(row.tid, cur);
@@ -1264,7 +1279,9 @@ function renderRecent(obs) {
   const shuffled = recentSeed != null;
   let list = recentUnique ? uniqueSpecies(obs) : [...obs];
   list = list.filter(o => photosOf(o).length); // the gallery is photos only
-  list = shuffled ? list.sort((a, b) => shuffleKey(a.id, recentSeed) - shuffleKey(b.id, recentSeed))
+  const rn = o => { const x = rarityOf(o); return x ? x.n : Infinity; };
+  list = raritySort ? list.sort((a, b) => rn(a) - rn(b) || recentDate(b).localeCompare(recentDate(a)))
+       : shuffled ? list.sort((a, b) => shuffleKey(a.id, recentSeed) - shuffleKey(b.id, recentSeed))
                   : list.sort((a, b) => recentDate(b).localeCompare(recentDate(a)) || b.id - a.id);
   const PAGE = 60;
   const gridEl = document.createElement('div'); gridEl.className = 'rgrid';
@@ -1280,6 +1297,7 @@ function renderRecent(obs) {
     t.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'View photos');
+    { const rb = rarityBadge(rarityOf(o)); if (rb) b.append(rb); }
     const im = document.createElement('img');
     im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
     im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
@@ -1365,6 +1383,60 @@ function syncYearOptions() {
 
 // ---- class filter (my observations): matched on ancestor taxon ids, or names once the taxonomy is loaded ----
 const filterClasses = new Set();
+// Small badge for a rare or conservation-flagged species (null for everyday ones).
+function rarityBadge(r) {
+  if (!r) return null;
+  const concern = isConcern(r), rare = r.n < 10000;
+  if (!concern && !rare) return null;
+  const s = document.createElement('span');
+  s.className = 'raretag ' + (concern ? 'concern' : r.n < 100 ? 'legend' : r.n < 1000 ? 'rare' : 'unc');
+  s.title = `${r.n.toLocaleString()} observations on iNaturalist${r.st ? ' · ' + r.st : ''}`;
+  s.innerHTML = ic(concern ? 'shield-alert' : 'gem', 11) + ` ${fmtCount(r.n)}`;
+  return s;
+}
+// ---------- rarity: global observation count + conservation status per species ----------
+// rarity[speciesId] = { n: observations on iNaturalist, iucn: IUCN level (10 LC … 70 EX) or 0, st: status label, thr: threatened flag, t: fetched at }
+let rarity = {};
+const RARITY_TTL = 30 * 864e5;
+let rareMax = 0, rareConcern = false, raritySort = false, rarityBusy = false;
+const rarityOf = o => { const id = speciesIdOf(o); return id ? rarity[id] : undefined; };
+const isConcern = r => !!r && (r.iucn >= 20 || r.thr);
+const fmtCount = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
+function raritySpeciesIds(obs = state.obs) {
+  const ids = new Set();
+  for (const o of obs) { const id = speciesIdOf(o); if (id) ids.add(id); }
+  return [...ids];
+}
+const rarityMissing = () => raritySpeciesIds().filter(id => !rarity[id] || Date.now() - rarity[id].t > RARITY_TTL);
+// Fetch counts and status for the species in the current dataset (30 per request, saved after every batch).
+async function loadRarityData() {
+  if (rarityBusy) return;
+  const missing = rarityMissing();
+  if (!missing.length) return;
+  rarityBusy = true;
+  try {
+    for (let i = 0; i < missing.length; i += 30) {
+      const batch = missing.slice(i, i + 30);
+      status(`Checking rarity… ${Math.min(i + 30, missing.length)}/${missing.length} species`);
+      const d = await api(`/taxa/${batch.join(',')}?per_page=30`);
+      for (const t of d.results) {
+        const cs = t.conservation_status || (t.conservation_statuses || [])[0] || null;
+        rarity[t.id] = { n: t.observations_count || 0, iucn: cs?.iucn || 0, st: cs ? (cs.status_name || cs.status || '') : '', thr: !!t.threatened, t: Date.now() };
+      }
+      await idb.set('rarity', rarity);
+      refreshRarityUI(); show(true);
+      await sleep(700);
+    }
+    status(`Rarity checked for ${missing.length} species.`);
+  } catch (e) { log(`rarity lookup failed: ${e.stack || e}`, 'e'); status(e.message, true); }
+  finally { rarityBusy = false; refreshRarityUI(); }
+}
+function rarityMatches(o) {
+  const r = rarityOf(o);
+  if (!r) return false;
+  return (rareMax > 0 && r.n <= rareMax) || (rareConcern && isConcern(r));
+}
+const rarityActive = () => rareMax > 0 || rareConcern;
 let cmpMode = ''; // '' | 'missing' (species the other person hasn't seen) | 'common' (seen by both)
 let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
@@ -1380,10 +1452,11 @@ function classMatch(o) {
 // Observations passing the date, group and favourite-status filters, before the area filter.
 function textFiltered() {
   const range = dateRange();
-  if (!range && !filterClasses.size && !favMode && !(cmpMode && activePartners().length)) return state.obs;
+  if (!range && !filterClasses.size && !favMode && !rarityActive() && !(cmpMode && activePartners().length)) return state.obs;
   const stats = favMode ? favStats() : null, act = cmpMode ? activePartners() : [];
   return state.obs.filter(o => {
     if (cmpMode && act.length && !cmpPass(o, act)) return false;
+    if (rarityActive() && !rarityMatches(o)) return false;
     if (favMode) { const s = stats.get(o.tid); if (!(favMode === 'need' ? needsFav(s) : s && s.newN > 0)) return false; }
     if (range && !(o.date && o.date >= range[0] && o.date <= range[1])) return false;
     if (filterClasses.size && !classMatch(o)) return false;
@@ -1439,9 +1512,12 @@ function drawChips() {
     () => { filterClasses.clear(); try { localStorage.setItem('inat_fclass', ''); } catch {} drawFilterChips(); scheduleShow(); }, 'Clear group filter');
   if (favMode) add(favMode === 'need' ? 'star' : 'refresh-cw', favMode === 'need' ? 'Needs favourite' : 'New since favourite',
     () => { favMode = ''; drawFilterChips(); scheduleShow(); }, 'Clear favourite filter');
+  if (rareMax) add('gem', `Under ${rareMax.toLocaleString()} observations worldwide`, () => { rareMax = 0; drawRarityChips(); scheduleShow(); }, 'Clear rarity filter');
+  if (rareConcern) add('shield-alert', 'Conservation concern', () => { rareConcern = false; drawRarityChips(); scheduleShow(); }, 'Clear conservation filter');
+  if (raritySort) add('gem', 'Rarest first', () => { raritySort = false; drawRarityChips(); scheduleShow(); }, 'Clear rarity sort');
   if (cmpMode) add('git-compare', cmpLabel(cmpMode), () => { cmpMode = ''; drawCmpChips(); scheduleShow(); }, 'Clear comparison');
   const has = (id, on) => $(id).classList.toggle('has', !!on);
-  has('bcmp', cmpMode); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
+  has('brare', rarityActive() || raritySort); has('bcmp', cmpMode); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
 }
 // Largest circle that fits inside the map's current view (with a little margin).
 function viewportCircle() {
@@ -1460,7 +1536,7 @@ function drawArea(a = area) {
 let suppressMove = false;
 function moveMap(fn) { suppressMove = true; try { fn(); } finally { suppressMove = false; } }
 
-const markerKey = () => `${cmpMode}|${partners.join()}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
+const markerKey = () => `${rareMax}|${rareConcern}|${Object.keys(rarity).length}|${cmpMode}|${partners.join()}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
 function drawAreaMarkers() {
   if (!areaMap) return;
   markerSig = markerKey();
@@ -1502,7 +1578,7 @@ async function openAreaPanel(open) {
   drawAreaMarkers();
 }
 // Icon bar: each filter icon opens its own small panel (one at a time); the map-area panel is one of them too.
-const PANELS = { bsearch: 'psearch', bdate: 'pdate', bclass: 'pclass', bcmp: 'pcmp', bfav: 'pfav' };
+const PANELS = { bsearch: 'psearch', bdate: 'pdate', bclass: 'pclass', brare: 'prare', bcmp: 'pcmp', bfav: 'pfav' };
 function closePanels(except) {
   for (const [btn, pan] of Object.entries(PANELS)) if (pan !== except) { $(pan).hidden = true; $(btn).classList.remove('open'); }
   if (except !== 'areapanel' && !$('areapanel').hidden) { openAreaPanel(false); $('areabtn').classList.remove('open'); }
@@ -1514,6 +1590,7 @@ for (const [btn, pan] of Object.entries(PANELS)) {
     $(pan).hidden = !opening; $(btn).classList.toggle('open', opening);
     if (opening && btn === 'bsearch') $('jump').focus();
     if (opening && btn === 'bcmp') drawCmpChips();
+    if (opening && btn === 'brare') { refreshRarityUI(); if (rarityMissing().length) loadRarityData(); }
   };
 }
 $('areabtn').onclick = () => {
@@ -2230,6 +2307,35 @@ function drawClassChips() { drawChips2($('expclasses'), expClasses, 'inat_expcla
 drawClassChips();
 // Same chips as a filter on my own observations (Recent, Taxonomy, Place).
 loadSet(filterClasses, 'inat_fclass');
+// Rarity panel: threshold chips, conservation, sort, and the data-loading status.
+function drawRarityChips() {
+  const box = $('rarechips'), opts = $('rareopts');
+  box.replaceChildren(); opts.replaceChildren();
+  for (const n of [100, 1000, 10000, 100000]) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'cls' + (rareMax === n ? ' on' : ''); b.innerHTML = ic('gem', 14) + ` ${n.toLocaleString()}`;
+    b.setAttribute('aria-pressed', String(rareMax === n));
+    b.onclick = () => { rareMax = rareMax === n ? 0 : n; drawRarityChips(); scheduleShow(); };
+    box.append(b);
+  }
+  const mk = (icon, text, on, fn) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'cls' + (on ? ' on' : ''); b.innerHTML = ic(icon, 14) + ' ' + text; b.setAttribute('aria-pressed', String(on)); b.onclick = fn; opts.append(b);
+  };
+  mk('shield-alert', 'Conservation concern', rareConcern, () => { rareConcern = !rareConcern; drawRarityChips(); scheduleShow(); });
+  mk('gem', 'Rarest first', raritySort, () => { raritySort = !raritySort; drawRarityChips(); scheduleShow(); });
+  refreshRarityUI();
+}
+function refreshRarityUI() {
+  if (!$('rarenote')) return;
+  const ids = raritySpeciesIds(), missing = rarityMissing().length;
+  $('rarenote').textContent = !ids.length ? 'No species to check yet.'
+    : missing ? `Rarity known for ${ids.length - missing} of ${ids.length} species${rarityBusy ? ' (checking…)' : ''}.`
+    : `Rarity known for all ${ids.length} species. Conservation status and counts are refreshed monthly.`;
+  $('rarecheck').hidden = !missing || rarityBusy;
+  $('rarecheck').textContent = `Check rarity (${missing} species)`;
+}
+$('rarecheck').onclick = loadRarityData;
 // Favourite-status chips (mutually exclusive), appended to the class chip row with live species counts.
 function favChips(box) {
   box.replaceChildren();
@@ -2384,6 +2490,7 @@ function refreshViewing() {
   $('bfav').hidden = other;
   if (other && !$('pfav').hidden) { $('pfav').hidden = true; $('bfav').classList.remove('open'); }
   $('bcmp').hidden = !(other || candidates().length);
+  $('brare').hidden = !state.obs.length;
   $('loadall').hidden = state.complete !== false;
   $('loadall').textContent = `Load full history${state.total ? ` (${state.total.toLocaleString()} observations)` : ''}`;
 }
@@ -2406,6 +2513,9 @@ function buildShareUrl() {
   if (filterClasses.size) p.set('cls', [...filterClasses].join(','));
   if (area) p.set('area', `${area.lat.toFixed(4)},${area.lng.toFixed(4)},${Math.round(area.r)}`);
   if (cmpMode) p.set('cmp', cmpMode);
+  if (rareMax) p.set('rare', rareMax);
+  if (rareConcern) p.set('concern', '1');
+  if (raritySort) p.set('rsort', '1');
   if (recentUnique) p.set('uniq', '1');
   return `${redirectUri()}?${p}`;
 }
@@ -2432,6 +2542,9 @@ function applyUrlState() {
   const ar = (g('area') || '').split(',').map(Number);
   if (ar.length === 3 && ar.every(Number.isFinite) && ar[2] > 0) { area = { lat: ar[0], lng: ar[1], r: ar[2] }; $('follow').checked = true; }
   if (['missing', 'common'].includes(g('cmp'))) cmpMode = g('cmp');
+  if ([100, 1000, 10000, 100000].includes(+g('rare'))) rareMax = +g('rare');
+  if (g('concern') === '1') rareConcern = true;
+  if (g('rsort') === '1') raritySort = true;
   if (g('uniq') === '1') { recentUnique = true; syncRecentTools(); }
 }
 
@@ -2809,6 +2922,7 @@ drawChips();
   await loadCache();
   renderPeople();
   drawCmpChips();
+  drawRarityChips();
   backfillPrefMeta();
   if (state.obs.length) { show(); status('Showing cached data; refreshing…'); }
   await oauthCallback();
