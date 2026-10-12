@@ -128,6 +128,8 @@
   .tb.has::after { content:''; position:absolute; top:9px; right:7px; width:9px; height:9px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); }
   #summary { margin:0 0 8px; min-height:1.2em; }
   .fpanel { margin:0 0 10px; padding:12px; }
+  .person { display:flex; align-items:center; gap:6px; padding:6px 0; border-top:1px solid var(--line); }
+  .person .pinfo { flex:1; min-width:0; display:flex; flex-direction:column; }
   .fpanel input[type=search], #psearch input[type=search] { width:100%; padding:9px 12px; font:inherit; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--fg); }
   .fpanel .clsrow { flex-wrap:wrap; overflow:visible; margin:0; padding:0; }
   .cls { padding:4px 12px; border-radius:16px; border:1px solid var(--line); background:var(--card); color:var(--fg); font-size:13px; }
@@ -273,6 +275,9 @@
         <button id="viewgo" class="secondary">View</button>
       </div>
     </div>
+    <div id="recenthead" style="margin:12px 0 0" hidden><strong>Recently viewed</strong>
+      <p class="status" style="margin:2px 0 6px">Observations cached in this browser. They load instantly; clearing one just means downloading it again next time.</p></div>
+    <div id="recentusers"></div>
     <p class="status" id="favhint" hidden>Your cached observations don't include iNaturalist favourites yet. Use "Re-download observations" once to read them; favourited photos then become the thumbnails.</p>
     <details style="margin:10px 0 0;padding:0;border:0" id="logwrap">
       <summary class="status">Debug log</summary>
@@ -340,7 +345,9 @@
         <div id="fclasses" class="clsrow" role="group" aria-label="Filter by group (none selected = all)"></div>
       </div>
       <div class="card fpanel" id="pcmp" hidden>
-        <div id="cmpchips" class="clsrow" role="group" aria-label="Compare"></div>
+        <p class="status" style="margin:0 0 6px">Compare with (pick any number):</p>
+        <div id="cmppeople" class="clsrow" role="group" aria-label="People to compare with"></div>
+        <div id="cmpchips" class="clsrow" role="group" aria-label="Compare" style="margin-top:8px"></div>
         <p class="status" id="cmpnote" style="margin:6px 0 0"></p>
         <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
       </div>
@@ -430,6 +437,8 @@ ICONS['share-2'] = "<circle cx=\"18\" cy=\"5\" r=\"3\"/> <circle cx=\"6\" cy=\"1
 ICONS['git-compare'] = "<circle cx=\"18\" cy=\"18\" r=\"3\"/> <circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M13 6h3a2 2 0 0 1 2 2v7\"/> <path d=\"M11 18H8a2 2 0 0 1-2-2V9\"/>";
 ICONS['users'] = "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/> <path d=\"M16 3.128a4 4 0 0 1 0 7.744\"/> <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/> <circle cx=\"9\" cy=\"7\" r=\"4\"/>";
 ICONS['user-round'] = "<circle cx=\"12\" cy=\"8\" r=\"5\"/> <path d=\"M20 21a8 8 0 0 0-16 0\"/>";
+ICONS['trash-2'] = "<path d=\"M10 11v6\"/> <path d=\"M14 11v6\"/> <path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\"/> <path d=\"M3 6h18\"/> <path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\"/>";
+ICONS.eye = "<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>";
 function ic(name, size = 20, filled = false) {
   return `<svg class="lc" xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
 }
@@ -668,6 +677,12 @@ const idb = {
       });
     } catch (e) { log(`IndexedDB set(${k}) failed: ${e}`, 'w'); }
   },
+  async keys() {
+    try {
+      const db = await this.open();
+      return await new Promise((res, rej) => { const r = db.transaction('kv').objectStore('kv').getAllKeys(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    } catch (e) { log(`IndexedDB keys failed: ${e}`, 'w'); return []; }
+  },
   async del(k) {
     try {
       const db = await this.open();
@@ -695,8 +710,14 @@ let viewLogin = (urlParams.get('u') || '').trim();
 let meLogin = ''; try { meLogin = localStorage.getItem('inat_me') || ''; } catch {}
 const isOther = () => !!viewLogin && lc(viewLogin) !== lc(meLogin); // true: read-only view of someone else
 const dsKey = login => 'ds:' + lc(login);
-// The other person's observations, used for comparing: me while viewing a shared link, else the last person I viewed.
-let cmp = { login: '', obs: [] };
+// People whose observations are cached in this browser (metadata only), most recently viewed first.
+let people = [];
+const metaKey = login => 'dm:' + lc(login);
+// My own observations while viewing someone else (used by Nearby's seen badges and as the default comparison partner).
+let mine = { obs: [] };
+// Comparison partners (any number): selected logins and their loaded observations.
+let partners = [];
+let cmpData = new Map(); // lc(login) → { login, obs, species: Set|null, sig }
 
 // State = the dataset being viewed: user {id, login}, obs [slim records], complete (whole history loaded?), plus the shared taxon/place names.
 let state = { user: null, obs: [], complete: true, total: null, names: {}, places: {}, updated: null };
@@ -718,22 +739,63 @@ async function loadCache() {
     if (ds) Object.assign(state, { user: ds.user, obs: ds.obs || [], complete: ds.complete !== false, total: ds.total ?? null, updated: ds.updated });
     else state.user = { id: null, login: target };
   }
+  await loadPeople();
+  await touchViewed(state.user?.login || target);
   await loadCompare();
   log(`cache: ${state.obs.length} observations for ${state.user?.login || '(nobody yet)'}, ${Object.keys(state.names).length} taxa` +
-      (state.updated ? `, saved ${state.updated}` : ' (empty)') + (cmp.login ? `; compare with ${cmp.login} (${cmp.obs.length})` : ''));
+      (state.updated ? `, saved ${state.updated}` : ' (empty)') + (partners.length ? `; comparing with ${partners.join(', ')}` : ''));
 }
-// Load the comparison partner's cached observations (never fetches).
+// Which people are cached (from small metadata records; built once for caches that predate them).
+async function loadPeople() {
+  const keys = await idb.keys();
+  const dsKeys = keys.filter(k => typeof k === 'string' && k.startsWith('ds:'));
+  const out = [];
+  for (const k of dsKeys) {
+    let m = await idb.get('dm:' + k.slice(3));
+    if (!m) {
+      const ds = await idb.get(k);
+      if (!ds) continue;
+      m = { login: ds.user?.login || k.slice(3), count: (ds.obs || []).length, complete: ds.complete !== false, total: ds.total ?? null, updated: ds.updated || null, viewedAt: 0 };
+      await idb.set('dm:' + k.slice(3), m);
+    }
+    out.push(m);
+  }
+  people = out.sort((a, b) => (b.viewedAt || 0) - (a.viewedAt || 0));
+}
+async function touchViewed(login) {
+  if (!login) return;
+  const m = (await idb.get(metaKey(login))) || null;
+  if (m) { m.viewedAt = Date.now(); await idb.set(metaKey(login), m); }
+}
+const myName = l => lc(l) === lc(meLogin) ? 'me' : '@' + l;
+// Everyone who could be a comparison partner for the dataset on screen.
+function candidates() {
+  const self = lc(state.user?.login || viewLogin || meLogin), seen = new Set(), out = [];
+  for (const l of [meLogin, ...people.map(p => p.login)]) { if (l && lc(l) !== self && !seen.has(lc(l))) { seen.add(lc(l)); out.push(l); } }
+  return out;
+}
+// Load the selected partners' cached observations (never fetches).
 async function loadCompare() {
-  let partner = '';
-  if (isOther()) partner = meLogin;
-  else { try { partner = localStorage.getItem('inat_partner') || ''; } catch {} }
-  cmp = { login: partner, obs: [] };
-  if (partner) { const ds = await idb.get(dsKey(partner)); cmp.obs = ds?.obs || []; }
+  const self = lc(state.user?.login || viewLogin || meLogin);
+  mine = { obs: [] };
+  if (isOther() && meLogin) mine.obs = (await idb.get(dsKey(meLogin)))?.obs || [];
+  let sel = null;
+  try { const s = JSON.parse(localStorage.getItem('inat_partners') || 'null'); if (Array.isArray(s)) sel = s; } catch {}
+  if (!sel) sel = isOther() ? (meLogin ? [meLogin] : []) : (people.find(p => lc(p.login) !== lc(meLogin) && lc(p.login) !== self)?.login ? [people.find(p => lc(p.login) !== lc(meLogin) && lc(p.login) !== self).login] : []);
+  partners = sel.filter(l => l && lc(l) !== self);
+  cmpData = new Map();
+  for (const l of partners) cmpData.set(lc(l), { login: l, obs: (await idb.get(dsKey(l)))?.obs || [], species: null, sig: '' });
 }
 async function saveDataset(ds = state) {
   ds.updated = new Date().toISOString();
   const jobs = [idb.set('names', state.names), idb.set('places', state.places)];
-  if (ds.user?.login) jobs.push(idb.set(dsKey(ds.user.login), { user: ds.user, obs: ds.obs, complete: ds.complete, total: ds.total, updated: ds.updated }));
+  if (ds.user?.login) {
+    jobs.push(idb.set(dsKey(ds.user.login), { user: ds.user, obs: ds.obs, complete: ds.complete, total: ds.total, updated: ds.updated }));
+    const prev = people.find(p => lc(p.login) === lc(ds.user.login));
+    const meta = { login: ds.user.login, count: ds.obs.length, complete: ds.complete !== false, total: ds.total ?? null, updated: ds.updated, viewedAt: prev?.viewedAt || Date.now() };
+    if (prev) Object.assign(prev, meta); else people.unshift(meta);
+    jobs.push(idb.set(metaKey(ds.user.login), meta));
+  }
   await Promise.all(jobs);
   log(`cache saved (${ds.user?.login || '?'}: ${ds.obs.length} obs, ${Object.keys(state.names).length} taxa)`);
 }
@@ -747,6 +809,7 @@ function status(msg, err) {
 function setPanel(open) {
   $('login').hidden = !open;
   $('acct').setAttribute('aria-expanded', String(open));
+  if (open && typeof renderPeople === 'function') renderPeople();
 }
 $('acct').onclick = () => setPanel($('login').hidden);
 
@@ -1317,10 +1380,10 @@ function classMatch(o) {
 // Observations passing the date, group and favourite-status filters, before the area filter.
 function textFiltered() {
   const range = dateRange();
-  if (!range && !filterClasses.size && !favMode && !cmpMode) return state.obs;
-  const stats = favMode ? favStats() : null, other = cmpMode ? cmpSpecies() : null;
+  if (!range && !filterClasses.size && !favMode && !(cmpMode && activePartners().length)) return state.obs;
+  const stats = favMode ? favStats() : null, act = cmpMode ? activePartners() : [];
   return state.obs.filter(o => {
-    if (cmpMode) { const has = other.has(speciesIdOf(o) ?? o.tid); if (cmpMode === 'missing' ? has : !has) return false; }
+    if (cmpMode && act.length && !cmpPass(o, act)) return false;
     if (favMode) { const s = stats.get(o.tid); if (!(favMode === 'need' ? needsFav(s) : s && s.newN > 0)) return false; }
     if (range && !(o.date && o.date >= range[0] && o.date <= range[1])) return false;
     if (filterClasses.size && !classMatch(o)) return false;
@@ -1397,7 +1460,7 @@ function drawArea(a = area) {
 let suppressMove = false;
 function moveMap(fn) { suppressMove = true; try { fn(); } finally { suppressMove = false; } }
 
-const markerKey = () => `${cmpMode}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
+const markerKey = () => `${cmpMode}|${partners.join()}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
 function drawAreaMarkers() {
   if (!areaMap) return;
   markerSig = markerKey();
@@ -1699,9 +1762,9 @@ async function openSpecies(id, focusObs) {
   const mc = mineObs.length;
   const who = isOther() ? `@${state.user?.login || viewLogin}` : 'You';
   addTag(mc ? `✓ ${who} ${isOther() ? 'has' : 'have'} ${mc} observation${mc > 1 ? 's' : ''}` : `Not yet seen by ${isOther() ? who : 'you'}`);
-  if (cmp.obs.length) {
-    const n = cmp.obs.filter(o => o.tid === id || o.anc.includes(id)).length, whoCmp = isOther() ? 'You' : `@${cmp.login}`;
-    addTag(n ? `✓ ${whoCmp} ${isOther() ? 'have' : 'has'} ${n}` : `Not seen by ${isOther() ? 'you' : `@${cmp.login}`}`);
+  for (const p of activePartners()) {
+    const n = p.obs.filter(o => o.tid === id || o.anc.includes(id)).length;
+    addTag(n ? `✓ ${myName(p.login) === 'me' ? 'You have' : `@${p.login} has`} ${n}` : `Not seen by ${myName(p.login) === 'me' ? 'you' : '@' + p.login}`);
   }
   body.append(tags);
   const dstats = favStats().get(id);
@@ -1856,7 +1919,7 @@ function speciesIdOf(o) {
   return o.anc.find(id => state.names[id]?.rank === 'species') || null;
 }
 // "Mine" for Nearby's seen/not-seen badges: the logged-in user's observations (the comparison dataset while viewing someone else).
-const myObs = () => isOther() ? cmp.obs : state.obs;
+const myObs = () => isOther() ? mine.obs : state.obs;
 function mySpeciesCounts() {
   const m = new Map();
   for (const o of myObs()) { const id = speciesIdOf(o) ?? o.tid; m.set(id, (m.get(id) || 0) + 1); }
@@ -2195,17 +2258,37 @@ $('expres').onchange = $('expmonth').onchange = () => loadExplore();
 $('expfilter').onchange = renderExplore;
 
 // ---------- viewing someone else's observations, comparing, sharing ----------
-let cmpSig = '', cmpSet = new Set();
-function cmpSpecies() {
-  const sig = `${cmp.login}|${cmp.obs.length}|${Object.keys(state.names).length}`;
-  if (sig !== cmpSig) { cmpSet = new Set(cmp.obs.map(o => speciesIdOf(o) ?? o.tid)); cmpSig = sig; }
-  return cmpSet;
+// Species sets of the selected partners that have data; the comparison filter combines them.
+function activePartners() { return [...cmpData.values()].filter(p => p.obs.length); }
+function partnerSpecies(p) {
+  const sig = `${p.obs.length}|${Object.keys(state.names).length}`;
+  if (p.sig !== sig) { p.species = new Set(p.obs.map(o => speciesIdOf(o) ?? o.tid)); p.sig = sig; }
+  return p.species;
 }
-// the comparison partner as shown in labels: "me" when looking at a shared link, "@login" when looking at my own list
-function cmpLabel(mode) { return mode === 'missing' ? `Not seen by ${isOther() ? 'me' : '@' + cmp.login}` : 'Seen by both of us'; }
+// 'missing': none of the partners has seen the species; 'common': all of them have.
+function cmpPass(o, act) {
+  const sid = speciesIdOf(o) ?? o.tid;
+  return cmpMode === 'missing' ? !act.some(p => partnerSpecies(p).has(sid)) : act.every(p => partnerSpecies(p).has(sid));
+}
+function cmpLabel(mode) {
+  const names = activePartners().map(p => myName(p.login));
+  const list = names.length ? names : ['…'];
+  return mode === 'missing' ? `Not seen by ${list.join(' or ')}` : `Seen by ${list.join(' and ')}`;
+}
 function drawCmpChips() {
-  const box = $('cmpchips'), ready = cmp.obs.length > 0;
-  box.replaceChildren();
+  const box = $('cmpchips'), who = $('cmppeople'), act = activePartners(), ready = act.length > 0;
+  who.replaceChildren(); box.replaceChildren();
+  // who to compare with (any number): me, and everyone cached in this browser
+  for (const l of candidates()) {
+    const on = partners.some(x => lc(x) === lc(l)), hasData = on ? !!cmpData.get(lc(l))?.obs.length : true;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'cls' + (on ? ' on' : '');
+    b.insertAdjacentHTML('beforeend', ic(lc(l) === lc(meLogin) ? 'user-round' : 'users', 14));
+    b.append(myName(l) + (on && !hasData ? ' (not loaded)' : ''));
+    b.setAttribute('aria-pressed', String(on));
+    b.onclick = () => togglePartner(l);
+    who.append(b);
+  }
   for (const mode of ['missing', 'common']) {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'cls' + (cmpMode === mode ? ' on' : ''); b.textContent = cmpLabel(mode); b.disabled = !ready;
@@ -2213,13 +2296,22 @@ function drawCmpChips() {
     b.onclick = () => { cmpMode = cmpMode === mode ? '' : mode; drawCmpChips(); scheduleShow(); };
     box.append(b);
   }
-  const token = $('token').value.trim();
-  $('cmpload').hidden = !(isOther() && !ready && token);
-  $('cmpnote').textContent = ready ? `Comparing with ${isOther() ? 'your own' : '@' + cmp.login + "'s"} observations (${cmp.obs.length}).`
+  const token = $('token').value.trim(), meSel = partners.some(x => lc(x) === lc(meLogin)), meLoaded = !!cmpData.get(lc(meLogin))?.obs.length || (isOther() && mine.obs.length);
+  $('cmpload').hidden = !(token && (isOther() || meSel) && !meLoaded);
+  $('cmpnote').textContent = ready ? `Comparing ${state.user?.login ? '@' + state.user.login : 'this list'} with ${act.map(p => `${myName(p.login)} (${p.obs.length})`).join(', ')}.`
+    : candidates().length ? 'Pick one or more people above to compare with.'
     : isOther() ? (token ? 'Your own observations are not loaded yet.' : 'Log in (⚙) to compare with your own observations.')
     : "View someone else's observations (⚙ → View someone else) to compare with them.";
 }
-// Fetch my own observations as the comparison dataset while viewing a shared link.
+async function togglePartner(l) {
+  const i = partners.findIndex(x => lc(x) === lc(l));
+  if (i >= 0) { partners.splice(i, 1); cmpData.delete(lc(l)); }
+  else { partners.push(l); cmpData.set(lc(l), { login: l, obs: (await idb.get(dsKey(l)))?.obs || [], species: null, sig: '' }); }
+  try { localStorage.setItem('inat_partners', JSON.stringify(partners)); } catch {}
+  if (!activePartners().length) cmpMode = '';
+  drawCmpChips(); scheduleShow();
+}
+// Fetch my own observations so they can be compared (and used for Nearby's seen badges) while viewing a shared link.
 async function loadMine() {
   const token = $('token').value.trim().replace(/^Bearer\s+/i, '');
   if (!token) { status('Log in to load your own observations.', true); setPanel(true); return; }
@@ -2234,13 +2326,50 @@ async function loadMine() {
     const ids = new Set(); ds.obs.forEach(o => o.anc.forEach(i => ids.add(i)));
     await fetchMissingTaxa(ids);
     await saveDataset(ds);
+    if (!partners.some(x => lc(x) === lc(me.login)) && lc(state.user?.login || viewLogin) !== lc(me.login)) partners.push(me.login);
+    try { localStorage.setItem('inat_partners', JSON.stringify(partners)); } catch {}
     await loadCompare();
-    drawCmpChips(); refreshViewing(); show(true);
+    drawCmpChips(); refreshViewing(); show(true); renderPeople();
     status(`Loaded ${ds.obs.length} of your observations.`);
   } catch (e) { log(`loadMine failed: ${e.stack || e}`, 'e'); status(e.message, true); }
   finally { setBusy(false); }
 }
 $('cmpload').onclick = loadMine;
+
+// ---------- people cached in this browser: view again / clear ----------
+function ago(iso) { if (!iso) return 'never'; const s = (Date.now() - new Date(iso)) / 1000; return s < 90 ? 'just now' : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`; }
+function renderPeople() {
+  const box = $('recentusers');
+  box.replaceChildren();
+  $('recenthead').hidden = !people.length;
+  for (const p of people) {
+    const row = document.createElement('div'); row.className = 'person';
+    const isMe = lc(p.login) === lc(meLogin);
+    const info = document.createElement('div'); info.className = 'pinfo';
+    const nm = document.createElement('strong'); nm.textContent = '@' + p.login + (isMe ? ' (me)' : '');
+    const sub = document.createElement('span'); sub.className = 'status';
+    sub.textContent = `${p.count.toLocaleString()} observations${p.complete ? '' : ` (newest${p.total ? ' of ' + p.total.toLocaleString() : ''})`} · updated ${ago(p.updated)}`;
+    info.append(nm, sub);
+    const view = document.createElement('a'); view.className = 'ib'; view.href = isMe ? redirectUri() : `${redirectUri()}?u=${encodeURIComponent(p.login)}`;
+    view.title = view.ariaLabel = isMe ? 'View my observations' : `View @${p.login}'s observations`; view.innerHTML = ic('eye', 18);
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'ib';
+    del.title = del.ariaLabel = `Clear @${p.login}'s cached data`; del.innerHTML = ic('trash-2', 18);
+    del.onclick = () => clearPerson(p.login);
+    row.append(info, view, del); box.append(row);
+  }
+}
+async function clearPerson(login) {
+  const isMe = lc(login) === lc(meLogin);
+  if (!confirm(`Clear the cached observations of @${login}${isMe ? ' (your own list)' : ''}? They can be downloaded again.`)) return;
+  await Promise.all([idb.del(dsKey(login)), idb.del(metaKey(login))]);
+  people = people.filter(p => lc(p.login) !== lc(login));
+  partners = partners.filter(l => lc(l) !== lc(login)); cmpData.delete(lc(login));
+  try { localStorage.setItem('inat_partners', JSON.stringify(partners)); } catch {}
+  log(`cleared cached data for ${login}`);
+  if (lc(login) === lc(state.user?.login || viewLogin || meLogin)) { location.href = isMe ? redirectUri() : (meLogin ? redirectUri() : location.pathname); return; } // the one on screen: start over
+  renderPeople(); drawCmpChips(); refreshViewing(); scheduleShow();
+  toast(`Cleared @${login}`);
+}
 
 function refreshViewing() {
   const other = isOther(), box = $('viewing');
@@ -2254,7 +2383,7 @@ function refreshViewing() {
   $('share').hidden = !(other || state.user?.login || meLogin);
   $('bfav').hidden = other;
   if (other && !$('pfav').hidden) { $('pfav').hidden = true; $('bfav').classList.remove('open'); }
-  $('bcmp').hidden = !(other || cmp.login);
+  $('bcmp').hidden = !(other || candidates().length);
   $('loadall').hidden = state.complete !== false;
   $('loadall').textContent = `Load full history${state.total ? ` (${state.total.toLocaleString()} observations)` : ''}`;
 }
@@ -2410,7 +2539,6 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
       state.complete = true;
     } else {
       const userParam = encodeURIComponent(viewLogin);
-      try { localStorage.setItem('inat_partner', viewLogin); } catch {}
       if (token && !meLogin) { // learn who I am so my own observations can be used for comparing
         try { const me = (await api('/users/me', token)).results[0]; meLogin = me.login; localStorage.setItem('inat_me', meLogin); await loadCompare(); } catch (e) { log(`could not read own login: ${e.message}`, 'w'); }
       }
@@ -2425,8 +2553,10 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
     await fetchMissingTaxa(ids);
     backfillPrefMeta(); // first read of iNaturalist faves: don't flag existing observations as new
     await saveCache();
+    await touchViewed(state.user?.login);
     await loadCompare();
     show();
+    renderPeople();
     status(fresh.length ? `Done. ${fresh.length} new observations.` : state.complete ? 'Done. Already up to date.' : `Done. Showing the newest ${state.obs.length}${state.total ? ` of ${state.total}` : ''}.`);
   } catch (e) {
     log(`refresh failed: ${e.stack || e}`, 'e');
@@ -2457,7 +2587,7 @@ $('oauth').onclick = oauthLogin;
 $('redirecturi').textContent = redirectUri();
 $('clientid').value = clientId();
 $('clearcache').onclick = async () => {
-  await idb.clear(); state = { user: null, obs: [], complete: true, total: null, names: {}, places: {}, updated: null }; cmp = { login: '', obs: [] };
+  await idb.clear(); state = { user: null, obs: [], complete: true, total: null, names: {}, places: {}, updated: null }; people = []; partners = []; cmpData = new Map(); mine = { obs: [] }; renderPeople();
   $('results').hidden = true; log('all cached data cleared'); status('Cache cleared.');
 };
 $('copylog').onclick = () => navigator.clipboard?.writeText($('log').innerText).then(() => status('Log copied.'));
@@ -2677,6 +2807,7 @@ drawChips();
   setView(view);
   drawChips();
   await loadCache();
+  renderPeople();
   drawCmpChips();
   backfillPrefMeta();
   if (state.obs.length) { show(); status('Showing cached data; refreshing…'); }
