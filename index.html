@@ -124,6 +124,7 @@
   .swipe-prev #tree, .swipe-prev #recent, .swipe-prev #explore { animation:slideInL .22s ease-out; }
   #controls { margin:0 0 6px; }
   #iconbar { position:sticky; top:0; z-index:60; display:flex; align-items:center; gap:2px; margin:0 -16px 8px; padding:0 10px; flex-wrap:wrap; background:var(--card); border-top:1px solid var(--line); border-bottom:1px solid var(--line); transition:top .22s ease, box-shadow .2s; }
+  body.vexplore #bsearch, body.vexplore #areabtn, body.vexplore #brare, body.vexplore #bcmp, body.vexplore #bfav { display:none !important; }
   #iconbar.stuck { box-shadow:0 2px 8px rgba(0,0,0,.18); }
   .ibgroup { display:inline-flex; gap:2px; align-items:center; }
   .sp1 { flex:1; }
@@ -396,11 +397,10 @@
       <p class="status" style="margin:8px 0">Tap anywhere on the map to choose a spot. You can then set a radius around it, or switch to one of the places that contain it.</p>
       <div id="expmap" style="margin-bottom:10px"></div>
       <div id="exppills"></div>
-      <div id="expclasses" class="row" style="margin:6px 0 2px" role="group" aria-label="Taxonomic groups (none selected = all)"></div>
       <div class="row" style="margin:6px 0 4px">
         <label class="status"><input type="checkbox" id="expres" checked> Research grade only</label>
         <label class="status"><input type="checkbox" id="expmonth"> This calendar month only</label>
-        <select id="expfilter"><option value="all">Seen by anyone</option><option value="unseen">Not yet seen by me</option><option value="seen">Seen by me</option></select>
+        <label class="status"><input type="checkbox" id="expunseen"> Not yet seen by me</label>
       </div>
       <p id="expnote" class="status"></p>
       <div id="explist"></div>
@@ -1527,15 +1527,16 @@ function drawChips() {
   const dv = $('datesel').value;
   if (dv !== 'all') add('calendar', `${dv === 'custom' ? `${$('dfrom').value || '…'} → ${$('dto').value || '…'}` : $('datesel').selectedOptions[0].textContent}`,
     () => { $('datesel').value = 'all'; $('customdates').hidden = true; scheduleShow(); }, 'Clear date filter');
-  if (area) add('map-pin', `within ${fmtDist(area.r)}`, () => setArea(null), 'Clear area filter');
+  const nearby = view === 'explore'; // Nearby only uses the date and group filters
+  if (!nearby && area) add('map-pin', `within ${fmtDist(area.r)}`, () => setArea(null), 'Clear area filter');
   if (filterClasses.size) add('paw-print', `${[...filterClasses].map(k => EXP_CLASSES.find(x => x[0] === k)[1]).join(', ')}`,
     () => { filterClasses.clear(); try { localStorage.setItem('inat_fclass', ''); } catch {} drawFilterChips(); scheduleShow(); }, 'Clear group filter');
-  if (favMode) add(favMode === 'need' ? 'star' : 'refresh-cw', favMode === 'need' ? 'Needs favourite' : 'New since favourite',
+  if (!nearby && favMode) add(favMode === 'need' ? 'star' : 'refresh-cw', favMode === 'need' ? 'Needs favourite' : 'New since favourite',
     () => { favMode = ''; drawFilterChips(); scheduleShow(); }, 'Clear favourite filter');
-  if (rareMax) add('gem', `Under ${rareMax.toLocaleString()} observations worldwide`, () => { rareMax = 0; drawRarityChips(); scheduleShow(); }, 'Clear rarity filter');
-  if (rareConcern) add('shield-alert', 'Conservation concern', () => { rareConcern = false; drawRarityChips(); scheduleShow(); }, 'Clear conservation filter');
-  if (raritySort) add(raritySort === 'threat' ? 'shield-alert' : 'gem', raritySort === 'threat' ? 'Most threatened first' : 'Rarest first', () => { raritySort = ''; drawRarityChips(); scheduleShow(); }, 'Clear rarity sort');
-  if (cmpMode) add('git-compare', cmpLabel(cmpMode), () => { cmpMode = ''; drawCmpChips(); scheduleShow(); }, 'Clear comparison');
+  if (!nearby && rareMax) add('gem', `Under ${rareMax.toLocaleString()} observations worldwide`, () => { rareMax = 0; drawRarityChips(); scheduleShow(); }, 'Clear rarity filter');
+  if (!nearby && rareConcern) add('shield-alert', 'Conservation concern', () => { rareConcern = false; drawRarityChips(); scheduleShow(); }, 'Clear conservation filter');
+  if (!nearby && raritySort) add(raritySort === 'threat' ? 'shield-alert' : 'gem', raritySort === 'threat' ? 'Most threatened first' : 'Rarest first', () => { raritySort = ''; drawRarityChips(); scheduleShow(); }, 'Clear rarity sort');
+  if (!nearby && cmpMode) add('git-compare', cmpLabel(cmpMode), () => { cmpMode = ''; drawCmpChips(); scheduleShow(); }, 'Clear comparison');
   const has = (id, on) => $(id).classList.toggle('has', !!on);
   has('brare', rarityActive() || raritySort); has('bcmp', cmpMode); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
 }
@@ -2314,10 +2315,11 @@ async function initExpMap() {
   drawPlaceShape();
 }
 
+const expFilterKey = () => `${dateRange()}|${[...filterClasses].join()}`;
 async function loadExplore(more = false) {
   if (!explore.selected) return renderExplore();
   const seq = ++explore.seq;
-  if (!more) Object.assign(explore, { items: [], total: 0, page: 0, err: '' });
+  if (!more) Object.assign(explore, { items: [], total: 0, page: 0, err: '', fkey: expFilterKey() });
   explore.loading = true; renderExplore();
   if (!more) drawPlaceShape();
   try {
@@ -2325,7 +2327,9 @@ async function loadExplore(more = false) {
     if (explore.selected === 'r') { q.set('lat', explore.point.lat); q.set('lng', explore.point.lng); q.set('radius', explore.radius); }
     else q.set('place_id', explore.selected);
     if ($('expres').checked) q.set('quality_grade', 'research');
-    if (expClasses.size) q.set('iconic_taxa', [...expClasses].join(','));
+    if (filterClasses.size) q.set('iconic_taxa', [...filterClasses].join(','));
+    const dr = dateRange(); // the shared date filter
+    if (dr) { if (dr[0] > '0001') q.set('d1', dr[0]); if (dr[1] < '9999') q.set('d2', dr[1]); }
     if ($('expmonth').checked) q.set('month', new Date().getMonth() + 1);
     const d = await api(`/observations/species_counts?${q}`);
     if (seq !== explore.seq) return; // selection changed while loading
@@ -2378,7 +2382,7 @@ function renderExplore() {
     $('expnote').textContent = 'Choose a location to see the most observed species there, and which ones you have seen.';
     return;
   }
-  const mine = mySpeciesCounts(), myPhoto = myPhotoBySpecies(), mode = $('expfilter').value;
+  const mine = mySpeciesCounts(), myPhoto = myPhotoBySpecies(), mode = $('expunseen').checked ? 'unseen' : 'all';
   const rows = explore.items.filter(it => {
     const seen = mine.has(it.taxon.id);
     return mode === 'all' || (mode === 'seen') === seen;
@@ -2420,8 +2424,6 @@ $('expmore').onclick = () => loadExplore(true);
 // Taxonomic group chips: select any number; none selected means all groups.
 const EXP_CLASSES = [['Aves', 'Birds'], ['Mammalia', 'Mammals'], ['Reptilia', 'Reptiles'], ['Amphibia', 'Amphibians'], ['Actinopterygii', 'Fish'],
   ['Insecta', 'Insects'], ['Arachnida', 'Arachnids'], ['Mollusca', 'Molluscs'], ['Plantae', 'Plants'], ['Fungi', 'Fungi']];
-const expClasses = new Set();
-try { (localStorage.getItem('inat_expclass') || '').split(',').filter(c => EXP_CLASSES.some(x => x[0] === c)).forEach(c => expClasses.add(c)); } catch {}
 // Draw a row of toggle chips bound to a Set of class keys; persists to localStorage and calls onChange.
 function drawChips2(box, set, storeKey, onChange, extra) {
   box.replaceChildren();
@@ -2439,8 +2441,6 @@ function drawChips2(box, set, storeKey, onChange, extra) {
   if (extra) extra(box);
 }
 const loadSet = (set, key) => { try { (localStorage.getItem(key) || '').split(',').filter(c => EXP_CLASSES.some(x => x[0] === c)).forEach(c => set.add(c)); } catch {} };
-function drawClassChips() { drawChips2($('expclasses'), expClasses, 'inat_expclass', () => loadExplore()); }
-drawClassChips();
 // Same chips as a filter on my own observations (Recent, Taxonomy, Place).
 loadSet(filterClasses, 'inat_fclass');
 // Shuffling replaces any rarity sort.
@@ -2505,7 +2505,7 @@ function refreshFavChips() {
 function drawFilterChips() { drawChips2($('fclasses'), filterClasses, 'inat_fclass', () => scheduleShow()); favChips($('ffav')); }
 drawFilterChips();
 $('expres').onchange = $('expmonth').onchange = () => loadExplore();
-$('expfilter').onchange = renderExplore;
+$('expunseen').onchange = renderExplore;
 
 // ---------- viewing someone else's observations, comparing, sharing ----------
 // Species sets of the selected partners that have data; the comparison filter combines them.
@@ -2709,10 +2709,10 @@ function setView(v) {
   $('bsearch').hidden = v === 'recent' || v === 'explore';
   if (v === 'recent' || v === 'explore') { $('psearch').hidden = true; $('bsearch').classList.remove('open'); }
   $('recentTools').hidden = v !== 'recent';
-  $('filterwrap').hidden = v === 'explore';
-  $('fbtns').hidden = v === 'explore';
+  document.body.classList.toggle('vexplore', v === 'explore'); // Nearby keeps only the date and group filter buttons
+  if (v === 'explore') closePanels();
   $('locTools').hidden = v !== 'place';
-  if (v === 'explore') { initExpMap(); renderExplore(); if (explore.selected && !explore.items.length && !explore.loading) loadExplore(); }
+  if (v === 'explore') { initExpMap(); drawChips(); renderExplore(); if (explore.selected && !explore.items.length && !explore.loading) loadExplore(); }
   if (state.obs.length) show();
   // each tab keeps its own scroll position (re-applied once more next frame in case layout settles late)
   const y = scrollPos[v] || 0;
@@ -2737,7 +2737,10 @@ function updateFavHint() {
 }
 function show(keepStatus) {
   refreshViewing();
-  if (view === 'explore') { renderExplore(); $('summary').textContent = ''; $('results').hidden = false; return; }
+  if (view === 'explore') {
+    drawChips();
+    if (expFilterKey() !== explore.fkey && explore.selected) loadExplore(); else renderExplore();
+    $('summary').textContent = ''; $('results').hidden = false; return; }
   if (!state.obs.length) return;
   const t0 = performance.now();
   syncYearOptions();
