@@ -2151,6 +2151,28 @@ function drawExpCircle() {
   expCircle = L.circle([explore.point.lat, explore.point.lng], { radius: explore.radius * 1000, color: '#d9480f', weight: 2, fillColor: '#d9480f', fillOpacity: 0.08, interactive: false }).addTo(expMapObj);
   expMapObj.fitBounds(expCircle.getBounds(), { animate: false });
 }
+// Outline of the selected iNaturalist place (its boundary polygon, else its bounding box), with the map zoomed to fit it.
+const placeGeo = new Map();
+let expShape, shapeSeq = 0;
+async function drawPlaceShape() {
+  if (!expMapObj) return;
+  const seq = ++shapeSeq, id = explore.selected;
+  if (expShape) { expShape.remove(); expShape = null; }
+  if (!id || id === 'r') return;
+  try {
+    let g = placeGeo.get(id);
+    if (!g) {
+      const r = (await api(`/places/${id}`)).results[0];
+      g = r.geometry_geojson || r.bounding_box_geojson || null;
+      placeGeo.set(id, g);
+      if (!g) log(`place ${id} has no boundary data`, 'w');
+    }
+    if (seq !== shapeSeq || !g || !expMapObj) return;
+    expShape = L.geoJSON(g, { style: { color: '#d9480f', weight: 2, fillColor: '#d9480f', fillOpacity: 0.1 }, interactive: false }).addTo(expMapObj);
+    const b = expShape.getBounds();
+    if (b.isValid()) expMapObj.fitBounds(b, { animate: false, padding: [12, 12] });
+  } catch (e) { log(`place boundary failed: ${e.message}`, 'w'); }
+}
 // Find the iNaturalist places that contain a point and select the default level.
 async function lookupPoint(lat, lng, label, mode = 'r') {
   status('Looking up places…');
@@ -2283,6 +2305,7 @@ async function initExpMap() {
   expMapObj.invalidateSize();
   if (explore.point) markPoint(explore.point.lat, explore.point.lng);
   drawExpCircle();
+  drawPlaceShape();
 }
 
 async function loadExplore(more = false) {
@@ -2290,6 +2313,7 @@ async function loadExplore(more = false) {
   const seq = ++explore.seq;
   if (!more) Object.assign(explore, { items: [], total: 0, page: 0, err: '' });
   explore.loading = true; renderExplore();
+  if (!more) drawPlaceShape();
   try {
     const q = new URLSearchParams({ per_page: 100, page: explore.page + 1 });
     if (explore.selected === 'r') { q.set('lat', explore.point.lat); q.set('lng', explore.point.lng); q.set('radius', explore.radius); }
