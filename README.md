@@ -18,3 +18,11 @@ One-time setup: register an app at https://www.inaturalist.org/oauth/application
 
 The OAuth access token is exchanged for the 24h API JWT and re-exchanged automatically when it expires.
 Fallback: paste a JWT from https://www.inaturalist.org/users/api_token.
+
+## Installing and offline use
+
+The page is an installable web app (`manifest.webmanifest`, `sw.js`): use "Add to Home screen" / "Install" in the browser.
+The service worker caches the app itself, Leaflet, map tiles and photos, so the app opens without a connection and shows
+your cached observations. iNaturalist API calls are never cached by the service worker. Recent Nearby searches
+are stored separately (IndexedDB key `nearby`, up to 15) and can be reopened from the history button on the Nearby map.
+Bump `VER` in `sw.js` to force the cached libraries, tiles and photos to be dropped.
