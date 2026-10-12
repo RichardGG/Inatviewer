@@ -107,7 +107,15 @@
   .chip { display:inline-flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--accent); color:var(--fg);
           border-radius:16px; padding:3px 6px 3px 12px; font-size:13px; margin:0; }
   .chip button { padding:0 6px; background:none; color:var(--muted); font-size:16px; }
+  #expmapwrap { position:relative; margin-bottom:10px; }
   #expmap { height:280px; border-radius:8px; z-index:0; }
+  /* place search: a white map button that expands into a search box over the top of the map */
+  #expsearch { position:absolute; top:10px; right:10px; z-index:1100; width:34px; display:flex; flex-direction:column; align-items:flex-end; }
+  #expsearch.open { width:min(340px, calc(100% - 20px)); left:auto; }
+  #expsbtn { width:34px; height:34px; padding:0; display:flex; align-items:center; justify-content:center; background:#fff; color:#333; border:2px solid rgba(0,0,0,.2); border-radius:4px; background-clip:padding-box; cursor:pointer; }
+  #expsearch.open #expsbtn { display:none; }
+  #expq { width:100%; padding:7px 10px; font:inherit; border:2px solid rgba(0,0,0,.2); border-radius:4px; background:#fff; color:#222; background-clip:padding-box; }
+  #expsearch #expsug { width:100%; max-height:200px; overflow-y:auto; background:var(--card); box-shadow:0 6px 18px rgba(0,0,0,.3); border-radius:0 0 4px 4px; }
   #jumpwrap { margin:0 0 10px; position:relative; }
   #jumpsug { position:absolute; left:0; right:0; top:100%; z-index:70; max-height:55vh; overflow-y:auto; background:var(--card); box-shadow:0 6px 18px rgba(0,0,0,.25); }
   #jumpsug button, #expsug button { display:flex; flex-direction:column; align-items:flex-start; width:100%; text-align:left; background:var(--card); color:var(--fg);
@@ -391,11 +399,15 @@
     <div class="card" id="tree"></div>
     <div class="card" id="recent" hidden></div>
     <div class="card" id="explore" hidden>
-      <input type="search" id="expq" placeholder="Search any place: town, park, address, region…" autocomplete="off" spellcheck="false"
-             style="width:100%;padding:9px 12px;font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)">
-      <div id="expsug" hidden></div>
       <p class="status" style="margin:8px 0">Tap anywhere on the map to choose a spot. You can then set a radius around it, or switch to one of the places that contain it.</p>
-      <div id="expmap" style="margin-bottom:10px"></div>
+      <div id="expmapwrap">
+        <div id="expmap"></div>
+        <div id="expsearch">
+          <button type="button" id="expsbtn" aria-label="Search for a place" title="Search for a place"><i data-i="search" data-s="18"></i></button>
+          <input type="search" id="expq" placeholder="Town, park, address, region…" autocomplete="off" spellcheck="false" hidden>
+          <div id="expsug" hidden></div>
+        </div>
+      </div>
       <div id="exppills"></div>
       <div class="row" style="margin:6px 0 4px">
         <label class="status"><input type="checkbox" id="expres" checked> Research grade only</label>
@@ -2208,6 +2220,14 @@ function useMyLocation() {
 
 // ---- type a place name: iNaturalist places + OpenStreetMap (Nominatim) locations ----
 let sugTimer, sugSeq = 0;
+function openPlaceSearch(on) {
+  $('expsearch').classList.toggle('open', on);
+  $('expq').hidden = !on;
+  if (on) { $('expq').focus(); $('expq').select(); } else { $('expsug').hidden = true; $('expq').blur(); }
+}
+$('expsbtn').onclick = () => openPlaceSearch(true);
+$('expq').addEventListener('keydown', e => { if (e.key === 'Escape') openPlaceSearch(false); });
+$('expq').addEventListener('blur', () => setTimeout(() => { if (!$('expq').value.trim() && document.activeElement !== $('expq')) openPlaceSearch(false); }, 200));
 const sug = { inat: null, osm: null, q: '' };
 function drawSuggestions() {
   const box = $('expsug');
@@ -2221,7 +2241,7 @@ function drawSuggestions() {
       const sm = document.createElement('small');
       sm.textContent = [p.display_name !== p.name ? p.display_name : '', placeRank({ level: p.admin_level ?? null })].filter(Boolean).join(' · ');
       b.append(sm);
-      b.onclick = () => { box.hidden = true; $('expq').value = p.name || p.display_name; pickPlace(p); };
+      b.onclick = () => { $('expq').value = p.name || p.display_name; openPlaceSearch(false); pickPlace(p); };
       box.append(b);
     }
   }
@@ -2233,7 +2253,7 @@ function drawSuggestions() {
       b.append(nm);
       const sm = document.createElement('small'); sm.textContent = r.display_name; b.append(sm);
       b.onclick = () => {
-        box.hidden = true; $('expq').value = nm;
+        openPlaceSearch(false); $('expq').value = nm;
         const lat = +r.lat, lng = +r.lon;
         if (expMapObj) expMapObj.setView([lat, lng], 10, { animate: false });
         lookupPoint(lat, lng, nm);
