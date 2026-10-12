@@ -399,7 +399,6 @@
     <div class="card" id="tree"></div>
     <div class="card" id="recent" hidden></div>
     <div class="card" id="explore" hidden>
-      <p class="status" style="margin:8px 0">Tap anywhere on the map to choose a spot. You can then set a radius around it, or switch to one of the places that contain it.</p>
       <div id="expmapwrap">
         <div id="expmap"></div>
         <div id="expsearch">
@@ -411,7 +410,6 @@
       <div id="exppills"></div>
       <div class="row" style="margin:6px 0 4px">
         <label class="status"><input type="checkbox" id="expres" checked> Research grade only</label>
-        <label class="status"><input type="checkbox" id="expmonth"> This calendar month only</label>
         <label class="status"><input type="checkbox" id="expunseen"> Not yet seen by me</label>
       </div>
       <p id="expnote" class="status"></p>
@@ -2350,7 +2348,6 @@ async function loadExplore(more = false) {
     if (filterClasses.size) q.set('iconic_taxa', [...filterClasses].join(','));
     const dr = dateRange(); // the shared date filter
     if (dr) { if (dr[0] > '0001') q.set('d1', dr[0]); if (dr[1] < '9999') q.set('d2', dr[1]); }
-    if ($('expmonth').checked) q.set('month', new Date().getMonth() + 1);
     const d = await api(`/observations/species_counts?${q}`);
     if (seq !== explore.seq) return; // selection changed while loading
     explore.items.push(...d.results); explore.total = d.total_results; explore.page++;
@@ -2524,7 +2521,7 @@ function refreshFavChips() {
 }
 function drawFilterChips() { drawChips2($('fclasses'), filterClasses, 'inat_fclass', () => scheduleShow()); favChips($('ffav')); }
 drawFilterChips();
-$('expres').onchange = $('expmonth').onchange = () => loadExplore();
+$('expres').onchange = () => loadExplore();
 $('expunseen').onchange = renderExplore;
 
 // ---------- viewing someone else's observations, comparing, sharing ----------
