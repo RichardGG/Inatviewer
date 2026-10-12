@@ -1397,7 +1397,7 @@ function rarityBadge(r) {
   if (!concern && !rare) return null;
   const s = document.createElement('span');
   s.className = 'raretag ' + (concern ? 'concern' : r.n < 100 ? 'legend' : r.n < 1000 ? 'rare' : 'unc');
-  s.title = `${r.n.toLocaleString()} observations on iNaturalist${r.st ? ' · ' + r.st : ''}`;
+  s.title = `${r.n.toLocaleString()} observations on iNaturalist${r.st ? ' · ' + r.st + (r.place ? ' (' + r.place + ')' : r.auth ? ' (' + r.auth + ')' : '') : ''}`;
   s.innerHTML = ic(concern ? 'shield-alert' : 'gem', 11) + ` ${fmtCount(r.n)}`;
   return s;
 }
@@ -1407,6 +1407,14 @@ let rarity = {};
 const RARITY_TTL = 30 * 864e5;
 let rareMax = 0, rareConcern = false, raritySort = false, rarityBusy = false;
 const rarityOf = o => { const id = speciesIdOf(o); return id ? rarity[id] : undefined; };
+// Prefer the global IUCN assessment, then other global lists, then place-specific ones.
+function pickStatus(t) {
+  const all = [...(t.conservation_statuses || [])];
+  if (t.conservation_status) all.push(t.conservation_status);
+  const isIucn = c => /iucn/i.test(c.authority || '');
+  const rank = c => (!c.place && isIucn(c) ? 0 : !c.place ? 1 : isIucn(c) ? 2 : 3);
+  return all.sort((a, b) => rank(a) - rank(b))[0] || null;
+}
 const isConcern = r => !!r && (r.iucn >= 20 || r.thr);
 const fmtCount = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
 function raritySpeciesIds(obs = state.obs) {
@@ -1414,7 +1422,7 @@ function raritySpeciesIds(obs = state.obs) {
   for (const o of obs) { const id = speciesIdOf(o); if (id) ids.add(id); }
   return [...ids];
 }
-const rarityMissing = () => raritySpeciesIds().filter(id => !rarity[id] || Date.now() - rarity[id].t > RARITY_TTL);
+const rarityMissing = () => raritySpeciesIds().filter(id => !rarity[id] || rarity[id].v !== 2 || Date.now() - rarity[id].t > RARITY_TTL);
 // Fetch counts and status for the species in the current dataset (30 per request, saved after every batch).
 async function loadRarityData() {
   if (rarityBusy) return;
@@ -1427,8 +1435,8 @@ async function loadRarityData() {
       status(`Checking rarity… ${Math.min(i + 30, missing.length)}/${missing.length} species`);
       const d = await api(`/taxa/${batch.join(',')}?per_page=30`);
       for (const t of d.results) {
-        const cs = t.conservation_status || (t.conservation_statuses || [])[0] || null;
-        rarity[t.id] = { n: t.observations_count || 0, iucn: cs?.iucn || 0, st: cs ? (cs.status_name || cs.status || '') : '', thr: !!t.threatened, t: Date.now() };
+        const cs = pickStatus(t);
+        rarity[t.id] = { n: t.observations_count || 0, iucn: cs?.iucn || 0, st: cs ? (cs.status_name || cs.status || '') : '', code: cs?.status || '', auth: cs?.authority || '', place: cs?.place?.display_name || '', thr: !!t.threatened, v: 2, t: Date.now() };
       }
       await idb.set('rarity', rarity);
       refreshRarityUI(); show(true);
@@ -1714,7 +1722,7 @@ const taxDetailCache = new Map();
 async function loadTaxonDetail(id) {
   if (taxDetailCache.has(id)) return taxDetailCache.get(id);
   const all = (await idb.get('taxdetail')) || {};
-  if (all[id]) { taxDetailCache.set(id, all[id]); return all[id]; }
+  if (all[id] && all[id].v === 2) { taxDetailCache.set(id, all[id]); return all[id]; }
   const t = (await api(`/taxa/${id}`)).results[0];
   const slimT = {
     id: t.id, name: t.name, rank: t.rank, common: t.preferred_common_name || '',
@@ -1722,9 +1730,9 @@ async function loadTaxonDetail(id) {
     // wikipedia_summary is HTML; keep plain text only
     wiki: t.wikipedia_summary ? (new DOMParser().parseFromString(t.wikipedia_summary, 'text/html').body.textContent || '').trim() : '',
     ancestors: (t.ancestors || []).map(a => ({ id: a.id, name: a.name, rank: a.rank, common: a.preferred_common_name || '' })),
-    status: (() => { const cs = t.conservation_status || (t.conservation_statuses || [])[0]; return cs ? { name: cs.status_name || cs.status, code: cs.status || '', iucn: cs.iucn || 0, authority: cs.authority || '', place: cs.place?.display_name || '' } : null; })(),
+    status: (() => { const cs = pickStatus(t); return cs ? { name: cs.status_name || cs.status, code: cs.status || '', iucn: cs.iucn || 0, authority: cs.authority || '', place: cs.place?.display_name || '' } : null; })(),
     threatened: !!t.threatened, extinct: !!t.extinct, endemic: !!t.endemic, introduced: !!t.introduced, native: !!t.native,
-    obsCount: t.observations_count || 0,
+    obsCount: t.observations_count || 0, v: 2,
   };
   taxDetailCache.set(id, slimT);
   all[id] = slimT; await idb.set('taxdetail', all);
@@ -1851,7 +1859,7 @@ async function openSpecies(id, focusObs) {
   }
   body.append(tags);
   // conservation status: from the species data, or from the rarity lookup if that is all we have
-  const cs = t?.status?.name ? t.status : (rarity[id]?.st ? { name: rarity[id].st, iucn: rarity[id].iucn, code: '', authority: '', place: '' } : null);
+  const cs = t?.status?.name ? t.status : (rarity[id]?.st ? { name: rarity[id].st, iucn: rarity[id].iucn, code: rarity[id].code || '', authority: rarity[id].auth || '', place: rarity[id].place || '' } : null);
   if (cs) {
     const IUCN = { 5: 'Data deficient', 10: 'Least concern', 20: 'Near threatened', 30: 'Vulnerable', 40: 'Endangered', 50: 'Critically endangered', 60: 'Extinct in the wild', 70: 'Extinct' };
     const lvl = cs.iucn >= 50 ? 'crit' : cs.iucn >= 30 ? 'threat' : cs.iucn >= 20 ? 'near' : cs.iucn >= 10 ? 'ok' : 'unk';
@@ -1860,7 +1868,7 @@ async function openSpecies(id, focusObs) {
     const txt = el('div');
     const title = (IUCN[cs.iucn] || cs.name || 'Conservation status').replace(/^./, c => c.toUpperCase());
     txt.append(el('strong', '', title + (cs.code ? ` (${cs.code})` : '')));
-    const sub = [cs.authority || 'Conservation status', cs.place ? `in ${cs.place}` : 'global'].join(' · ');
+    const sub = [cs.authority || 'Conservation status', cs.place ? `in ${cs.place}` : (cs.authority ? 'global' : '')].filter(Boolean).join(' · ');
     txt.append(el('div', 'status', sub));
     row.append(txt);
     body.append(row);
