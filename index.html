@@ -950,9 +950,10 @@ async function syncFaves(token, userParam, ds = state) {
   const owner = ds.user?.id;
   if (!owner || !ds.obs.length) return 0;
   const faved = new Set();
-  let lastId = 0, scannedTo = 0, pages = 0;
+  let lastId = 0, scannedTo = 0, pages = 0, seenPopular = 0;
   for (;;) {
     const d = await api(`/observations?user_id=${userParam}&popular=true&per_page=200&order_by=id&order=desc` + (lastId ? `&id_below=${lastId}` : ''), token);
+    seenPopular += d.results.length;
     for (const o of d.results) if (Array.isArray(o.faves) && o.faves.some(f => (f.user?.id ?? f.user_id) === owner)) faved.add(o.id);
     pages++;
     if (!d.results.length || d.results.length < 200) { scannedTo = 0; break; } // reached the end of the list
@@ -960,6 +961,7 @@ async function syncFaves(token, userParam, ds = state) {
     if (pages >= FAVE_SCAN_CAP) { scannedTo = lastId; break; } // partial scan: don't clear faves below this id
     await sleep(700);
   }
+  const before = ds.obs.filter(o => o.fav).length;
   let added = 0, removed = 0;
   for (const o of ds.obs) {
     const now = faved.has(o.id);
@@ -968,7 +970,8 @@ async function syncFaves(token, userParam, ds = state) {
     o.fav = now;
   }
   lastFaveSync = Date.now();
-  if (added || removed) { favVer++; log(`faves synced from iNaturalist: +${added} −${removed}`); }
+  log(`fave sync: ${pages} page(s), ${seenPopular} observations with faves, ${faved.size} faved by owner; cached faves ${before} → ${ds.obs.filter(o => o.fav).length} (+${added} −${removed})${scannedTo ? `; partial scan down to id ${scannedTo}` : ''}`);
+  if (added || removed) favVer++;
   return added + removed;
 }
 
@@ -3259,7 +3262,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build faves-3 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
