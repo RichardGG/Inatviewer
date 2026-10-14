@@ -629,13 +629,15 @@ function backfillPrefMeta() {
 }
 // An observation is a favourite if its owner faved it on iNaturalist.
 const isFavObs = o => !!o.fav;
-let faveTidSig = '', faveTids = new Set();
+let faveTidSig = '', faveTids = new Map(); // tid → id of its newest favourite observation
 function hasFavTid(tid) {
   const sig = `${state.obs.length}|${favVer}`;
-  if (sig !== faveTidSig) { faveTids = new Set(); for (const o of state.obs) if (o.fav) faveTids.add(o.tid); faveTidSig = sig; }
+  if (sig !== faveTidSig) { faveTids = new Map(); for (const o of state.obs) if (o.fav && o.id > (faveTids.get(o.tid) || 0)) faveTids.set(o.tid, o.id); faveTidSig = sig; }
   return faveTids.has(tid);
 }
-const isNewObs = o => { const m = prefMeta[o.tid]; return !isOther() && !!(m && hasFavTid(o.tid) && o.id > m.max); };
+// New = added after the favourite was chosen. The mark is stored per device, so never count observations at or below the newest favourite itself
+// (a favourite chosen on another device would otherwise flag itself and everything up to it).
+const isNewObs = o => { const m = prefMeta[o.tid]; return !isOther() && !!(m && hasFavTid(o.tid) && o.id > Math.max(m.max, faveTids.get(o.tid))); };
 
 // Toggle the iNaturalist fave of an observation (optimistic, reverted on failure; needs a login).
 // onChange runs right after the optimistic update and again after a revert.
@@ -966,10 +968,11 @@ async function syncFaves(token, userParam, ds = state) {
   for (const o of ds.obs) {
     const now = faved.has(o.id);
     if (o.fav === now || (!now && scannedTo && o.id < scannedTo)) continue;
-    if (now) added++; else if (o.fav) removed++;
+    if (now) { added++; prefMeta[o.tid] = { max: maxObsId(o.tid), t: Date.now() }; } else if (o.fav) removed++; // a fave chosen elsewhere counts as reviewed up to now
     o.fav = now;
   }
   lastFaveSync = Date.now();
+  if (added) savePrefMeta();
   log(`fave sync: ${pages} page(s), ${seenPopular} observations with faves, ${faved.size} faved by owner; cached faves ${before} → ${ds.obs.filter(o => o.fav).length} (+${added} −${removed})${scannedTo ? `; partial scan down to id ${scannedTo}` : ''}`);
   if (added || removed) favVer++;
   return added + removed;
@@ -3262,7 +3265,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build faves-3 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build faves-4 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
