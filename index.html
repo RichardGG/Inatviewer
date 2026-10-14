@@ -242,6 +242,7 @@
   .tile .cap { position:absolute; left:0; right:0; bottom:0; padding:14px 6px 4px; color:#fff; font-size:11px; text-align:left;
                background:linear-gradient(transparent, rgba(0,0,0,.65)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; text-decoration:none; z-index:1; }
   .tile .cap:hover { text-decoration:underline; }
+  .othertag { position:absolute; left:4px; bottom:4px; display:flex; align-items:center; gap:3px; background:rgba(0,0,0,.65); color:#fff; font-size:12px; padding:1px 7px; border-radius:10px; pointer-events:none; }
   .tile .badge { top:4px; right:4px; bottom:auto; }
   .toolbar { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   /* full-screen viewer */
@@ -394,7 +395,7 @@
       </div>
       <div class="card fpanel" id="pfav" hidden>
         <div id="ffav" class="clsrow" role="group" aria-label="Favourite photo status"></div>
-        <p class="status" style="margin:6px 0 0">Find species that still need a favourite photo, or have new observations since you chose one.</p>
+        <p class="status" style="margin:6px 0 0">Find species that still need a favourite photo, have new observations since you chose one, or observations other people have favourited.</p>
       </div>
       <div class="card" id="areapanel" hidden>
         <p class="status" style="margin:0 0 8px">Pan and zoom the map: the orange circle always fits the current view. Turn the filter on and only observations inside the circle are shown in every view.</p>
@@ -946,6 +947,7 @@ function slim(o) {
     pids: o.place_ids || [],
     // iNaturalist "fave" by the observation's own owner (undefined when the payload carried no fave info)
     fav: Array.isArray(o.faves) ? o.faves.some(f => (f.user?.id ?? f.user_id) === o.user?.id) : undefined,
+    ff: Array.isArray(o.faves) ? o.faves.filter(f => (f.user?.id ?? f.user_id) !== o.user?.id).length : undefined, // faves by other people
     cr: Date.parse(o.created_at) || 0, // when it was uploaded (ms); compared with the time a favourite was chosen
     photos: (o.photos || []).map(p => p.url).filter(Boolean),
     photo: o.photos?.[0]?.url || t.default_photo?.square_url || '',
@@ -986,6 +988,7 @@ async function syncFaves(token, userParam, ds = state) {
   const owner = ds.user?.id;
   if (!owner || !ds.obs.length) return 0;
   const faved = new Map(); // observation id → when the owner faved it (ms)
+  const others = new Map(); // observation id → number of faves by other people
   let lastId = 0, scannedTo = 0, pages = 0, seenPopular = 0;
   for (;;) {
     const d = await api(`/observations?user_id=${userParam}&popular=true&per_page=200&order_by=id&order=desc` + (lastId ? `&id_below=${lastId}` : ''), token);
@@ -997,6 +1000,7 @@ async function syncFaves(token, userParam, ds = state) {
     for (const o of d.results) {
       const f = Array.isArray(o.faves) ? o.faves.find(x => (x.user?.id ?? x.user_id) === owner) : null;
       if (f) faved.set(o.id, Date.parse(f.created_at) || 0);
+      if (Array.isArray(o.faves)) others.set(o.id, o.faves.filter(x => (x.user?.id ?? x.user_id) !== owner).length);
     }
     pages++;
     if (!d.results.length || d.results.length < 200) { scannedTo = 0; break; } // reached the end of the list
@@ -1010,6 +1014,7 @@ async function syncFaves(token, userParam, ds = state) {
   for (const o of ds.obs) {
     const now = faved.has(o.id);
     if (!now && scannedTo && o.id < scannedTo) continue;
+    if (!scannedTo || o.id >= scannedTo) { const ff = others.get(o.id) || 0; if ((o.ff || 0) !== ff) { o.ff = ff; timed++; } }
     if (now && (o.favAt || 0) !== faved.get(o.id)) { o.favAt = faved.get(o.id); timed++; } else if (!now && o.favAt) { o.favAt = 0; timed++; }
     if (o.fav === now) continue;
     if (now) { added++; prefMeta[o.tid] = { max: maxObsId(o.tid), t: Date.now() }; } else if (o.fav) removed++;
@@ -1468,6 +1473,7 @@ function renderRecent(obs) {
     b.append(im);
     if (ph.length > 1) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `1/${ph.length}`; b.append(n); }
     { const fs = favStats().get(o.tid); if (o._n != null ? (fs && fs.newN > 0) : isNewObs(o)) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.textContent = 'NEW'; b.append(nt); } }
+    if (favMode === 'others' && o.ff > 0) { const ot = document.createElement('span'); ot.className = 'othertag'; ot.innerHTML = ic('heart', 12, true) + ' ' + o.ff; ot.title = `Favourited by ${o.ff} other ${o.ff > 1 ? 'people' : 'person'}`; t.append(ot); }
     b.onclick = () => openSpecies(o.tid, o);
     // the name opens the species detail
     const cap = document.createElement('a');
@@ -1619,7 +1625,7 @@ function rarityMatches(o) {
 }
 const rarityActive = () => rareMax > 0 || rareConcern;
 let cmpMode = ''; // '' | 'missing' (species the other person hasn't seen) | 'common' (seen by both)
-let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite)
+let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite) | 'others' (faved by other users)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
                     47158: 'Insecta', 47119: 'Arachnida', 47115: 'Mollusca', 47126: 'Plantae', 47170: 'Fungi' };
 const CLASS_NAMES = new Set(Object.values(CLASS_IDS));
@@ -1634,11 +1640,12 @@ function classMatch(o) {
 function textFiltered() {
   const range = dateRange();
   if (!range && !filterClasses.size && !favMode && !rarityActive() && !(cmpMode && activePartners().length)) return state.obs;
-  const stats = favMode ? favStats() : null, act = cmpMode ? activePartners() : [];
+  const stats = favMode && favMode !== 'others' ? favStats() : null, act = cmpMode ? activePartners() : [];
   return state.obs.filter(o => {
     if (cmpMode && act.length && !cmpPass(o, act)) return false;
     if (rarityActive() && !rarityMatches(o)) return false;
-    if (favMode) { const s = stats.get(o.tid); if (!(favMode === 'need' ? needsFav(s) : s && s.newN > 0)) return false; }
+    if (favMode === 'others') { if (!(o.ff > 0)) return false; }
+    else if (favMode) { const s = stats.get(o.tid); if (!(favMode === 'need' ? needsFav(s) : s && s.newN > 0)) return false; }
     if (range && !(o.date && o.date >= range[0] && o.date <= range[1])) return false;
     if (filterClasses.size && !classMatch(o)) return false;
     return true;
@@ -1692,7 +1699,7 @@ function drawChips() {
   if (!nearby && area) add('map-pin', `within ${fmtDist(area.r)}`, () => setArea(null), 'Clear area filter');
   if (filterClasses.size) add('paw-print', `${[...filterClasses].map(k => EXP_CLASSES.find(x => x[0] === k)[1]).join(', ')}`,
     () => { filterClasses.clear(); try { localStorage.setItem('inat_fclass', ''); } catch {} drawFilterChips(); scheduleShow(); }, 'Clear group filter');
-  if (!nearby && favMode) add(favMode === 'need' ? 'star' : 'refresh-cw', favMode === 'need' ? 'Needs favourite' : 'New since favourite',
+  if (!nearby && favMode) add(favMode === 'need' ? 'star' : favMode === 'others' ? 'heart' : 'refresh-cw', favMode === 'need' ? 'Needs favourite' : favMode === 'others' ? 'Faved by others' : 'New since favourite',
     () => { favMode = ''; drawFilterChips(); scheduleShow(); }, 'Clear favourite filter');
   if (!nearby && rareMax) add('gem', `Under ${rareMax.toLocaleString()} observations worldwide`, () => { rareMax = 0; drawRarityChips(); scheduleShow(); }, 'Clear rarity filter');
   if (!nearby && rareConcern) add('shield-alert', 'Conservation concern', () => { rareConcern = false; drawRarityChips(); scheduleShow(); }, 'Clear conservation filter');
@@ -2771,7 +2778,7 @@ $('rarecheck').onclick = loadRarityData;
 // Favourite-status chips (mutually exclusive), appended to the class chip row with live species counts.
 function favChips(box) {
   box.replaceChildren();
-  for (const [mode, id] of [['need', 'favneed'], ['new', 'favnew']]) {
+  for (const [mode, id] of [['need', 'favneed'], ['new', 'favnew'], ['others', 'favothers']]) {
     const b = document.createElement('button');
     b.type = 'button'; b.id = id; b.className = 'cls fav' + (favMode === mode ? ' on' : '');
     b.setAttribute('aria-pressed', String(favMode === mode));
@@ -2789,6 +2796,9 @@ function refreshFavChips() {
   $('favneed').title = 'Species with 2 or more photos but no favourite chosen';
   $('favnew').innerHTML = `${ic('refresh-cw', 14)} New since favourite · ${fresh}`;
   $('favnew').title = 'Species with observations added after you chose the favourite';
+  const others = state.obs.reduce((n, o) => n + (o.ff > 0 ? 1 : 0), 0);
+  $('favothers').innerHTML = `${ic('heart', 14)} Faved by others · ${others}`;
+  $('favothers').title = 'Observations that other iNaturalist users have favourited';
 }
 function drawFilterChips() { drawChips2($('fclasses'), filterClasses, 'inat_fclass', () => scheduleShow()); favChips($('ffav')); }
 drawFilterChips();
@@ -3379,7 +3389,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build sync-7 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build sync-8 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
