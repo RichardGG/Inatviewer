@@ -785,6 +785,8 @@ const urlParams = new URLSearchParams(startSearch);
 const lc = s => (s || '').toLowerCase();
 let viewLogin = (urlParams.get('u') || '').trim();
 let meLogin = ''; try { meLogin = localStorage.getItem('inat_me') || ''; } catch {}
+let meId = 0; try { meId = +localStorage.getItem('inat_me_id') || 0; } catch {}
+const setMe = me => { meLogin = me.login; meId = me.id; try { localStorage.setItem('inat_me', meLogin); localStorage.setItem('inat_me_id', String(meId)); } catch {} };
 const isOther = () => !!viewLogin && lc(viewLogin) !== lc(meLogin); // true: read-only view of someone else
 const dsKey = login => 'ds:' + lc(login);
 // People whose observations are cached in this browser (metadata only), most recently viewed first.
@@ -948,6 +950,7 @@ function slim(o) {
     // iNaturalist "fave" by the observation's own owner (undefined when the payload carried no fave info)
     fav: Array.isArray(o.faves) ? o.faves.some(f => (f.user?.id ?? f.user_id) === o.user?.id) : undefined,
     ff: Array.isArray(o.faves) ? o.faves.filter(f => (f.user?.id ?? f.user_id) !== o.user?.id).length : undefined, // faves by other people
+    mf: meId && Array.isArray(o.faves) ? o.faves.some(f => (f.user?.id ?? f.user_id) === meId) : undefined, // faved by the person using the app (matters on someone else's account)
     cr: Date.parse(o.created_at) || 0, // when it was uploaded (ms); compared with the time a favourite was chosen
     photos: (o.photos || []).map(p => p.url).filter(Boolean),
     photo: o.photos?.[0]?.url || t.default_photo?.square_url || '',
@@ -989,6 +992,7 @@ async function syncFaves(token, userParam, ds = state) {
   if (!owner || !ds.obs.length) return 0;
   const faved = new Map(); // observation id → when the owner faved it (ms)
   const others = new Map(); // observation id → number of faves by other people
+  const mineFaved = new Set(); // observations the person using the app has faved (someone else's account)
   let lastId = 0, scannedTo = 0, pages = 0, seenPopular = 0;
   for (;;) {
     const d = await api(`/observations?user_id=${userParam}&popular=true&per_page=200&order_by=id&order=desc` + (lastId ? `&id_below=${lastId}` : ''), token);
@@ -1000,6 +1004,7 @@ async function syncFaves(token, userParam, ds = state) {
     for (const o of d.results) {
       const f = Array.isArray(o.faves) ? o.faves.find(x => (x.user?.id ?? x.user_id) === owner) : null;
       if (f) faved.set(o.id, Date.parse(f.created_at) || 0);
+      if (meId && Array.isArray(o.faves) && o.faves.some(x => (x.user?.id ?? x.user_id) === meId)) mineFaved.add(o.id);
       if (Array.isArray(o.faves)) others.set(o.id, o.faves.filter(x => (x.user?.id ?? x.user_id) !== owner).length);
     }
     pages++;
@@ -1014,7 +1019,10 @@ async function syncFaves(token, userParam, ds = state) {
   for (const o of ds.obs) {
     const now = faved.has(o.id);
     if (!now && scannedTo && o.id < scannedTo) continue;
-    if (!scannedTo || o.id >= scannedTo) { const ff = others.get(o.id) || 0; if ((o.ff || 0) !== ff) { o.ff = ff; timed++; } }
+    if (!scannedTo || o.id >= scannedTo) {
+      const ff = others.get(o.id) || 0; if ((o.ff || 0) !== ff) { o.ff = ff; timed++; }
+      if (meId && owner !== meId) { const mf = mineFaved.has(o.id); if (!!o.mf !== mf) { o.mf = mf; timed++; } }
+    }
     if (now && (o.favAt || 0) !== faved.get(o.id)) { o.favAt = faved.get(o.id); timed++; } else if (!now && o.favAt) { o.favAt = 0; timed++; }
     if (o.fav === now) continue;
     if (now) { added++; prefMeta[o.tid] = { max: maxObsId(o.tid), t: Date.now() }; } else if (o.fav) removed++;
@@ -1625,7 +1633,7 @@ function rarityMatches(o) {
 }
 const rarityActive = () => rareMax > 0 || rareConcern;
 let cmpMode = ''; // '' | 'missing' (species the other person hasn't seen) | 'common' (seen by both)
-let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite) | 'others' (faved by other users)
+let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite) | 'others' (faved by other users) | 'theirs' / 'mine' (someone else's account: their favourites / ones I faved)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
                     47158: 'Insecta', 47119: 'Arachnida', 47115: 'Mollusca', 47126: 'Plantae', 47170: 'Fungi' };
 const CLASS_NAMES = new Set(Object.values(CLASS_IDS));
@@ -1640,11 +1648,13 @@ function classMatch(o) {
 function textFiltered() {
   const range = dateRange();
   if (!range && !filterClasses.size && !favMode && !rarityActive() && !(cmpMode && activePartners().length)) return state.obs;
-  const stats = favMode && favMode !== 'others' ? favStats() : null, act = cmpMode ? activePartners() : [];
+  const stats = favMode === 'need' || favMode === 'new' ? favStats() : null, act = cmpMode ? activePartners() : [];
   return state.obs.filter(o => {
     if (cmpMode && act.length && !cmpPass(o, act)) return false;
     if (rarityActive() && !rarityMatches(o)) return false;
     if (favMode === 'others') { if (!(o.ff > 0)) return false; }
+    else if (favMode === 'theirs') { if (!o.fav) return false; }
+    else if (favMode === 'mine') { if (!o.mf) return false; }
     else if (favMode) { const s = stats.get(o.tid); if (!(favMode === 'need' ? needsFav(s) : s && s.newN > 0)) return false; }
     if (range && !(o.date && o.date >= range[0] && o.date <= range[1])) return false;
     if (filterClasses.size && !classMatch(o)) return false;
@@ -1699,7 +1709,7 @@ function drawChips() {
   if (!nearby && area) add('map-pin', `within ${fmtDist(area.r)}`, () => setArea(null), 'Clear area filter');
   if (filterClasses.size) add('paw-print', `${[...filterClasses].map(k => EXP_CLASSES.find(x => x[0] === k)[1]).join(', ')}`,
     () => { filterClasses.clear(); try { localStorage.setItem('inat_fclass', ''); } catch {} drawFilterChips(); scheduleShow(); }, 'Clear group filter');
-  if (!nearby && favMode) add(favMode === 'need' ? 'star' : favMode === 'others' ? 'heart' : 'refresh-cw', favMode === 'need' ? 'Needs favourite' : favMode === 'others' ? 'Faved by others' : 'New since favourite',
+  if (!nearby && favMode) add({ need: 'star', theirs: 'star', others: 'heart', mine: 'user-round', new: 'refresh-cw' }[favMode], { need: 'Needs favourite', theirs: 'Their favourites', others: 'Faved by others', mine: 'Faved by me', new: 'New since favourite' }[favMode],
     () => { favMode = ''; drawFilterChips(); scheduleShow(); }, 'Clear favourite filter');
   if (!nearby && rareMax) add('gem', `Under ${rareMax.toLocaleString()} observations worldwide`, () => { rareMax = 0; drawRarityChips(); scheduleShow(); }, 'Clear rarity filter');
   if (!nearby && rareConcern) add('shield-alert', 'Conservation concern', () => { rareConcern = false; drawRarityChips(); scheduleShow(); }, 'Clear conservation filter');
@@ -2776,9 +2786,14 @@ function refreshRarityUI() {
 }
 $('rarecheck').onclick = loadRarityData;
 // Favourite-status chips (mutually exclusive), appended to the class chip row with live species counts.
+// Favourite filters differ with whose observations are shown: my own (curating my favourites) or someone else's.
+let lastFavOther = false;
+const favModes = () => isOther()
+  ? [['theirs', 'favtheirs'], ['others', 'favothers'], ...(meId ? [['mine', 'favmine']] : [])]
+  : [['need', 'favneed'], ['new', 'favnew'], ['others', 'favothers']];
 function favChips(box) {
   box.replaceChildren();
-  for (const [mode, id] of [['need', 'favneed'], ['new', 'favnew'], ['others', 'favothers']]) {
+  for (const [mode, id] of favModes()) {
     const b = document.createElement('button');
     b.type = 'button'; b.id = id; b.className = 'cls fav' + (favMode === mode ? ' on' : '');
     b.setAttribute('aria-pressed', String(favMode === mode));
@@ -2788,17 +2803,17 @@ function favChips(box) {
   refreshFavChips();
 }
 function refreshFavChips() {
+  const set = (id, icon, text, n, title) => { const b = $(id); if (!b) return; b.innerHTML = `${ic(icon, 14)} ${text} · ${n}`; b.title = title; };
+  const count = f => state.obs.reduce((n, o) => n + (f(o) ? 1 : 0), 0);
+  set('favothers', 'heart', 'Faved by others', count(o => o.ff > 0), isOther() ? 'Observations that someone besides their owner has favourited' : 'Observations that other iNaturalist users have favourited');
+  set('favtheirs', 'star', 'Their favourites', count(o => o.fav), 'Observations the owner has favourited');
+  set('favmine', 'user-round', 'Faved by me', count(o => o.mf), 'Observations you have favourited');
   if (!$('favneed')) return;
   const st = favStats();
   let need = 0, fresh = 0;
   for (const s of st.values()) { if (needsFav(s)) need++; if (s.newN > 0) fresh++; }
-  $('favneed').innerHTML = `${ic('star', 14)} Needs favourite · ${need}`;
-  $('favneed').title = 'Species with 2 or more photos but no favourite chosen';
-  $('favnew').innerHTML = `${ic('refresh-cw', 14)} New since favourite · ${fresh}`;
-  $('favnew').title = 'Species with observations added after you chose the favourite';
-  const others = state.obs.reduce((n, o) => n + (o.ff > 0 ? 1 : 0), 0);
-  $('favothers').innerHTML = `${ic('heart', 14)} Faved by others · ${others}`;
-  $('favothers').title = 'Observations that other iNaturalist users have favourited';
+  set('favneed', 'star', 'Needs favourite', need, 'Species with 2 or more photos but no favourite chosen');
+  set('favnew', 'refresh-cw', 'New since favourite', fresh, 'Species with observations added after you chose the favourite');
 }
 function drawFilterChips() { drawChips2($('fclasses'), filterClasses, 'inat_fclass', () => scheduleShow()); favChips($('ffav')); }
 drawFilterChips();
@@ -2867,7 +2882,7 @@ async function loadMine() {
   try {
     status('Loading your observations for comparison…');
     const me = (await api('/users/me', token)).results[0];
-    meLogin = me.login; try { localStorage.setItem('inat_me', meLogin); } catch {}
+    setMe(me);
     const cached = await idb.get(dsKey(me.login));
     const ds = { user: { id: me.id, login: me.login }, obs: cached?.obs || [], complete: true, total: null };
     await fetchNewObservations(token, me.id, ds.obs.reduce((m, o) => Math.max(m, o.id), 0), ds);
@@ -2920,6 +2935,7 @@ async function clearPerson(login) {
 }
 
 function refreshViewing() {
+  if (lastFavOther !== isOther()) { lastFavOther = isOther(); drawFilterChips(); } // different favourite filters for my own vs someone else's observations
   const other = isOther(), box = $('viewing');
   box.hidden = !other;
   if (other) {
@@ -2929,8 +2945,8 @@ function refreshViewing() {
     if (meLogin) { const b = document.createElement('button'); b.className = 'secondary'; b.textContent = 'Back to mine'; b.onclick = () => { location.href = redirectUri(); }; box.append(b); }
   }
   $('share').hidden = !(other || state.user?.login || meLogin);
-  $('bfav').hidden = other;
-  if (other && !$('pfav').hidden) { $('pfav').hidden = true; $('bfav').classList.remove('open'); }
+  $('bfav').hidden = false;
+  if (favMode && !favModes().some(m => m[0] === favMode)) { favMode = ''; drawFilterChips(); drawChips(); } // e.g. a filter that only exists for my own observations
   $('bcmp').hidden = !(other || candidates().length);
   $('brare').hidden = !state.obs.length;
   $('loadall').hidden = state.complete !== false;
@@ -3087,7 +3103,7 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
       status('Checking token…');
       const me = (await api('/users/me', token)).results[0];
       log(`authenticated as ${me.login} (id ${me.id})`);
-      meLogin = me.login; try { localStorage.setItem('inat_me', meLogin); } catch {}
+      setMe(me);
       if (full || state.user?.id !== me.id) {
         if (state.user?.id && state.user.id !== me.id) log('different user than cache; discarding cache', 'w');
         Object.assign(state, { user: null, obs: [], complete: true, total: null, edited: null, idsChecked: null });
@@ -3102,8 +3118,8 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
       favChanges += await syncDeleted(token, me.id).catch(e => { log(`deleted check failed: ${e.message}`, 'w'); return 0; });
     } else {
       const userParam = encodeURIComponent(viewLogin);
-      if (token && !meLogin) { // learn who I am so my own observations can be used for comparing
-        try { const me = (await api('/users/me', token)).results[0]; meLogin = me.login; localStorage.setItem('inat_me', meLogin); await loadCompare(); } catch (e) { log(`could not read own login: ${e.message}`, 'w'); }
+      if (token && (!meLogin || !meId)) { // learn who I am so my own observations can be used for comparing
+        try { const me = (await api('/users/me', token)).results[0]; setMe(me); await loadCompare(); } catch (e) { log(`could not read own login: ${e.message}`, 'w'); }
       }
       if (full) Object.assign(state, { obs: [], complete: false, total: null, edited: null, idsChecked: null });
       if (!state.obs.length) { state.complete = false; await fetchOlder(token, userParam, 0, FIRST_LOAD_CAP); }
@@ -3389,7 +3405,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build sync-8 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build sync-9 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
