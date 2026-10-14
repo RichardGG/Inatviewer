@@ -942,6 +942,36 @@ async function fetchNewObservations(token, userParam, afterId, ds = state) {
   return fresh;
 }
 
+// Faves are only read when an observation is first downloaded, so a fave added or removed elsewhere (another device,
+// the website) never reaches the cache. Re-read them from the observations that have any faves ("popular"), newest first.
+const FAVE_SCAN_CAP = 15; // pages of 200; a normal account has far fewer faved observations than that
+let lastFaveSync = 0;
+async function syncFaves(token, userParam, ds = state) {
+  const owner = ds.user?.id;
+  if (!owner || !ds.obs.length) return 0;
+  const faved = new Set();
+  let lastId = 0, scannedTo = 0, pages = 0;
+  for (;;) {
+    const d = await api(`/observations?user_id=${userParam}&popular=true&per_page=200&order_by=id&order=desc` + (lastId ? `&id_below=${lastId}` : ''), token);
+    for (const o of d.results) if (Array.isArray(o.faves) && o.faves.some(f => (f.user?.id ?? f.user_id) === owner)) faved.add(o.id);
+    pages++;
+    if (!d.results.length || d.results.length < 200) { scannedTo = 0; break; } // reached the end of the list
+    lastId = d.results[d.results.length - 1].id;
+    if (pages >= FAVE_SCAN_CAP) { scannedTo = lastId; break; } // partial scan: don't clear faves below this id
+    await sleep(700);
+  }
+  let added = 0, removed = 0;
+  for (const o of ds.obs) {
+    const now = faved.has(o.id);
+    if (o.fav === now || (!now && scannedTo && o.id < scannedTo)) continue;
+    if (now) added++; else if (o.fav) removed++;
+    o.fav = now;
+  }
+  lastFaveSync = Date.now();
+  if (added || removed) { favVer++; log(`faves synced from iNaturalist: +${added} −${removed}`); }
+  return added + removed;
+}
+
 // Older observations, newest first, below beforeId (0 = from the newest). Stops after `cap` observations;
 // ds.complete becomes true once the beginning of the account has been reached.
 async function fetchOlder(token, userParam, beforeId, cap, ds = state) {
@@ -2933,7 +2963,7 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
   if (token) store.set(token);
   setBusy(true);
   try {
-    let fresh = [];
+    let fresh = [], favChanges = 0;
     if (!other) {
       status('Checking token…');
       const me = (await api('/users/me', token)).results[0];
@@ -2947,6 +2977,7 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
       const lastId = state.obs.reduce((m, o) => Math.max(m, o.id), 0);
       fresh = await fetchNewObservations(token, me.id, lastId);
       state.complete = true;
+      favChanges = await syncFaves(token, me.id).catch(e => { log(`fave sync failed: ${e.message}`, 'w'); return 0; });
     } else {
       const userParam = encodeURIComponent(viewLogin);
       if (token && !meLogin) { // learn who I am so my own observations can be used for comparing
@@ -2956,6 +2987,7 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
       if (!state.obs.length) { state.complete = false; await fetchOlder(token, userParam, 0, FIRST_LOAD_CAP); }
       else if (moreHistory && !state.complete) { await fetchOlder(token, userParam, state.obs.reduce((m, o) => Math.min(m, o.id), Infinity), Infinity); }
       else fresh = await fetchNewObservations(token, userParam, state.obs.reduce((m, o) => Math.max(m, o.id), 0));
+      if (state.obs.length) favChanges = await syncFaves(token, userParam).catch(e => { log(`fave sync failed: ${e.message}`, 'w'); return 0; });
       if (!state.obs.length) throw new Error(`No public observations found for “${viewLogin}”. Check the username.`);
     }
     const ids = new Set();
@@ -2967,6 +2999,7 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
     await loadCompare();
     show();
     renderPeople();
+    if (favChanges) toast(`${favChanges} favourite${favChanges > 1 ? 's' : ''} updated from iNaturalist`);
     status(fresh.length ? `Done. ${fresh.length} new observations.` : state.complete ? 'Done. Already up to date.' : `Done. Showing the newest ${state.obs.length}${state.total ? ` of ${state.total}` : ''}.`);
   } catch (e) {
     log(`refresh failed: ${e.stack || e}`, 'e');
@@ -2984,9 +3017,23 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
     setBusy(false);
   }
 }
-function setBusy(b) { $('load').disabled = $('full').disabled = b; $('loadall').disabled = b; }
+let busyFlag = false; const busyNow = () => busyFlag;
+function setBusy(b) { busyFlag = b; $('load').disabled = $('full').disabled = b; $('loadall').disabled = b; }
 
 $('load').onclick = () => refresh();
+// Coming back to the app (e.g. after using iNaturalist or another device): pick up changed faves.
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !navigator.onLine || Date.now() - lastFaveSync < 5 * 60e3) return;
+  if (!state.obs.length || busyNow()) return;
+  const token = $('token').value.trim().replace(/^Bearer\s+/i, '');
+  if (!token && !isOther()) return;
+  try {
+    try { await ensureFreshJwt(); } catch {}
+    const t = $('token').value.trim().replace(/^Bearer\s+/i, '') || token;
+    const n = await syncFaves(t, isOther() ? encodeURIComponent(viewLogin) : state.user.id);
+    if (n) { backfillPrefMeta(); await saveCache(); show(true); toast(`${n} favourite${n > 1 ? 's' : ''} updated from iNaturalist`); }
+  } catch (e) { log(`fave sync failed: ${e.message}`, 'w'); lastFaveSync = Date.now(); }
+});
 $('full').onclick = () => refresh({ full: true });
 $('forget').onclick = () => {
   store.del(); $('token').value = '';
