@@ -614,7 +614,7 @@ let prefMeta = {}, favVer = 0, favSig = '', favCache = null;
 try { prefMeta = JSON.parse(localStorage.getItem(META_KEY) || '{}') || {}; } catch { prefMeta = {}; }
 const savePrefMeta = () => { try { localStorage.setItem(META_KEY, JSON.stringify(prefMeta)); } catch {} };
 function maxObsId(tid) { let m = 0; for (const o of state.obs) if (o.tid === tid && o.id > m) m = o.id; return m; }
-function dismissNew(tid) { prefMeta[tid] = { max: maxObsId(tid), t: Date.now() }; savePrefMeta(); favVer++; }
+function dismissNew(tid) { prefMeta[tid] = { max: maxObsId(tid), t: Date.now(), dismissed: Date.now() }; savePrefMeta(); favVer++; }
 // Favourites chosen before this feature existed have no mark: treat everything cached today as already reviewed.
 function backfillPrefMeta() {
   let changed = false;
@@ -629,15 +629,48 @@ function backfillPrefMeta() {
 }
 // An observation is a favourite if its owner faved it on iNaturalist.
 const isFavObs = o => !!o.fav;
-let faveTidSig = '', faveTids = new Map(); // tid → id of its newest favourite observation
+let faveTidSig = '', faveTids = new Map(); // tid → { id: its newest favourite observation, at: when a favourite of it was last chosen (ms, 0 if unknown) }
 function hasFavTid(tid) {
   const sig = `${state.obs.length}|${favVer}`;
-  if (sig !== faveTidSig) { faveTids = new Map(); for (const o of state.obs) if (o.fav && o.id > (faveTids.get(o.tid) || 0)) faveTids.set(o.tid, o.id); faveTidSig = sig; }
+  if (sig !== faveTidSig) {
+    faveTids = new Map();
+    for (const o of state.obs) {
+      if (!o.fav) continue;
+      const e = faveTids.get(o.tid);
+      if (!e) faveTids.set(o.tid, { id: o.id, at: o.favAt || 0 });
+      else { if (o.id > e.id) e.id = o.id; if ((o.favAt || 0) > e.at) e.at = o.favAt; }
+    }
+    faveTidSig = sig;
+  }
   return faveTids.has(tid);
 }
-// New = added after the favourite was chosen. The mark is stored per device, so never count observations at or below the newest favourite itself
-// (a favourite chosen on another device would otherwise flag itself and everything up to it).
-const isNewObs = o => { const m = prefMeta[o.tid]; return !isOther() && !!(m && hasFavTid(o.tid) && o.id > Math.max(m.max, faveTids.get(o.tid))); };
+// New = uploaded after the favourite was chosen. iNaturalist records when each fave was made, so this agrees on every device;
+// "Keep my favourite" moves the baseline forward on this device. Observations whose upload time isn't known yet count as not new.
+const isNewObs = o => {
+  if (isOther() || !hasFavTid(o.tid)) return false;
+  const f = faveTids.get(o.tid);
+  if (o.id <= f.id) return false;
+  const m = prefMeta[o.tid];
+  if (f.at) return o.cr > Math.max(f.at, m?.dismissed || 0);
+  return !!m && m.max !== undefined && o.id > Math.max(m.max, f.id); // no fave time yet (not synced): the older per-device mark
+};
+// Observations newer than a favourite need their upload time to be judged; older cached ones don't have it yet.
+async function ensureCreated(token, ds = state) {
+  hasFavTid(-1);
+  const need = ds.obs.filter(o => !o.cr && faveTids.has(o.tid) && o.id > faveTids.get(o.tid).id).slice(0, 1000);
+  if (!need.length) return 0;
+  const times = new Map();
+  for (let i = 0; i < need.length; i += 100) {
+    const ids = need.slice(i, i + 100).map(o => o.id);
+    const d = await api(`/observations?id=${ids.join(',')}&per_page=200`, token);
+    for (const r of d.results) times.set(r.id, Date.parse(r.created_at) || 0);
+    if (i + 100 < need.length) await sleep(700);
+  }
+  for (const o of need) o.cr = times.get(o.id) || -1; // -1: couldn't be read (deleted?); don't ask again
+  favVer++;
+  log(`upload times fetched for ${need.length} observations newer than a favourite`);
+  return need.length;
+}
 
 // Toggle the iNaturalist fave of an observation (optimistic, reverted on failure; needs a login).
 // onChange runs right after the optimistic update and again after a revert.
@@ -650,8 +683,8 @@ async function toggleFav(o, onChange = () => {}) {
     setPanel(true);
     return false;
   }
-  const prev = { fav: o.fav };
-  o.fav = want;
+  const prev = { fav: o.fav, favAt: o.favAt };
+  o.fav = want; o.favAt = want ? Date.now() : 0;
   if (want) { prefMeta[o.tid] = { max: maxObsId(o.tid), t: Date.now() }; savePrefMeta(); }
   favVer++;
   onChange();
@@ -664,7 +697,7 @@ async function toggleFav(o, onChange = () => {}) {
     return true;
   } catch (e) {
     log(`fave update failed for ${o.id}: ${e.stack || e}`, 'e');
-    o.fav = prev.fav;
+    o.fav = prev.fav; o.favAt = prev.favAt;
     favVer++; onChange();
     toast(`Couldn't update iNaturalist: ${e.message}`);
     return false;
@@ -913,6 +946,7 @@ function slim(o) {
     pids: o.place_ids || [],
     // iNaturalist "fave" by the observation's own owner (undefined when the payload carried no fave info)
     fav: Array.isArray(o.faves) ? o.faves.some(f => (f.user?.id ?? f.user_id) === o.user?.id) : undefined,
+    cr: Date.parse(o.created_at) || 0, // when it was uploaded (ms); compared with the time a favourite was chosen
     photos: (o.photos || []).map(p => p.url).filter(Boolean),
     photo: o.photos?.[0]?.url || t.default_photo?.square_url || '',
   };
@@ -951,7 +985,7 @@ let lastFaveSync = 0, faveShapeLogged = false;
 async function syncFaves(token, userParam, ds = state) {
   const owner = ds.user?.id;
   if (!owner || !ds.obs.length) return 0;
-  const faved = new Set();
+  const faved = new Map(); // observation id → when the owner faved it (ms)
   let lastId = 0, scannedTo = 0, pages = 0, seenPopular = 0;
   for (;;) {
     const d = await api(`/observations?user_id=${userParam}&popular=true&per_page=200&order_by=id&order=desc` + (lastId ? `&id_below=${lastId}` : ''), token);
@@ -960,7 +994,10 @@ async function syncFaves(token, userParam, ds = state) {
       const f = d.results.flatMap(o => o.faves || []).find(x => (x.user?.id ?? x.user_id) === owner);
       if (f) { faveShapeLogged = true; const { user, ...rest } = f; log(`fave record fields: ${Object.keys(f).join(', ')}; user fields: ${Object.keys(user || {}).join(', ')}; sample (without user): ${JSON.stringify(rest).slice(0, 300)}`); }
     }
-    for (const o of d.results) if (Array.isArray(o.faves) && o.faves.some(f => (f.user?.id ?? f.user_id) === owner)) faved.add(o.id);
+    for (const o of d.results) {
+      const f = Array.isArray(o.faves) ? o.faves.find(x => (x.user?.id ?? x.user_id) === owner) : null;
+      if (f) faved.set(o.id, Date.parse(f.created_at) || 0);
+    }
     pages++;
     if (!d.results.length || d.results.length < 200) { scannedTo = 0; break; } // reached the end of the list
     lastId = d.results[d.results.length - 1].id;
@@ -969,16 +1006,19 @@ async function syncFaves(token, userParam, ds = state) {
   }
   const before = ds.obs.filter(o => o.fav).length;
   let added = 0, removed = 0;
+  let timed = 0;
   for (const o of ds.obs) {
     const now = faved.has(o.id);
-    if (o.fav === now || (!now && scannedTo && o.id < scannedTo)) continue;
-    if (now) { added++; prefMeta[o.tid] = { max: maxObsId(o.tid), t: Date.now() }; } else if (o.fav) removed++; // a fave chosen elsewhere counts as reviewed up to now
+    if (!now && scannedTo && o.id < scannedTo) continue;
+    if (now && (o.favAt || 0) !== faved.get(o.id)) { o.favAt = faved.get(o.id); timed++; } else if (!now && o.favAt) { o.favAt = 0; timed++; }
+    if (o.fav === now) continue;
+    if (now) { added++; prefMeta[o.tid] = { max: maxObsId(o.tid), t: Date.now() }; } else if (o.fav) removed++;
     o.fav = now;
   }
   lastFaveSync = Date.now();
   if (added) savePrefMeta();
   log(`fave sync: ${pages} page(s), ${seenPopular} observations with faves, ${faved.size} faved by owner; cached faves ${before} → ${ds.obs.filter(o => o.fav).length} (+${added} −${removed})${scannedTo ? `; partial scan down to id ${scannedTo}` : ''}`);
-  if (added || removed) favVer++;
+  if (added || removed || timed) favVer++;
   return added + removed;
 }
 
@@ -3048,6 +3088,7 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
       state.complete = true;
       favChanges = await syncFaves(token, me.id).catch(e => { log(`fave sync failed: ${e.message}`, 'w'); return 0; });
       favChanges += await syncEdits(token, me.id).catch(e => { log(`edit check failed: ${e.message}`, 'w'); return 0; });
+      await ensureCreated(token).catch(e => log(`upload times failed: ${e.message}`, 'w'));
       favChanges += await syncDeleted(token, me.id).catch(e => { log(`deleted check failed: ${e.message}`, 'w'); return 0; });
     } else {
       const userParam = encodeURIComponent(viewLogin);
@@ -3108,6 +3149,7 @@ document.addEventListener('visibilitychange', async () => {
     const who = isOther() ? encodeURIComponent(viewLogin) : state.user.id;
     let n = await syncFaves(t, who);
     const edits = await syncEdits(t, who).catch(e => { log(`edit check failed: ${e.message}`, 'w'); return 0; });
+    if (!isOther()) await ensureCreated(t).catch(e => log(`upload times failed: ${e.message}`, 'w'));
     if (edits) { const ids = new Set(); state.obs.forEach(o => o.anc.forEach(i => ids.add(i))); await fetchMissingTaxa(ids); n += edits; }
     if (n) { backfillPrefMeta(); await saveCache(); show(true); toast(`${n} change${n > 1 ? 's' : ''} picked up from iNaturalist`); }
   } catch (e) { log(`fave sync failed: ${e.message}`, 'w'); lastFaveSync = Date.now(); }
@@ -3337,7 +3379,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build sync-6 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build sync-7 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
