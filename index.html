@@ -505,9 +505,8 @@ window.addEventListener('unhandledrejection', e => log(`unhandled rejection: ${e
 
 // ---------- OAuth (authorization code + PKCE) ----------
 const OAUTH = {
-  // Asked-for permission. Without a scope iNaturalist grants its default (login + write). 'login' is the smallest one that still lets the app
-  // exchange the OAuth token for the API token; set it to 'login write' if favouriting or other signed-in requests are refused.
-  scope: 'login',
+  // Asked-for permission: iNaturalist's defaults. The narrower 'login' scope alone is refused (403) when exchanging the OAuth token for an API token.
+  scope: 'login write',
   clientId: 'DxvOJs7iJzOocp-IqF316qt_IRDMdtKVFAERyQU0Jak', // public identifier of the registered app (PKCE flow: no client secret is used or stored)
   authorize: 'https://www.inaturalist.org/oauth/authorize',
   token: 'https://www.inaturalist.org/oauth/token',
@@ -574,6 +573,10 @@ async function mintJwt(access) {
   log(`GET ${OAUTH.apiToken} [oauth bearer]`);
   const res = await fetch(OAUTH.apiToken, { headers: { Authorization: `Bearer ${access}` } });
   log(`  → ${res.status}`, res.ok ? '' : 'e');
+  if (res.status === 403) { // this login was granted too little (e.g. an older, narrower scope): drop it so the next login asks again
+    try { localStorage.removeItem(OAUTH_KEY); } catch {}
+    throw new Error('This login does not allow API access. Log in with iNaturalist again.');
+  }
   if (!res.ok) throw new Error(`Could not get an API token from the OAuth login (${res.status})`);
   const jwt = (await res.json()).api_token;
   $('token').value = jwt; store.set(jwt);
@@ -3408,7 +3411,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build sync-9 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build sync-10 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
