@@ -779,7 +779,7 @@ async function loadCache() {
   const target = viewLogin || meLogin;
   if (target) {
     const ds = await idb.get(dsKey(target));
-    if (ds) Object.assign(state, { user: ds.user, obs: ds.obs || [], complete: ds.complete !== false, total: ds.total ?? null, updated: ds.updated });
+    if (ds) Object.assign(state, { user: ds.user, obs: ds.obs || [], complete: ds.complete !== false, total: ds.total ?? null, updated: ds.updated, edited: ds.edited, idsChecked: ds.idsChecked });
     else state.user = { id: null, login: target };
   }
   rarity = (await idb.get('rarity')) || {};
@@ -834,7 +834,7 @@ async function saveDataset(ds = state) {
   ds.updated = new Date().toISOString();
   const jobs = [idb.set('names', state.names), idb.set('places', state.places)];
   if (ds.user?.login) {
-    jobs.push(idb.set(dsKey(ds.user.login), { user: ds.user, obs: ds.obs, complete: ds.complete, total: ds.total, updated: ds.updated }));
+    jobs.push(idb.set(dsKey(ds.user.login), { user: ds.user, obs: ds.obs, complete: ds.complete, total: ds.total, updated: ds.updated, edited: ds.edited, idsChecked: ds.idsChecked }));
     const prev = people.find(p => lc(p.login) === lc(ds.user.login));
     const meta = { login: ds.user.login, count: ds.obs.length, complete: ds.complete !== false, total: ds.total ?? null, updated: ds.updated, viewedAt: prev?.viewedAt || Date.now() };
     if (prev) Object.assign(prev, meta); else people.unshift(meta);
@@ -976,6 +976,61 @@ async function syncFaves(token, userParam, ds = state) {
   log(`fave sync: ${pages} page(s), ${seenPopular} observations with faves, ${faved.size} faved by owner; cached faves ${before} → ${ds.obs.filter(o => o.fav).length} (+${added} −${removed})${scannedTo ? `; partial scan down to id ${scannedTo}` : ''}`);
   if (added || removed) favVer++;
   return added + removed;
+}
+
+// Observations are only downloaded once, so edits made on iNaturalist (a refined identification, a corrected date or place,
+// different photos) never reached the cache. Fetch what changed since the last check and replace those records.
+const EDIT_SCAN_PAGES = 25; // x200; the first check looks back 90 days
+async function syncEdits(token, userParam, ds = state) {
+  if (!ds.obs.length) return 0;
+  const started = new Date().toISOString();
+  const since = new Date(new Date(ds.edited || Date.now() - 90 * 864e5) - 5 * 60e3).toISOString(); // a little overlap for clock differences
+  const byId = new Map(ds.obs.map(o => [o.id, o]));
+  const maxCached = ds.obs.reduce((m, o) => Math.max(m, o.id), 0);
+  let lastId = 0, pages = 0, changed = 0, added = 0, removed = 0, seen = 0;
+  const gone = new Set();
+  for (;;) {
+    const d = await api(`/observations?user_id=${userParam}&updated_since=${encodeURIComponent(since)}&per_page=200&order_by=id&order=asc&id_above=${lastId}`, token);
+    pages++; seen += d.results.length;
+    for (const o of d.results) {
+      const old = byId.get(o.id);
+      if (!o.taxon?.ancestor_ids?.length) { if (old) gone.add(o.id); continue; } // identification withdrawn
+      const ns = slim(o);
+      if (ns.fav === undefined) ns.fav = old?.fav;
+      if (old) {
+        if (['tid', 'name', 'common', 'date', 'loc'].some(k => old[k] !== ns[k]) || old.photos.join() !== ns.photos.join() || old.pids.join() !== ns.pids.join() || old.anc.join() !== ns.anc.join()) changed++;
+        Object.assign(old, ns);
+      } else if (o.id <= maxCached || ds.complete) { ds.obs.push(ns); byId.set(ns.id, ns); added++; } // e.g. an unidentified observation that has since been identified
+    }
+    if (d.results.length < 200) break;
+    lastId = d.results[d.results.length - 1].id;
+    if (pages >= EDIT_SCAN_PAGES) { log('edit check stopped at the page limit', 'w'); break; }
+    await sleep(700);
+  }
+  if (gone.size) { ds.obs = ds.obs.filter(o => !gone.has(o.id)); removed = gone.size; }
+  ds.edited = started;
+  log(`edit check since ${since}: ${seen} updated observations → ${changed} changed, ${added} added, ${removed} removed`);
+  return changed + added + removed;
+}
+// Deleted observations leave no trace in the update feed, so now and then compare the cache with the full list of ids.
+const IDS_CHECK_EVERY = 7 * 864e5, IDS_SCAN_PAGES = 50;
+async function syncDeleted(token, userParam, ds = state) {
+  if (!ds.obs.length || Date.now() - (ds.idsChecked || 0) < IDS_CHECK_EVERY) return 0;
+  const ids = new Set();
+  let lastId = 0, complete = false;
+  for (let page = 0; page < IDS_SCAN_PAGES; page++) {
+    const d = await api(`/observations?user_id=${userParam}&only_id=true&per_page=200&order_by=id&order=desc` + (lastId ? `&id_below=${lastId}` : ''), token);
+    for (const o of d.results) ids.add(o.id);
+    if (d.results.length < 200) { complete = true; break; }
+    lastId = d.results[d.results.length - 1].id;
+    await sleep(700);
+  }
+  if (!complete) { log('deleted-observation check stopped at the page limit; skipped', 'w'); return 0; }
+  const before = ds.obs.length;
+  if (ids.size) ds.obs = ds.obs.filter(o => ids.has(o.id)); // an empty answer is treated as a failure, not as "everything deleted"
+  ds.idsChecked = Date.now();
+  log(`deleted-observation check: ${ids.size} observations on iNaturalist; ${before - ds.obs.length} removed from the cache`);
+  return before - ds.obs.length;
 }
 
 // Older observations, newest first, below beforeId (0 = from the newest). Stops after `cap` observations;
@@ -1839,11 +1894,15 @@ function speciesLink(a, tid) {
 }
 
 const taxDetailCache = new Map();
+const TAXON_DETAIL_TTL = 30 * 864e5; // same as the rarity data, so the status shown in the modal agrees with the badges
 async function loadTaxonDetail(id) {
   if (taxDetailCache.has(id)) return taxDetailCache.get(id);
   const all = (await idb.get('taxdetail')) || {};
-  if (all[id] && all[id].v === 2) { taxDetailCache.set(id, all[id]); return all[id]; }
-  const t = (await api(`/taxa/${id}`)).results[0];
+  const old = all[id] && all[id].v === 2 ? all[id] : null;
+  if (old && Date.now() - (old.t || 0) < TAXON_DETAIL_TTL) { taxDetailCache.set(id, old); return old; }
+  let t;
+  try { t = (await api(`/taxa/${id}`)).results[0]; }
+  catch (e) { if (old) { taxDetailCache.set(id, old); return old; } throw e; } // offline: a stale copy beats nothing
   const slimT = {
     id: t.id, name: t.name, rank: t.rank, common: t.preferred_common_name || '',
     photo: t.default_photo?.medium_url || '', wikiUrl: t.wikipedia_url || '',
@@ -1852,7 +1911,7 @@ async function loadTaxonDetail(id) {
     ancestors: (t.ancestors || []).map(a => ({ id: a.id, name: a.name, rank: a.rank, common: a.preferred_common_name || '' })),
     status: (() => { const cs = pickStatus(t); return cs ? { name: cs.status_name || cs.status, code: cs.status || '', iucn: cs.iucn || 0, authority: cs.authority || '', place: cs.place?.display_name || '' } : null; })(),
     threatened: !!t.threatened, extinct: !!t.extinct, endemic: !!t.endemic, introduced: !!t.introduced, native: !!t.native,
-    obsCount: t.observations_count || 0, v: 2,
+    obsCount: t.observations_count || 0, v: 2, t: Date.now(),
   };
   taxDetailCache.set(id, slimT);
   all[id] = slimT; await idb.set('taxdetail', all);
@@ -2977,23 +3036,29 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
       meLogin = me.login; try { localStorage.setItem('inat_me', meLogin); } catch {}
       if (full || state.user?.id !== me.id) {
         if (state.user?.id && state.user.id !== me.id) log('different user than cache; discarding cache', 'w');
-        Object.assign(state, { user: null, obs: [], complete: true, total: null });
+        Object.assign(state, { user: null, obs: [], complete: true, total: null, edited: null, idsChecked: null });
       }
       state.user = { id: me.id, login: me.login };
       const lastId = state.obs.reduce((m, o) => Math.max(m, o.id), 0);
       fresh = await fetchNewObservations(token, me.id, lastId);
       state.complete = true;
       favChanges = await syncFaves(token, me.id).catch(e => { log(`fave sync failed: ${e.message}`, 'w'); return 0; });
+      favChanges += await syncEdits(token, me.id).catch(e => { log(`edit check failed: ${e.message}`, 'w'); return 0; });
+      favChanges += await syncDeleted(token, me.id).catch(e => { log(`deleted check failed: ${e.message}`, 'w'); return 0; });
     } else {
       const userParam = encodeURIComponent(viewLogin);
       if (token && !meLogin) { // learn who I am so my own observations can be used for comparing
         try { const me = (await api('/users/me', token)).results[0]; meLogin = me.login; localStorage.setItem('inat_me', meLogin); await loadCompare(); } catch (e) { log(`could not read own login: ${e.message}`, 'w'); }
       }
-      if (full) Object.assign(state, { obs: [], complete: false, total: null });
+      if (full) Object.assign(state, { obs: [], complete: false, total: null, edited: null, idsChecked: null });
       if (!state.obs.length) { state.complete = false; await fetchOlder(token, userParam, 0, FIRST_LOAD_CAP); }
       else if (moreHistory && !state.complete) { await fetchOlder(token, userParam, state.obs.reduce((m, o) => Math.min(m, o.id), Infinity), Infinity); }
       else fresh = await fetchNewObservations(token, userParam, state.obs.reduce((m, o) => Math.max(m, o.id), 0));
-      if (state.obs.length) favChanges = await syncFaves(token, userParam).catch(e => { log(`fave sync failed: ${e.message}`, 'w'); return 0; });
+      if (state.obs.length) {
+        favChanges = await syncFaves(token, userParam).catch(e => { log(`fave sync failed: ${e.message}`, 'w'); return 0; });
+        favChanges += await syncEdits(token, userParam).catch(e => { log(`edit check failed: ${e.message}`, 'w'); return 0; });
+        favChanges += await syncDeleted(token, userParam).catch(e => { log(`deleted check failed: ${e.message}`, 'w'); return 0; });
+      }
       if (!state.obs.length) throw new Error(`No public observations found for “${viewLogin}”. Check the username.`);
     }
     const ids = new Set();
@@ -3005,7 +3070,7 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
     await loadCompare();
     show();
     renderPeople();
-    if (favChanges) toast(`${favChanges} favourite${favChanges > 1 ? 's' : ''} updated from iNaturalist`);
+    if (favChanges) toast(`${favChanges} change${favChanges > 1 ? 's' : ''} picked up from iNaturalist`);
     status(fresh.length ? `Done. ${fresh.length} new observations.` : state.complete ? 'Done. Already up to date.' : `Done. Showing the newest ${state.obs.length}${state.total ? ` of ${state.total}` : ''}.`);
   } catch (e) {
     log(`refresh failed: ${e.stack || e}`, 'e');
@@ -3036,8 +3101,11 @@ document.addEventListener('visibilitychange', async () => {
   try {
     try { await ensureFreshJwt(); } catch {}
     const t = $('token').value.trim().replace(/^Bearer\s+/i, '') || token;
-    const n = await syncFaves(t, isOther() ? encodeURIComponent(viewLogin) : state.user.id);
-    if (n) { backfillPrefMeta(); await saveCache(); show(true); toast(`${n} favourite${n > 1 ? 's' : ''} updated from iNaturalist`); }
+    const who = isOther() ? encodeURIComponent(viewLogin) : state.user.id;
+    let n = await syncFaves(t, who);
+    const edits = await syncEdits(t, who).catch(e => { log(`edit check failed: ${e.message}`, 'w'); return 0; });
+    if (edits) { const ids = new Set(); state.obs.forEach(o => o.anc.forEach(i => ids.add(i))); await fetchMissingTaxa(ids); n += edits; }
+    if (n) { backfillPrefMeta(); await saveCache(); show(true); toast(`${n} change${n > 1 ? 's' : ''} picked up from iNaturalist`); }
   } catch (e) { log(`fave sync failed: ${e.message}`, 'w'); lastFaveSync = Date.now(); }
 });
 $('full').onclick = () => refresh({ full: true });
@@ -3265,7 +3333,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build faves-4 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build sync-5 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
