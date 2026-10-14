@@ -947,7 +947,7 @@ async function fetchNewObservations(token, userParam, afterId, ds = state) {
 // Faves are only read when an observation is first downloaded, so a fave added or removed elsewhere (another device,
 // the website) never reaches the cache. Re-read them from the observations that have any faves ("popular"), newest first.
 const FAVE_SCAN_CAP = 15; // pages of 200; a normal account has far fewer faved observations than that
-let lastFaveSync = 0;
+let lastFaveSync = 0, faveShapeLogged = false;
 async function syncFaves(token, userParam, ds = state) {
   const owner = ds.user?.id;
   if (!owner || !ds.obs.length) return 0;
@@ -956,6 +956,10 @@ async function syncFaves(token, userParam, ds = state) {
   for (;;) {
     const d = await api(`/observations?user_id=${userParam}&popular=true&per_page=200&order_by=id&order=desc` + (lastId ? `&id_below=${lastId}` : ''), token);
     seenPopular += d.results.length;
+    if (!faveShapeLogged) { // what does a fave record carry (is there a timestamp)?
+      const f = d.results.flatMap(o => o.faves || []).find(x => (x.user?.id ?? x.user_id) === owner);
+      if (f) { faveShapeLogged = true; const { user, ...rest } = f; log(`fave record fields: ${Object.keys(f).join(', ')}; user fields: ${Object.keys(user || {}).join(', ')}; sample (without user): ${JSON.stringify(rest).slice(0, 300)}`); }
+    }
     for (const o of d.results) if (Array.isArray(o.faves) && o.faves.some(f => (f.user?.id ?? f.user_id) === owner)) faved.add(o.id);
     pages++;
     if (!d.results.length || d.results.length < 200) { scannedTo = 0; break; } // reached the end of the list
@@ -3333,7 +3337,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build sync-5 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build sync-6 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
