@@ -3444,9 +3444,9 @@ const web = (() => {
   const S = 30, SQ3 = Math.sqrt(3);                       // hexagon "radius" (centre to corner) in world units
   const D = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]; // axial neighbours
   const BORDER = [10, 7.5, 5.5, 4, 2.5];                       // border width by how many ranks two neighbours share (0 = nothing, 4 = family)
-  const MAX_HI = 4, HEX_W = 96, HEX_H = Math.round(96 * 2 / SQ3);
+  const MAX_HI = 4, TIERS = [['square', 96], ['small', 192], ['medium', 384], ['large', 640]], KEEP_SHARP = 240; // photo size and sprite width by how big the cell is on screen
   let cells = [], byKey = new Map(), borders = [], leaves = [];
-  let W = 0, H = 0, dpr = 1, dirty = false, raf = 0, loadingHi = 0, focus = null, anim = null;
+  let W = 0, H = 0, dpr = 1, dirty = false, raf = 0, loadingHi = 0, focus = null, anim = null, sharp = new Set();
   const view = { x: 0, y: 0, k: 1 };
   const pointers = new Map();
   let pan = null, pinch = null, tap = null, dz = null, lastTap = null, pendingOpen = 0, queue = [], loading = 0;
@@ -3518,7 +3518,7 @@ const web = (() => {
         parent = g;
       }
       const nm = state.names[sid] || {};
-      parent.kids.push({ leaf: true, chain, tid: sid, label: nm.common || first.common || first.name, sci: nm.name || first.name, obs: thumbObs(list), sprite: null, hi: false, count: list.length });
+      parent.kids.push({ leaf: true, chain, tid: sid, label: nm.common || first.common || first.name, sci: nm.name || first.name, obs: thumbObs(list), sprite: null, base: null, tier: 0, pend: 0, count: list.length });
     }
     const count = n => (n.leaves = n.leaf ? 1 : n.kids.reduce((a, k) => a + count(k), 0));
     count(rootNode);
@@ -3537,20 +3537,21 @@ const web = (() => {
       borders[Math.min(4, c)].push([mx - hx, my - hy, mx + hx, my + hy]);
     }
     queue = leaves.slice().sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y)); // photos: nearest the middle first
-    loading = 0; loadingHi = 0; focus = null;
+    loading = 0; loadingHi = 0; focus = null; sharp = new Set();
     pump();
   }
 
-  // ---- photos → hexagonal sprites, a few at a time ----
-  function sprite(img) {
-    const c = document.createElement('canvas'); c.width = HEX_W; c.height = HEX_H;
-    const g = c.getContext('2d'), cxm = HEX_W / 2, cym = HEX_H / 2, R = HEX_H / 2;
+  // ---- photos → hexagonal sprites, a few at a time; closer in, a larger photo (and sprite) is swapped in ----
+  function sprite(img, w) {
+    const h = Math.round(w * 2 / SQ3), c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d'), R = h / 2;
     g.beginPath();
-    for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 30); g[i ? 'lineTo' : 'moveTo'](cxm + R * Math.cos(a), cym + R * Math.sin(a)); }
+    for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 30); g[i ? 'lineTo' : 'moveTo'](w / 2 + R * Math.cos(a), h / 2 + R * Math.sin(a)); }
     g.closePath(); g.clip();
-    const asp = HEX_W / HEX_H, iw = img.naturalWidth, ih = img.naturalHeight;
+    const asp = w / h, iw = img.naturalWidth, ih = img.naturalHeight;
     let sw, sh; if (iw / ih > asp) { sh = ih; sw = ih * asp; } else { sw = iw; sh = iw / asp; }
-    g.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, HEX_W, HEX_H);
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, w, h);
     return c;
   }
   function pump() {
@@ -3559,17 +3560,26 @@ const web = (() => {
       if (!url) continue;
       loading++;
       const im = new Image();
-      im.onload = () => { n.sprite = sprite(im); loading--; redraw(); pump(); };
+      im.onload = () => { n.base = n.sprite = sprite(im, TIERS[0][1]); n.tier = 0; loading--; redraw(); pump(); };
       im.onerror = () => { loading--; pump(); };
-      im.src = sized(url, 'square');
+      im.src = sized(url, TIERS[0][0]);
     }
   }
-  function upgrade(n) { // a closer look: swap in the larger photo
-    n.hi = true; loadingHi++;
+  function upgrade(n, tier) {
+    n.pend = tier; loadingHi++;
     const im = new Image();
-    im.onload = () => { n.sprite = sprite(im); loadingHi--; redraw(); };
-    im.onerror = () => { loadingHi--; };
-    im.src = sized(photosOf(n.obs)[0], 'small');
+    im.onload = () => { n.sprite = sprite(im, TIERS[tier][1]); n.tier = tier; n.pend = 0; loadingHi--; sharp.add(n); trimSharp(); redraw(); };
+    im.onerror = () => { n.pend = 0; n.tier = Math.max(n.tier, tier); loadingHi--; }; // don't keep asking for a size that fails
+    im.src = sized(photosOf(n.obs)[0], TIERS[tier][0]);
+  }
+  // keep memory in check: sharp sprites of cells that are no longer on screen go back to the small one
+  function trimSharp() {
+    if (sharp.size <= KEEP_SHARP) return;
+    const k = view.k, x0 = -view.x / k, y0 = -view.y / k, x1 = (W - view.x) / k, y1 = (H - view.y) / k;
+    for (const n of sharp) {
+      if (sharp.size <= KEEP_SHARP * 0.7) break;
+      if (n.x < x0 - 100 || n.x > x1 + 100 || n.y < y0 - 100 || n.y > y1 + 100) { n.sprite = n.base; n.tier = 0; sharp.delete(n); }
+    }
   }
 
   // ---- drawing ----
@@ -3594,6 +3604,7 @@ const web = (() => {
     const nm = id => state.names[id]?.common || state.names[id]?.name || '';
     $('webrank').textContent = best.chain.map(nm).filter(Boolean).join(' › ') || '';
   }
+  const tierFor = dev => dev > 420 ? 3 : dev > 190 ? 2 : dev > 70 ? 1 : 0; // on-screen width of a cell (device pixels) → photo size to use
   function draw() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
@@ -3605,7 +3616,7 @@ const web = (() => {
       if (n.x < x0 || n.x > x1 || n.y < y0 || n.y > y1 || n === focus) continue;
       if (n.sprite) {
         ctx.drawImage(n.sprite, n.x - w / 2, n.y - h / 2, w, h);
-        if (!n.hi && loadingHi < MAX_HI && w * k * dpr > 110) upgrade(n);
+        if (!n.pend && loadingHi < MAX_HI) { const need = Math.min(2, tierFor(w * k * dpr)); if (n.tier < need) upgrade(n, need); }
       } else { hexPath(n.x, n.y, S + 0.4); ctx.fillStyle = '#1d2a2f'; ctx.fill(); }
     }
     ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(8,14,16,.92)';
@@ -3621,7 +3632,7 @@ const web = (() => {
       if (focus.sprite) ctx.drawImage(focus.sprite, focus.x - fw / 2, focus.y - fh / 2, fw, fh);
       else { hexPath(focus.x, focus.y, S * g); ctx.fillStyle = '#1d2a2f'; ctx.fill(); }
       ctx.restore();
-      if (!focus.hi && focus.sprite && loadingHi < MAX_HI && w * k * dpr > 110) upgrade(focus);
+      if (!focus.pend && focus.sprite && loadingHi < MAX_HI) { const need = tierFor(w * k * dpr * g); if (focus.tier < need) upgrade(focus, need); }
     }
     ctx.restore();
     const f = focusPoint(); // a small mark where "the middle" is
@@ -3732,7 +3743,7 @@ const web = (() => {
   api.hide = () => {
     api.isOpen = false; cancelAnimationFrame(raf); raf = 0; clearTimeout(pendingOpen);
     root.hidden = true; if (!detail.isOpen) document.body.style.overflow = '';
-    leaves = []; byKey = new Map(); borders = []; queue = []; pointers.clear(); pan = pinch = tap = dz = lastTap = focus = anim = null;
+    leaves = []; byKey = new Map(); borders = []; queue = []; sharp = new Set(); pointers.clear(); pan = pinch = tap = dz = lastTap = focus = anim = null;
     $('webinfo').hidden = true;
   };
   api.close = () => { if (api.isOpen) history.back(); };
@@ -3741,7 +3752,7 @@ const web = (() => {
   $('tabWeb').onclick = api.open;
   window.addEventListener('resize', () => { if (api.isOpen) resize(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && api.isOpen && !detail.isOpen && !viewer.isOpen) api.close(); });
-  api.debug = () => ({ leaves: leaves.length, withSprite: leaves.filter(n => n.sprite).length, view: { ...view }, focus: focus && focus.label, borders: borders.map(b => b.length) });
+  api.debug = () => ({ leaves: leaves.length, tiers: [0, 1, 2, 3].map(t => leaves.filter(n => n.sprite && n.tier === t).length), withSprite: leaves.filter(n => n.sprite).length, view: { ...view }, focus: focus && focus.label, borders: borders.map(b => b.length) });
   api.positions = () => leaves.map(n => [n.x, n.y]);
   return api;
 })();
@@ -3750,7 +3761,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build web-15 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build web-16 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
