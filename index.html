@@ -3613,10 +3613,10 @@ const web = (() => {
     setFocus();
     const w = SQ3 * S + 0.8, h = 2 * S + 0.8; // a hair larger than the cell so no gap shows between neighbours
     for (const n of leaves) {
-      if (n.x < x0 || n.x > x1 || n.y < y0 || n.y > y1 || n === focus) continue;
+      if (n.x < x0 || n.x > x1 || n.y < y0 || n.y > y1) continue;
       if (n.sprite) {
         ctx.drawImage(n.sprite, n.x - w / 2, n.y - h / 2, w, h);
-        if (!n.pend && loadingHi < MAX_HI) { const need = Math.min(2, tierFor(w * k * dpr)); if (n.tier < need) upgrade(n, need); }
+        if (!n.pend && loadingHi < MAX_HI) { const need = Math.min(n === focus ? 3 : 2, tierFor(w * k * dpr)); if (n.tier < need) upgrade(n, need); }
       } else { hexPath(n.x, n.y, S + 0.4); ctx.fillStyle = '#1d2a2f'; ctx.fill(); }
     }
     ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(8,14,16,.92)';
@@ -3626,13 +3626,9 @@ const web = (() => {
       for (const e of list) { ctx.moveTo(e[0], e[1]); ctx.lineTo(e[2], e[3]); }
       ctx.lineWidth = Math.max(BORDER[i], 1.2 / k); ctx.stroke();
     });
-    if (focus) { // the photo nearest the middle comes forward a little
-      const g = 1.18, fw = w * g, fh = h * g;
-      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.65)'; ctx.shadowBlur = 14 / k * 1.0;
-      if (focus.sprite) ctx.drawImage(focus.sprite, focus.x - fw / 2, focus.y - fh / 2, fw, fh);
-      else { hexPath(focus.x, focus.y, S * g); ctx.fillStyle = '#1d2a2f'; ctx.fill(); }
-      ctx.restore();
-      if (!focus.pend && focus.sprite && loadingHi < MAX_HI) { const need = tierFor(w * k * dpr * g); if (focus.tier < need) upgrade(focus, need); }
+    if (focus) { // the photo nearest the middle gets a thin outline
+      hexPath(focus.x, focus.y, S); ctx.lineJoin = 'round';
+      ctx.lineWidth = 2.2 / k; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.stroke();
     }
     ctx.restore();
     const f = focusPoint(); // a small mark where "the middle" is
@@ -3761,7 +3757,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build web-16 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build web-17 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
