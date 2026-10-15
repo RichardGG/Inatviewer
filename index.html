@@ -194,6 +194,12 @@
   #webbar { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:10px; padding:calc(8px + env(safe-area-inset-top)) 12px 28px; background:linear-gradient(rgba(11,18,21,.85), rgba(11,18,21,0)); pointer-events:none; }
   #webbar .ib { pointer-events:auto; color:#e6ece6; background:rgba(255,255,255,.08); border-radius:50%; }
   #webtitle { flex:1; min-width:0; font-weight:600; font-size:14px; text-shadow:0 1px 3px #000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #webinfo { position:absolute; left:0; right:0; bottom:0; display:flex; flex-direction:column; gap:1px; text-align:left; border:0; color:#e6ece6; font:inherit; cursor:pointer;
+             padding:34px 18px calc(14px + env(safe-area-inset-bottom)); background:linear-gradient(rgba(11,18,21,0), rgba(11,18,21,.92) 38%); }
+  #webinfo[hidden] { display:none; }
+  #webname { font-size:17px; font-weight:700; text-shadow:0 1px 3px #000; }
+  #websci { font-size:13px; font-style:italic; color:#b9c6bb; }
+  #webrank { font-size:12px; color:#8fa092; margin-top:2px; }
   #detail { position:fixed; inset:0; z-index:900; background:var(--bg); color:var(--fg); display:none; flex-direction:column; }
   #detail.open { display:flex; }
   .dpanel { flex:1; min-height:0; display:flex; flex-direction:column; background:var(--bg); }
@@ -451,6 +457,9 @@
     <span id="webtitle"></span>
     <button class="ib" id="webfit" aria-label="Fit to screen" title="Fit to screen"><i data-i="locate-fixed"></i></button>
   </div>
+  <button id="webinfo" type="button" hidden>
+    <span id="webname"></span><span id="websci"></span><span id="webrank"></span>
+  </button>
 </div>
 
 <div id="toast"></div>
@@ -3425,122 +3434,123 @@ $('expcol').onclick = () => {
 $('tree').addEventListener('toggle', scheduleExpCol, true); // toggle doesn't bubble; catch it in the capture phase
 
 
-// ---------- Web: a full-screen picture of how the species are related ----------
-// Every species is a round photo. Related species are packed into clusters (genus, family, order, class...) of different sizes, and thin
-// lines underneath the photos join each group to the groups inside it. Pan, zoom, and tap a photo to open it.
+// ---------- Web: a full-screen honeycomb of the species, related ones side by side ----------
+// Every species is one hexagonal cell filled with its photo. Kin are placed together, so each group (genus, family, order, class...) is a
+// patch of the honeycomb with an irregular outline; thin dark borders show where one group ends and the next begins, thicker for more
+// distant relatives. The photo nearest the middle of the screen is described at the bottom. Pan, pinch, double-tap (and slide) to zoom.
 const web = (() => {
   const root = $('web'), cv = $('webcanvas'), ctx = cv.getContext('2d');
   const KEEP = new Set(['kingdom', 'class', 'order', 'family', 'genus']);
-  const RANK_R = { kingdom: 12, class: 10, order: 9, family: 8, genus: 7 };
-  const MAX_HI = 4;
-  let nodes = [], edges = [], buckets = [], leaves = [];
-  let W = 0, H = 0, dpr = 1, dirty = false, raf = 0, loadingHi = 0;
+  const S = 30, SQ3 = Math.sqrt(3);                       // hexagon "radius" (centre to corner) in world units
+  const D = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]; // axial neighbours
+  const BORDER = [10, 7.5, 5.5, 4, 2.5];                       // border width by how many ranks two neighbours share (0 = nothing, 4 = family)
+  const MAX_HI = 4, HEX_W = 96, HEX_H = Math.round(96 * 2 / SQ3);
+  let cells = [], byKey = new Map(), borders = [], leaves = [];
+  let W = 0, H = 0, dpr = 1, dirty = false, raf = 0, loadingHi = 0, focus = null, anim = null;
   const view = { x: 0, y: 0, k: 1 };
   const pointers = new Map();
-  let pan = null, pinch = null, tap = null, hover = null, queue = [], loading = 0;
+  let pan = null, pinch = null, tap = null, dz = null, lastTap = null, pendingOpen = 0, queue = [], loading = 0;
   const api = { isOpen: false };
 
-  const hueOf = id => (Math.imul(id | 0, 2654435761) >>> 0) % 360;
   const redraw = () => { dirty = true; if (!raf && api.isOpen) raf = requestAnimationFrame(frame); };
-  function frame() { raf = 0; if (!api.isOpen) return; dirty = false; draw(); if (dirty) raf = requestAnimationFrame(frame); }
+  function frame() {
+    raf = 0; if (!api.isOpen) return;
+    dirty = false;
+    if (anim) { const t = Math.min(1, (performance.now() - anim.t0) / anim.ms), e = 1 - (1 - t) ** 3; view.k = anim.k0 + (anim.k1 - anim.k0) * e; view.x = anim.x0 + (anim.x1 - anim.x0) * e; view.y = anim.y0 + (anim.y1 - anim.y0) * e; if (t >= 1) anim = null; else dirty = true; }
+    draw(); if (dirty) raf = requestAnimationFrame(frame);
+  }
+  const cx = (q, r) => S * SQ3 * (q + r / 2), cy = r => S * 1.5 * r;
+  const key = (q, r) => q * 20011 + r;
+  function hexAt(x, y) { // axial cell containing a world point
+    const fq = (SQ3 / 3 * x - y / 3) / S, fr = (2 / 3 * y) / S, fs = -fq - fr;
+    let q = Math.round(fq), r = Math.round(fr), s2 = Math.round(fs);
+    const dq = Math.abs(q - fq), dr = Math.abs(r - fr), ds = Math.abs(s2 - fs);
+    if (dq > dr && dq > ds) q = -r - s2; else if (dr > ds) r = -q - s2;
+    return [q, r];
+  }
 
-  // Photos are placed one at a time, kin together: each goes as near as it fits to the middle of the relatives already placed (its genus, else
-  // its family, order...). Different groups keep a wider gap the more distantly they are related, so groups form clusters of different sizes
-  // and the lines between them show in the gaps.
-  const GAPS = [36, 24, 14, 6, 0, -4]; // gap between two photos by how many ranks they share (0 = only the root ... 5 = same genus)
+  // Kin go side by side: each photo takes the free cell nearest the middle of its closest relatives already placed (genus, else family...).
   function layout(ordered) {
-    const maxR = Math.max(...ordered.map(n => n.r)), cell = 2 * maxR + 50, grid = new Map(), key = (cx, cy) => cx * 100003 + cy;
-    const groups = new Map(), placed = [];
-    const common = (a, b) => { let i = 0; while (i < a.chain.length && i < b.chain.length && a.chain[i] === b.chain[i]) i++; return i; };
-    const free = (n, x, y) => {
-      const cx = Math.floor(x / cell), cy = Math.floor(y / cell);
-      for (let gx = cx - 1; gx <= cx + 1; gx++) for (let gy = cy - 1; gy <= cy + 1; gy++) {
-        const c = grid.get(key(gx, gy));
-        if (!c) continue;
-        for (const q of c) { const m = n.r + q.r + GAPS[Math.min(5, common(n, q))], dx = x - q.x, dy = y - q.y; if (dx * dx + dy * dy < m * m) return false; }
-      }
-      return true;
+    const groups = new Map(), taken = new Map();
+    const ring = (q0, r0, k, fn) => {
+      if (k === 0) { fn(q0, r0); return; }
+      let q = q0 + D[4][0] * k, r = r0 + D[4][1] * k;
+      for (let i = 0; i < 6; i++) for (let j = 0; j < k; j++) { fn(q, r); q += D[i][0]; r += D[i][1]; }
     };
     ordered.forEach((n, i) => {
-      // where the nearest-kin group is centred
-      let tx = 0, ty = 0, near = 0;
+      let tx = 0, ty = 0;
       for (let d = n.chain.length; d >= 1; d--) {
         const g = groups.get(n.chain.slice(0, d).join('/'));
-        if (g && g.n) { tx = g.sx / g.n; ty = g.sy / g.n; near = g.n; break; }
+        if (g && g.n) { tx = g.sx / g.n; ty = g.sy / g.n; break; }
       }
-      let rho = placed.length ? 0.75 * n.r * Math.sqrt(near * 0.9) : 0, th = i * 2.399, x = tx, y = ty;
-      for (let guard = 0; guard < 400000; guard++) {
-        x = tx + Math.cos(th) * rho; y = ty + Math.sin(th) * rho;
-        if (free(n, x, y)) break;
-        const dth = 5 / Math.max(rho, 8);
-        th += dth; rho += n.r * 0.5 * dth / (2 * Math.PI);
+      const [q0, r0] = hexAt(tx, ty);
+      let best = null, bd = Infinity;
+      for (let k = 0; k < 400; k++) {
+        ring(q0, r0, k, (q, r) => {
+          if (taken.has(key(q, r))) return;
+          const dx = cx(q, r) - tx, dy = cy(r) - ty, d = dx * dx + dy * dy;
+          if (d < bd) { bd = d; best = [q, r]; }
+        });
+        if (best && Math.sqrt(bd) <= 1.5 * S * k + 0.5 * S) break; // nothing nearer can be in a later ring
       }
-      n.x = x; n.y = y; placed.push(n);
-      const k = key(Math.floor(x / cell), Math.floor(y / cell));
-      if (!grid.has(k)) grid.set(k, []);
-      grid.get(k).push(n);
+      n.q = best[0]; n.r = best[1]; n.x = cx(n.q, n.r); n.y = cy(n.r); n.idx = i;
+      taken.set(key(n.q, n.r), n);
       for (let d = 1; d <= n.chain.length; d++) {
         const gk = n.chain.slice(0, d).join('/'), g = groups.get(gk) || groups.set(gk, { sx: 0, sy: 0, n: 0 }).get(gk);
-        g.sx += x; g.sy += y; g.n++;
+        g.sx += n.x; g.sy += n.y; g.n++;
       }
     });
+    return taken;
   }
 
   function build() {
     const obs = filteredObs(), bySp = new Map();
     for (const o of obs) { const id = speciesIdOf(o) ?? o.tid; if (!bySp.has(id)) bySp.set(id, []); bySp.get(id).push(o); }
-    nodes = []; edges = []; leaves = [];
-    const mk = p => Object.assign({ x: 0, y: 0, kids: [], sprite: null, hi: false, cr: 0 }, p);
-    const rootNode = mk({ kind: 'root', rank: 'root', r: 3, parent: null });
-    nodes.push(rootNode);
-    const internal = new Map();
+    // a small tree of the groups, only to put big groups first and keep each group's members together
+    const rootNode = { kids: [], leaves: 0 }, internal = new Map();
     for (const [sid, list] of bySp) {
       const first = list[0];
-      const path = (first.anc || []).filter(id => id !== sid && KEEP.has(state.names[id]?.rank));
+      const chain = (first.anc || []).filter(id => id !== sid && KEEP.has(state.names[id]?.rank));
       let parent = rootNode;
-      const hue = hueOf(path[Math.min(1, path.length - 1)] ?? sid);
-      for (const id of path) {
-        let n = internal.get(id);
-        if (!n) {
-          const nm = state.names[id];
-          n = mk({ kind: 'tx', rank: nm.rank, label: nm.common || nm.name, sci: nm.name, r: RANK_R[nm.rank], parent, hue });
-          internal.set(id, n); nodes.push(n); parent.kids.push(n);
-        }
-        parent = n;
+      for (const id of chain) {
+        let g = internal.get(id);
+        if (!g) { g = { kids: [], leaves: 0 }; internal.set(id, g); parent.kids.push(g); }
+        parent = g;
       }
       const nm = state.names[sid] || {};
-      const n = mk({ kind: 'sp', chain: path, tid: sid, label: nm.common || first.common || first.name, sci: nm.name || first.name, count: list.length, obs: thumbObs(list),
-        r: 22 + Math.min(12, Math.sqrt(list.length) * 2.4), parent, hue });
-      nodes.push(n); leaves.push(n); parent.kids.push(n);
+      parent.kids.push({ leaf: true, chain, tid: sid, label: nm.common || first.common || first.name, sci: nm.name || first.name, obs: thumbObs(list), sprite: null, hi: false, count: list.length });
     }
-    const count = n => (n.leaves = n.kind === 'sp' ? 1 : n.kids.reduce((a, k) => a + count(k), 0));
+    const count = n => (n.leaves = n.leaf ? 1 : n.kids.reduce((a, k) => a + count(k), 0));
     count(rootNode);
-    const dfs = n => n.kind === 'sp' ? [n] : n.kids.slice().sort((a, b) => b.leaves - a.leaves).flatMap(dfs); // biggest groups first
-    layout(dfs(rootNode));
-    // a group's joint sits in the middle of its members
-    const mid = n => {
-      if (n.kind === 'sp') return;
-      let sx = 0, sy = 0, c = 0;
-      for (const k of n.kids) { mid(k); sx += k.x * k.leaves; sy += k.y * k.leaves; c += k.leaves; }
-      n.x = c ? sx / c : 0; n.y = c ? sy / c : 0;
-    };
-    mid(rootNode);
-    for (const n of nodes) if (n.parent && n.parent.kind !== 'root') edges.push({ a: n.parent, b: n, hue: n.hue ?? 0 });
-    const by = new Map();
-    for (const e of edges) { const k = Math.round(e.hue / 30) % 12; if (!by.has(k)) by.set(k, { hue: k * 30, list: [] }); by.get(k).list.push(e); }
-    buckets = [...by.values()];
+    const dfs = n => n.leaf ? [n] : n.kids.slice().sort((a, b) => b.leaves - a.leaves).flatMap(dfs);
+    leaves = dfs(rootNode);
+    byKey = leaves.length ? layout(leaves) : new Map();
+    // borders between neighbouring cells of different groups
+    borders = BORDER.map(() => []);
+    const common = (a, b) => { let i = 0; while (i < a.chain.length && i < b.chain.length && a.chain[i] === b.chain[i]) i++; return i; };
+    for (const n of leaves) for (const [dq, dr] of D) {
+      const m = byKey.get(key(n.q + dq, n.r + dr));
+      if (!m || m.idx < n.idx) continue;
+      const c = common(n, m);
+      if (c >= n.chain.length && c >= m.chain.length) continue; // same group
+      const mx = (n.x + m.x) / 2, my = (n.y + m.y) / 2, ex = -(m.y - n.y), ey = m.x - n.x, el = Math.hypot(ex, ey) || 1, hx = ex / el * S / 2, hy = ey / el * S / 2;
+      borders[Math.min(4, c)].push([mx - hx, my - hy, mx + hx, my + hy]);
+    }
     queue = leaves.slice().sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y)); // photos: nearest the middle first
-    loading = 0; loadingHi = 0;
+    loading = 0; loadingHi = 0; focus = null;
     pump();
   }
 
-  // ---- photos → round sprites, a few at a time ----
+  // ---- photos → hexagonal sprites, a few at a time ----
   function sprite(img) {
-    const S = 96, c = document.createElement('canvas'); c.width = c.height = S;
-    const g = c.getContext('2d');
-    g.beginPath(); g.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); g.clip();
-    const s = Math.min(img.naturalWidth, img.naturalHeight);
-    g.drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, S, S);
+    const c = document.createElement('canvas'); c.width = HEX_W; c.height = HEX_H;
+    const g = c.getContext('2d'), cxm = HEX_W / 2, cym = HEX_H / 2, R = HEX_H / 2;
+    g.beginPath();
+    for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 30); g[i ? 'lineTo' : 'moveTo'](cxm + R * Math.cos(a), cym + R * Math.sin(a)); }
+    g.closePath(); g.clip();
+    const asp = HEX_W / HEX_H, iw = img.naturalWidth, ih = img.naturalHeight;
+    let sw, sh; if (iw / ih > asp) { sh = ih; sw = ih * asp; } else { sw = iw; sh = iw / asp; }
+    g.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, HEX_W, HEX_H);
     return c;
   }
   function pump() {
@@ -3564,92 +3574,107 @@ const web = (() => {
 
   // ---- drawing ----
   const toWorld = (px, py) => ({ x: (px - view.x) / view.k, y: (py - view.y) / view.k });
-  function label(text, x, y, size, alpha) {
-    ctx.font = `600 ${size}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    ctx.lineWidth = 3.5; ctx.strokeStyle = `rgba(8,14,16,${alpha * .85})`; ctx.fillStyle = `rgba(240,246,240,${alpha})`;
-    ctx.strokeText(text, x, y); ctx.fillText(text, x, y);
+  const focusPoint = () => ({ x: W / 2, y: (H - 40) / 2 + 24 }); // the middle of what is visible between the top bar and the description
+  function hexPath(x, y, r) {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 30); ctx[i ? 'lineTo' : 'moveTo'](x + r * Math.cos(a), y + r * Math.sin(a)); }
+    ctx.closePath();
+  }
+  function setFocus() {
+    const f = focusPoint(), w = toWorld(f.x, f.y);
+    let best = null, bd = Infinity;
+    for (const n of leaves) { const d = (n.x - w.x) ** 2 + (n.y - w.y) ** 2; if (d < bd) { bd = d; best = n; } }
+    if (best === focus) return;
+    focus = best;
+    const info = $('webinfo');
+    info.hidden = !best;
+    if (!best) return;
+    $('webname').textContent = best.label;
+    $('websci').textContent = best.sci && best.sci !== best.label ? best.sci : '';
+    const nm = id => state.names[id]?.common || state.names[id]?.name || '';
+    $('webrank').textContent = best.chain.map(nm).filter(Boolean).join(' › ') || '';
   }
   function draw() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
-    const k = view.k, x0 = -view.x / k - 80, y0 = -view.y / k - 80, x1 = (W - view.x) / k + 80, y1 = (H - view.y) / k + 80;
+    const k = view.k, x0 = -view.x / k - 60, y0 = -view.y / k - 60, x1 = (W - view.x) / k + 60, y1 = (H - view.y) / k + 60;
     ctx.save(); ctx.translate(view.x, view.y); ctx.scale(k, k);
-    ctx.lineCap = 'round';
-    for (const b of buckets) { // the web, underneath everything
-      ctx.beginPath();
-      for (const e of b.list) { ctx.moveTo(e.a.x, e.a.y); ctx.lineTo(e.b.x, e.b.y); }
-      ctx.strokeStyle = `hsla(${b.hue} 70% 68% / .55)`; ctx.lineWidth = Math.max(1, 1.6 / Math.sqrt(k)); ctx.stroke();
-    }
-    for (const n of nodes) {
-      if (n.kind !== 'tx' || n.x < x0 || n.x > x1 || n.y < y0 || n.y > y1) continue;
-      ctx.beginPath(); ctx.arc(n.x, n.y, n.r * 0.6, 0, Math.PI * 2); ctx.fillStyle = `hsla(${n.hue} 70% 68% / .8)`; ctx.fill();
-    }
-    const order = hover ? leaves.filter(n => n !== hover).concat(hover) : leaves;
-    for (const n of order) {
-      if (n.x < x0 || n.x > x1 || n.y < y0 || n.y > y1) continue;
-      const r = n.r * (n === hover ? 1.1 : 1);
+    setFocus();
+    const w = SQ3 * S + 0.8, h = 2 * S + 0.8; // a hair larger than the cell so no gap shows between neighbours
+    for (const n of leaves) {
+      if (n.x < x0 || n.x > x1 || n.y < y0 || n.y > y1 || n === focus) continue;
       if (n.sprite) {
-        ctx.drawImage(n.sprite, n.x - r, n.y - r, r * 2, r * 2);
-        if (!n.hi && loadingHi < MAX_HI && r * k * dpr > 70) upgrade(n);
-      } else {
-        ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2); ctx.fillStyle = `hsl(${n.hue || 0} 30% 24%)`; ctx.fill();
-      }
+        ctx.drawImage(n.sprite, n.x - w / 2, n.y - h / 2, w, h);
+        if (!n.hi && loadingHi < MAX_HI && w * k * dpr > 110) upgrade(n);
+      } else { hexPath(n.x, n.y, S + 0.4); ctx.fillStyle = '#1d2a2f'; ctx.fill(); }
+    }
+    ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(8,14,16,.92)';
+    borders.forEach((list, i) => {
+      if (!list.length) return;
+      ctx.beginPath();
+      for (const e of list) { ctx.moveTo(e[0], e[1]); ctx.lineTo(e[2], e[3]); }
+      ctx.lineWidth = Math.max(BORDER[i], 1.2 / k); ctx.stroke();
+    });
+    if (focus) { // the photo nearest the middle comes forward a little
+      const g = 1.18, fw = w * g, fh = h * g;
+      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.65)'; ctx.shadowBlur = 14 / k * 1.0;
+      if (focus.sprite) ctx.drawImage(focus.sprite, focus.x - fw / 2, focus.y - fh / 2, fw, fh);
+      else { hexPath(focus.x, focus.y, S * g); ctx.fillStyle = '#1d2a2f'; ctx.fill(); }
+      ctx.restore();
+      if (!focus.hi && focus.sprite && loadingHi < MAX_HI && w * k * dpr > 110) upgrade(focus);
     }
     ctx.restore();
-    // names, kept at a readable size: the bigger the picture is on screen, the more of them show; none may overlap another
-    const rankShow = { kingdom: 0, class: 0, order: 0.7, family: 1.2, genus: 2.0 }, taken = [];
-    const free = (text, x, y, size) => {
-      ctx.font = `600 ${size}px system-ui, sans-serif`;
-      const w = ctx.measureText(text).width + 6, r = [x - w / 2, y, x + w / 2, y + size + 4];
-      for (const q of taken) if (r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1]) return false;
-      taken.push(r); return true;
-    };
-    const wanted = [];
-    for (const n of nodes) {
-      if (n.kind === 'root') continue;
-      const px = n.x * k + view.x, py = n.y * k + view.y, pr = n.r * k;
-      if (px < -60 || px > W + 60 || py < -40 || py > H + 40) continue;
-      if (n.kind === 'tx') { if (k >= rankShow[n.rank]) wanted.push({ n, px, py: py + 4, size: 11, a: 0.95, pri: 2 + ['genus', 'family', 'order', 'class', 'kingdom'].indexOf(n.rank) }); }
-      else if (n === hover || pr >= 34) wanted.push({ n, px, py: py + pr * 0.5 - 7, size: Math.min(13, 9 + pr / 14), a: n === hover ? 1 : 0.9, pri: n === hover ? 9 : 1 });
-    }
-    wanted.sort((a, b) => b.pri - a.pri);
-    for (const w of wanted) if (free(w.n.label, w.px, w.py, w.size)) label(w.n.label, w.px, w.py, w.size, w.a);
+    const f = focusPoint(); // a small mark where "the middle" is
+    ctx.beginPath(); ctx.arc(f.x, f.y, 2.5, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fill();
   }
 
   // ---- view ----
   function resize() {
-    dpr = Math.min(nodes.length > 800 ? 1.25 : 2, devicePixelRatio || 1);
+    dpr = Math.min(leaves.length > 700 ? 1.25 : 2, devicePixelRatio || 1);
     W = root.clientWidth; H = root.clientHeight;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     redraw();
   }
   function fit() {
+    anim = null;
     if (!leaves.length) return;
     let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
-    for (const n of leaves) { a = Math.min(a, n.x - n.r); b = Math.min(b, n.y - n.r); c = Math.max(c, n.x + n.r); d = Math.max(d, n.y + n.r); }
-    const k = Math.max(0.1, Math.min(1.4, Math.min(W / (c - a + 40), (H - 70) / (d - b + 40))));
-    view.k = k; view.x = W / 2 - (a + c) / 2 * k; view.y = (H + 50) / 2 - (b + d) / 2 * k;
+    for (const n of leaves) { a = Math.min(a, n.x - S); b = Math.min(b, n.y - S); c = Math.max(c, n.x + S); d = Math.max(d, n.y + S); }
+    const k = Math.max(0.08, Math.min(1.4, Math.min(W / (c - a + 30), (H - 150) / (d - b + 30))));
+    view.k = k; view.x = W / 2 - (a + c) / 2 * k; view.y = (H - 40) / 2 + 24 - (b + d) / 2 * k;
     redraw();
   }
-  function zoomAt(px, py, factor) {
-    const k = Math.max(0.08, Math.min(6, view.k * factor)), w = toWorld(px, py);
+  function zoomTo(px, py, k) {
+    k = Math.max(0.08, Math.min(8, k));
+    const w = toWorld(px, py);
     view.k = k; view.x = px - w.x * k; view.y = py - w.y * k;
     redraw();
   }
+  function animateZoom(px, py, factor) { // a quick glide for double-tap
+    const k1 = Math.max(0.08, Math.min(8, view.k * factor)), w = toWorld(px, py);
+    anim = { t0: performance.now(), ms: 220, k0: view.k, x0: view.x, y0: view.y, k1, x1: px - w.x * k1, y1: py - w.y * k1 };
+    redraw();
+  }
   const hit = (px, py) => {
-    const w = toWorld(px, py);
-    for (let i = leaves.length - 1; i >= 0; i--) { const n = leaves[i]; if ((n.x - w.x) ** 2 + (n.y - w.y) ** 2 <= n.r * n.r) return n; }
-    return null;
+    const w = toWorld(px, py), [q, r] = hexAt(w.x, w.y);
+    return byKey.get(key(q, r)) || null;
   };
 
-  // ---- pointer: drag to pan, pinch / wheel to zoom, tap a photo to open it ----
+  // ---- pointer: drag to pan; pinch or wheel to zoom; double-tap to zoom in, double-tap and slide to zoom smoothly; tap a photo to open it ----
   const pos = e => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   cv.addEventListener('pointerdown', e => {
     cv.setPointerCapture(e.pointerId);
     const p = pos(e); pointers.set(e.pointerId, p);
+    anim = null;
     if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
       pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, k: view.k, wx: toWorld((a.x + b.x) / 2, (a.y + b.y) / 2) };
+      pan = null; tap = null; dz = null; clearTimeout(pendingOpen);
+      return;
+    }
+    if (lastTap && Date.now() - lastTap.t < 320 && Math.hypot(p.x - lastTap.x, p.y - lastTap.y) < 40) { // second tap: hold and slide to zoom
+      clearTimeout(pendingOpen); lastTap = null;
+      dz = { x: p.x, y: p.y, k0: view.k, moved: false };
       pan = null; tap = null;
       return;
     }
@@ -3659,30 +3684,40 @@ const web = (() => {
   });
   cv.addEventListener('pointermove', e => {
     const p = pos(e);
-    if (!pointers.has(e.pointerId)) { // mouse hover
-      const h = e.pointerType === 'mouse' ? hit(p.x, p.y) : null;
-      if (h !== hover) { hover = h; cv.style.cursor = h ? 'pointer' : 'grab'; redraw(); }
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, p);
+    if (dz) {
+      if (Math.abs(p.y - dz.y) > 6) dz.moved = true;
+      if (dz.moved) zoomTo(dz.x, dz.y, dz.k0 * Math.exp((p.y - dz.y) * 0.008)); // slide down to zoom in, up to zoom out
       return;
     }
-    pointers.set(e.pointerId, p);
     if (tap && Math.hypot(p.x - tap.x, p.y - tap.y) > 7) tap.moved = true;
     if (pinch && pointers.size >= 2) {
       const [a, b] = [...pointers.values()], d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
-      view.k = Math.max(0.08, Math.min(6, pinch.k * d / pinch.d));
-      const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
-      view.x = cx - pinch.wx.x * view.k; view.y = cy - pinch.wx.y * view.k;
+      const k = Math.max(0.08, Math.min(8, pinch.k * d / pinch.d)), cx2 = (a.x + b.x) / 2, cy2 = (a.y + b.y) / 2;
+      view.k = k; view.x = cx2 - pinch.wx.x * k; view.y = cy2 - pinch.wx.y * k;
       redraw();
     } else if (pan) { view.x = pan.vx + (p.x - pan.x); view.y = pan.vy + (p.y - pan.y); redraw(); }
   });
   const release = e => {
     if (!pointers.delete(e.pointerId)) return;
     if (pointers.size < 2) pinch = null;
-    if (tap && !tap.moved && Date.now() - tap.t < 450 && tap.node && e.type === 'pointerup') openSpecies(tap.node.tid, tap.node.obs);
+    if (dz) {
+      if (!dz.moved && e.type === 'pointerup') animateZoom(dz.x, dz.y, 2.4); // plain double-tap
+      dz = null; cv.style.cursor = 'grab';
+      return;
+    }
+    if (tap && !tap.moved && Date.now() - tap.t < 450 && e.type === 'pointerup') {
+      lastTap = { x: tap.x, y: tap.y, t: Date.now() };
+      const n = tap.node;
+      if (n) { clearTimeout(pendingOpen); pendingOpen = setTimeout(() => { lastTap = null; openSpecies(n.tid, n.obs); }, 330); } // wait in case it is a double-tap
+    }
     if (!pointers.size) { pan = null; tap = null; cv.style.cursor = 'grab'; }
   };
   cv.addEventListener('pointerup', release);
   cv.addEventListener('pointercancel', release);
-  cv.addEventListener('wheel', e => { e.preventDefault(); const p = pos(e); zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  cv.addEventListener('wheel', e => { e.preventDefault(); const p = pos(e); zoomTo(p.x, p.y, view.k * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  $('webinfo').onclick = () => { if (focus) openSpecies(focus.tid, focus.obs); };
 
   // ---- open / close ----
   api.open = () => {
@@ -3691,13 +3726,14 @@ const web = (() => {
     root.hidden = false; api.isOpen = true;
     document.body.style.overflow = 'hidden';
     history.pushState({ web: 1 }, '');
-    build(); resize(); fit();
-    $('webtitle').textContent = leaves.length ? `${leaves.length.toLocaleString()} species · drag to move, pinch to zoom, tap a photo` : 'Nothing to show for the current filters';
+    resize(); build(); resize(); fit();
+    $('webtitle').textContent = leaves.length ? `${leaves.length.toLocaleString()} species` : 'Nothing to show for the current filters';
   };
   api.hide = () => {
-    api.isOpen = false; cancelAnimationFrame(raf); raf = 0;
+    api.isOpen = false; cancelAnimationFrame(raf); raf = 0; clearTimeout(pendingOpen);
     root.hidden = true; if (!detail.isOpen) document.body.style.overflow = '';
-    nodes = []; edges = []; leaves = []; queue = []; pointers.clear(); pan = pinch = tap = hover = null;
+    leaves = []; byKey = new Map(); borders = []; queue = []; pointers.clear(); pan = pinch = tap = dz = lastTap = focus = anim = null;
+    $('webinfo').hidden = true;
   };
   api.close = () => { if (api.isOpen) history.back(); };
   $('webclose').onclick = api.close;
@@ -3705,7 +3741,7 @@ const web = (() => {
   $('tabWeb').onclick = api.open;
   window.addEventListener('resize', () => { if (api.isOpen) resize(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && api.isOpen && !detail.isOpen && !viewer.isOpen) api.close(); });
-  api.debug = () => ({ nodes: nodes.length, leaves: leaves.length, edges: edges.length, withSprite: leaves.filter(n => n.sprite).length, view: { ...view } });
+  api.debug = () => ({ leaves: leaves.length, withSprite: leaves.filter(n => n.sprite).length, view: { ...view }, focus: focus && focus.label, borders: borders.map(b => b.length) });
   api.positions = () => leaves.map(n => [n.x, n.y]);
   return api;
 })();
@@ -3714,7 +3750,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build web-14 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build web-15 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
