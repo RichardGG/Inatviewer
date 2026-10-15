@@ -187,6 +187,13 @@
   .ib[hidden] { display:none; }
   .leaflet-bar a.gpsbtn { display:flex; align-items:center; justify-content:center; width:30px; height:30px; color:#333; }
   .leaflet-bar a.gpsbtn svg { display:block; }
+  /* Web: full-screen physics picture of related species */
+  #web { position:fixed; inset:0; z-index:800; background:radial-gradient(circle at 50% 45%, #16242a 0%, #0b1215 70%); color:#e6ece6; touch-action:none; user-select:none; -webkit-user-select:none; }
+  #web[hidden] { display:none; }
+  #webcanvas { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+  #webbar { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:10px; padding:calc(8px + env(safe-area-inset-top)) 12px 28px; background:linear-gradient(rgba(11,18,21,.85), rgba(11,18,21,0)); pointer-events:none; }
+  #webbar .ib { pointer-events:auto; color:#e6ece6; background:rgba(255,255,255,.08); border-radius:50%; }
+  #webtitle { flex:1; min-width:0; font-weight:600; font-size:14px; text-shadow:0 1px 3px #000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #detail { position:fixed; inset:0; z-index:900; background:var(--bg); color:var(--fg); display:none; flex-direction:column; }
   #detail.open { display:flex; }
   .dpanel { flex:1; min-height:0; display:flex; flex-direction:column; background:var(--bg); }
@@ -327,6 +334,7 @@
       <button id="tabTree" role="tab"><i data-i="list-tree"></i><span>Taxonomy</span></button>
       <button id="tabPlace" role="tab"><i data-i="map"></i><span>Place</span></button>
       <button id="tabExplore" role="tab"><i data-i="compass"></i><span>Nearby</span></button>
+      <button id="tabWeb" role="tab" aria-haspopup="dialog"><i data-i="network"></i><span>Web</span></button>
     </div>
     <div id="iconbar">
       <div id="fbtns" class="ibgroup">
@@ -436,6 +444,15 @@
   </div>
 </main>
 
+<div id="web" role="dialog" aria-modal="true" aria-label="Species web" hidden>
+  <canvas id="webcanvas"></canvas>
+  <div id="webbar">
+    <button class="ib" id="webclose" aria-label="Close"><i data-i="x"></i></button>
+    <span id="webtitle"></span>
+    <button class="ib" id="webfit" aria-label="Fit to screen" title="Fit to screen"><i data-i="locate-fixed"></i></button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <div id="detail" role="dialog" aria-modal="true" aria-label="Species details">
@@ -470,7 +487,7 @@ const KEY = 'inat_token';
 const SHOWN_RANKS = new Set(['kingdom','phylum','class','order','family','genus']);
 const $ = id => document.getElementById(id);
 // Lucide icons (https://lucide.dev, ISC licence), inlined so there is no network dependency.
-const ICONS = {"clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
+const ICONS = {"clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
 ICONS.heart = '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>';
 ICONS['share-2'] = "<circle cx=\"18\" cy=\"5\" r=\"3\"/> <circle cx=\"6\" cy=\"12\" r=\"3\"/> <circle cx=\"18\" cy=\"19\" r=\"3\"/> <line x1=\"8.59\" x2=\"15.42\" y1=\"13.51\" y2=\"17.49\"/> <line x1=\"15.41\" x2=\"8.59\" y1=\"6.51\" y2=\"10.49\"/>";
 ICONS['git-compare'] = "<circle cx=\"18\" cy=\"18\" r=\"3\"/> <circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M13 6h3a2 2 0 0 1 2 2v7\"/> <path d=\"M11 18H8a2 2 0 0 1-2-2V9\"/>";
@@ -1207,7 +1224,7 @@ viewer.track.addEventListener('scroll', () => {
   const i = Math.round(viewer.track.scrollLeft / viewer.track.clientWidth);
   if (i !== viewer.idx) { viewer.idx = i; viewer.counter(); }
 });
-window.addEventListener('popstate', () => { if (viewer.isOpen) viewer.hide(); else if (detail.isOpen) detail.hide(); });
+window.addEventListener('popstate', () => { if (viewer.isOpen) viewer.hide(); else if (detail.isOpen) detail.hide(); else if (web.isOpen) web.hide(); });
 $('vclose').onclick = () => viewer.close();
 $('vprev').onclick = () => viewer.go(-1);
 $('vnext').onclick = () => viewer.go(1);
@@ -3294,7 +3311,7 @@ $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = tru
   // don't hijack horizontal gestures that belong to something else (carousels, maps, chip rows, inputs, overlays)
   const blocked = el => {
     if (!el.closest) return true;
-    if (el.closest('input, textarea, select, .leaflet-container, .ctrack, .clsrow, #detail, #viewer, #jumpsug, #expsug, [data-noswipe]')) return true;
+    if (el.closest('input, textarea, select, .leaflet-container, .ctrack, .clsrow, #detail, #viewer, #web, #jumpsug, #expsug, [data-noswipe]')) return true;
     for (let e = el; e && e !== results; e = e.parentElement) {
       const cs = getComputedStyle(e);
       if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 2) return true;
@@ -3407,11 +3424,340 @@ $('expcol').onclick = () => {
 };
 $('tree').addEventListener('toggle', scheduleExpCol, true); // toggle doesn't bubble; catch it in the capture phase
 
+
+// ---------- Web: a full-screen, physics-driven picture of how the species are related ----------
+// Every species is a round photo; higher groups (kingdom, class, order, family, genus) are small joints between them.
+// Springs hold parents and children together, photos partly overlap, and everything drifts slowly and bounces when touched.
+const web = (() => {
+  const root = $('web'), cv = $('webcanvas'), ctx = cv.getContext('2d');
+  const KEEP = new Set(['kingdom', 'class', 'order', 'family', 'genus']);
+  const RANK_R = { kingdom: 12, class: 10, order: 9, family: 8, genus: 7 };
+  const SPRITE = 96, MAX_HI = 4;
+  let nodes = [], edges = [], buckets = [], leaves = [];
+  let W = 0, H = 0, dpr = 1, raf = 0, last = 0, t = 0, loadingHi = 0;
+  const view = { x: 0, y: 0, k: 1 };
+  const pointers = new Map();
+  let drag = null, pan = null, pinch = null, tap = null, hover = null, queue = [], loading = 0;
+  let head = new Int32Array(0), next = new Int32Array(0);
+  const api = { isOpen: false };
+
+  const hueOf = id => (Math.imul(id | 0, 2654435761) >>> 0) % 360;
+
+  function build() {
+    const obs = filteredObs(), bySp = new Map();
+    for (const o of obs) { const id = speciesIdOf(o) ?? o.tid; if (!bySp.has(id)) bySp.set(id, []); bySp.get(id).push(o); }
+    nodes = []; edges = []; leaves = [];
+    const mk = p => Object.assign({ x: 0, y: 0, vx: 0, vy: 0, kids: [], leaves: 0, depth: 0, sprite: null, hi: false }, p);
+    const rootNode = mk({ kind: 'root', r: 3, pinned: true, parent: null });
+    nodes.push(rootNode);
+    const internal = new Map();
+    for (const [sid, list] of bySp) {
+      const first = list[0];
+      const path = (first.anc || []).filter(id => id !== sid && KEEP.has(state.names[id]?.rank));
+      let parent = rootNode;
+      for (const id of path) {
+        let n = internal.get(id);
+        if (!n) {
+          const nm = state.names[id];
+          n = mk({ kind: 'tx', rank: nm.rank, label: nm.common || nm.name, sci: nm.name, r: RANK_R[nm.rank], parent, hue: hueOf(path[Math.min(1, path.length - 1)]) });
+          internal.set(id, n); nodes.push(n); parent.kids.push(n);
+        }
+        parent = n;
+      }
+      const nm = state.names[sid] || {};
+      const th = thumbObs(list);
+      const n = mk({ kind: 'sp', tid: sid, label: nm.common || first.common || first.name, sci: nm.name || first.name, count: list.length, obs: th,
+        r: 22 + Math.min(12, Math.sqrt(list.length) * 2.4), parent, hue: hueOf(path[Math.min(1, path.length - 1)] ?? sid) });
+      nodes.push(n); leaves.push(n); parent.kids.push(n);
+    }
+    // inherit hue downwards for joints created before their class was known
+    for (const n of nodes) if (n.kind === 'tx' && n.hue === undefined) n.hue = 0;
+    // initial radial layout: each group gets an angular wedge in proportion to its species
+    const count = n => (n.leaves = n.kind === 'sp' ? 1 : n.kids.reduce((a, k) => a + count(k), 0));
+    const total = count(rootNode);
+    const depthOf = (n, d) => { n.depth = d; return n.kids.length ? Math.max(...n.kids.map(k => depthOf(k, d + 1))) : d; };
+    const maxD = Math.max(1, depthOf(rootNode, 0));
+    // photos fill a disc, kin side by side in angle (so each group sits along its own spoke); every group joint sits at the centre of
+    // its members, so the connecting lines radiate outwards from the middle
+    const avgR = leaves.reduce((a, n) => a + n.r, 0) / Math.max(1, leaves.length);
+    const R = Math.max(80, Math.sqrt(Math.max(total, 1)) * avgR * 0.8);
+    let li = 0;
+    const order = n => n.kind === 'sp' ? [n] : n.kids.flatMap(order);
+    const ordered = order(rootNode);
+    ordered.forEach((n, i) => {
+      const a = 2 * Math.PI * (i + 0.5) / ordered.length, rad = R * Math.sqrt((i * 0.6180339887) % 1);
+      n.hx = Math.cos(a) * rad; n.hy = Math.sin(a) * rad;
+    });
+    const centre = n => {
+      if (n.kind === 'sp') return n;
+      let sx = 0, sy = 0, c = 0;
+      for (const k of n.kids) { centre(k); sx += k.hx * k.leaves; sy += k.hy * k.leaves; c += k.leaves; }
+      n.hx = c ? sx / c : 0; n.hy = c ? sy / c : 0;
+      return n;
+    };
+    centre(rootNode);
+    rootNode.hx = rootNode.hy = 0;
+    for (const n of nodes) { n.x = n.hx + (Math.random() - .5) * 4; n.y = n.hy + (Math.random() - .5) * 4; }
+    for (const n of nodes) if (n.parent) edges.push({ a: n.parent, b: n, L: Math.hypot(n.hx - n.parent.hx, n.hy - n.parent.hy) * 0.95, hue: n.hue ?? 0 });
+    const by = new Map();
+    for (const e of edges) { const k = Math.round(e.hue / 30) % 12; if (!by.has(k)) by.set(k, { hue: k * 30, list: [] }); by.get(k).list.push(e); }
+    buckets = [...by.values()];
+    // photos: nearest the centre first
+    queue = leaves.slice().sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y));
+    loading = 0; loadingHi = 0;
+    pump();
+  }
+
+  // ---- photos → round sprites, a few at a time ----
+  function sprite(img, n) {
+    const c = document.createElement('canvas'); c.width = c.height = SPRITE;
+    const g = c.getContext('2d'), R = SPRITE / 2;
+    g.save(); g.beginPath(); g.arc(R, R, R - 4, 0, Math.PI * 2); g.clip();
+    const s = Math.min(img.naturalWidth, img.naturalHeight), sx = (img.naturalWidth - s) / 2, sy = (img.naturalHeight - s) / 2;
+    g.drawImage(img, sx, sy, s, s, 0, 0, SPRITE, SPRITE); g.restore();
+    g.lineWidth = 5; g.strokeStyle = `hsl(${n.hue || 0} 65% 62%)`; g.beginPath(); g.arc(R, R, R - 3, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 1.5; g.strokeStyle = 'rgba(255,255,255,.85)'; g.beginPath(); g.arc(R, R, R - 0.8, 0, Math.PI * 2); g.stroke();
+    return c;
+  }
+  function pump() {
+    while (api.isOpen && loading < 6 && queue.length) {
+      const n = queue.shift(), url = photosOf(n.obs || {})[0];
+      if (!url) continue;
+      loading++;
+      const im = new Image();
+      im.onload = () => { n.sprite = sprite(im, n); loading--; pump(); };
+      im.onerror = () => { loading--; pump(); };
+      im.src = sized(url, 'square');
+    }
+  }
+  function upgrade(n) { // a closer look: swap in the larger photo
+    n.hi = true; loadingHi++;
+    const im = new Image();
+    im.onload = () => { n.sprite = sprite(im, n); loadingHi--; };
+    im.onerror = () => { loadingHi--; };
+    im.src = sized(photosOf(n.obs)[0], 'small');
+  }
+
+  // ---- physics ----
+  const K = 0.03, DAMP = 0.93, KA = 0.007, TURN = 0.045, VMAX = 14;
+  function step(dt) {
+    const s = Math.min(2, dt / 16.67);
+    t += dt / 1000;
+    for (const e of edges) {
+      const a = e.a, b = e.b, dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01, f = (d - e.L) * K * s / d;
+      if (!a.pinned) { a.vx += dx * f; a.vy += dy * f; }
+      b.vx -= dx * f; b.vy -= dy * f;
+    }
+    // each node is drawn gently towards its place in the layout, which slowly turns and breathes; noise adds the drift
+    const ang = t * TURN, ca = Math.cos(ang), sa = Math.sin(ang), br = 1 + 0.05 * Math.sin(t * 0.4);
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      if (n.pinned) continue;
+      const tx = (n.hx * ca - n.hy * sa) * br, ty = (n.hx * sa + n.hy * ca) * br;
+      n.vx += (tx - n.x) * KA * s + Math.sin(t * 0.7 + i * 1.37) * 0.03 * s;
+      n.vy += (ty - n.y) * KA * s + Math.cos(t * 0.6 + i * 2.11) * 0.03 * s;
+    }
+    // photos overlap a little, but not completely: neighbours found through a coarse grid
+    const CELL = 64, HS = 4096;
+    if (head.length !== HS) head = new Int32Array(HS);
+    if (next.length < nodes.length) next = new Int32Array(nodes.length * 2);
+    head.fill(-1);
+    const hash = (cx, cy) => ((cx * 73856093) ^ (cy * 19349663)) & (HS - 1);
+    for (let i = 0; i < nodes.length; i++) { const h = hash(Math.floor(nodes[i].x / CELL), Math.floor(nodes[i].y / CELL)); next[i] = head[h]; head[h] = i; }
+    const held = drag && drag.node;
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i], cx = Math.floor(a.x / CELL), cy = Math.floor(a.y / CELL);
+      for (let gx = cx - 1; gx <= cx + 1; gx++) for (let gy = cy - 1; gy <= cy + 1; gy++) {
+        for (let j = head[hash(gx, gy)]; j !== -1; j = next[j]) {
+          if (j <= i) continue;
+          const b = nodes[j], dx = b.x - a.x, dy = b.y - a.y;
+          const minD = (a.r + b.r) * (a.kind === 'sp' && b.kind === 'sp' ? 0.74 : 0.5), d2 = dx * dx + dy * dy;
+          if (d2 >= minD * minD) continue;
+          const d = Math.sqrt(d2) || 0.01, ov = minD - d, nx = dx / d, ny = dy / d, push = ov * 0.3;
+          if (!a.pinned && a !== held) { a.x -= nx * push; a.y -= ny * push; a.vx -= nx * ov * 0.02 * s; a.vy -= ny * ov * 0.02 * s; }
+          if (!b.pinned && b !== held) { b.x += nx * push; b.y += ny * push; b.vx += nx * ov * 0.02 * s; b.vy += ny * ov * 0.02 * s; }
+        }
+      }
+    }
+    const damp = Math.pow(DAMP, s);
+    for (const n of nodes) {
+      if (n.pinned) continue;
+      if (drag && drag.node === n) { // the held photo follows the finger; its neighbours are tugged along by the springs
+        const nx = n.x + (drag.x - n.x) * 0.45, ny = n.y + (drag.y - n.y) * 0.45;
+        n.vx = (nx - n.x) / s; n.vy = (ny - n.y) / s; n.x = nx; n.y = ny;
+        continue;
+      }
+      n.vx *= damp; n.vy *= damp;
+      const sp = Math.hypot(n.vx, n.vy);
+      if (sp > VMAX) { n.vx *= VMAX / sp; n.vy *= VMAX / sp; }
+      n.x += n.vx * s; n.y += n.vy * s;
+    }
+  }
+
+  // ---- drawing ----
+  const toWorld = (px, py) => ({ x: (px - view.x) / view.k, y: (py - view.y) / view.k });
+  function label(text, x, y, size, alpha) {
+    ctx.font = `600 ${size}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.lineWidth = 3.5; ctx.strokeStyle = `rgba(8,14,16,${alpha * .85})`; ctx.fillStyle = `rgba(240,246,240,${alpha})`;
+    ctx.strokeText(text, x, y); ctx.fillText(text, x, y);
+  }
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const k = view.k, x0 = -view.x / k - 80, y0 = -view.y / k - 80, x1 = (W - view.x) / k + 80, y1 = (H - view.y) / k + 80;
+    ctx.save(); ctx.translate(view.x, view.y); ctx.scale(k, k);
+    const order = hover && hover.kind === 'sp' ? leaves.filter(n => n !== hover).concat(hover) : leaves;
+    for (const n of order) {
+      if (n.x < x0 || n.x > x1 || n.y < y0 || n.y > y1) continue;
+      const grow = n === hover || (drag && drag.node === n) ? 1.18 : 1, r = n.r * grow;
+      if (n.sprite) {
+        ctx.drawImage(n.sprite, n.x - r, n.y - r, r * 2, r * 2);
+        if (!n.hi && loadingHi < MAX_HI && r * k * dpr > 70) upgrade(n);
+      } else {
+        ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2); ctx.fillStyle = `hsl(${n.hue || 0} 40% 28%)`; ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = `hsl(${n.hue || 0} 65% 55%)`; ctx.stroke();
+      }
+    }
+    ctx.lineCap = 'round';
+    for (const b of buckets) {
+      ctx.beginPath();
+      for (const e of b.list) { ctx.moveTo(e.a.x, e.a.y); ctx.lineTo(e.b.x, e.b.y); }
+      ctx.strokeStyle = `hsla(${b.hue} 85% 68% / .85)`; ctx.lineWidth = Math.max(1.4, 3 / Math.sqrt(k)); ctx.stroke();
+    }
+    for (const n of nodes) {
+      if (n.kind !== 'tx' || n.x < x0 || n.x > x1 || n.y < y0 || n.y > y1) continue;
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fillStyle = `hsl(${n.hue} 55% 42%)`; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.stroke();
+    }
+    ctx.restore();
+    // names, kept at a readable size: the bigger the picture is on screen, the more of them show
+    for (const n of nodes) {
+      if (n.kind === 'root') continue;
+      const px = n.x * k + view.x, py = n.y * k + view.y, pr = n.r * k;
+      if (px < -60 || px > W + 60 || py < -40 || py > H + 40) continue;
+      const rankShow = { kingdom: 0, class: 0, order: 0.9, family: 1.5, genus: 2.4 };
+      if (n.kind === 'tx') { if (k >= rankShow[n.rank]) label(n.label, px, py + pr + 3, 11, 0.95); }
+      else if (n === hover || pr >= 34) label(n.label, px, py + pr * 0.5 - 7, Math.min(13, 9 + pr / 14), n === hover ? 1 : 0.9);
+    }
+  }
+
+  function loop(now) {
+    if (!api.isOpen) return;
+    const dt = Math.min(50, now - last || 16); last = now;
+    step(dt); draw();
+    raf = requestAnimationFrame(loop);
+  }
+
+  // ---- view ----
+  function resize() {
+    dpr = Math.min(nodes.length > 800 ? 1.25 : 2, devicePixelRatio || 1); // a very large web is drawn at lower resolution to stay smooth
+    W = root.clientWidth; H = root.clientHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  }
+  function fit() {
+    if (!leaves.length) return;
+    let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+    for (const n of leaves) { a = Math.min(a, n.x - n.r); b = Math.min(b, n.y - n.r); c = Math.max(c, n.x + n.r); d = Math.max(d, n.y + n.r); }
+    const k = Math.max(0.12, Math.min(1.4, Math.min(W / (c - a + 40), (H - 70) / (d - b + 40))));
+    view.k = k; view.x = W / 2 - (a + c) / 2 * k; view.y = (H + 50) / 2 - (b + d) / 2 * k;
+  }
+  function zoomAt(px, py, factor) {
+    const k = Math.max(0.1, Math.min(6, view.k * factor)), w = toWorld(px, py);
+    view.k = k; view.x = px - w.x * k; view.y = py - w.y * k;
+  }
+  const hit = (px, py) => {
+    const w = toWorld(px, py);
+    for (let i = nodes.length - 1; i >= 0; i--) { // later nodes are drawn on top; photos above joints
+      const n = nodes[i];
+      if (n.kind !== 'sp') continue;
+      if ((n.x - w.x) ** 2 + (n.y - w.y) ** 2 <= n.r * n.r) return n;
+    }
+    for (const n of nodes) if (n.kind === 'tx' && (n.x - w.x) ** 2 + (n.y - w.y) ** 2 <= (n.r + 4) ** 2) return n;
+    return null;
+  };
+
+  // ---- pointer: drag a photo, drag the background to pan, pinch / wheel to zoom, tap a photo to open it ----
+  const pos = e => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  cv.addEventListener('pointerdown', e => {
+    cv.setPointerCapture(e.pointerId);
+    const p = pos(e); pointers.set(e.pointerId, p);
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, k: view.k, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, wx: toWorld((a.x + b.x) / 2, (a.y + b.y) / 2) };
+      drag = null; pan = null; tap = null;
+      return;
+    }
+    const n = hit(p.x, p.y);
+    tap = { x: p.x, y: p.y, t: Date.now(), node: n, moved: false };
+    if (n && n.kind === 'sp') { const w = toWorld(p.x, p.y); drag = { node: n, x: w.x, y: w.y }; }
+    else pan = { x: p.x, y: p.y, vx: view.x, vy: view.y };
+    cv.style.cursor = 'grabbing';
+  });
+  cv.addEventListener('pointermove', e => {
+    const p = pos(e);
+    if (!pointers.has(e.pointerId)) { // mouse hover
+      const h = e.pointerType === 'mouse' ? hit(p.x, p.y) : null;
+      if (h !== hover) { hover = h && h.kind === 'sp' ? h : null; cv.style.cursor = h ? 'pointer' : 'grab'; }
+      return;
+    }
+    pointers.set(e.pointerId, p);
+    if (tap && Math.hypot(p.x - tap.x, p.y - tap.y) > 7) tap.moved = true;
+    if (pinch && pointers.size >= 2) {
+      const [a, b] = [...pointers.values()], d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      view.k = Math.max(0.1, Math.min(6, pinch.k * d / pinch.d));
+      const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+      view.x = cx - pinch.wx.x * view.k; view.y = cy - pinch.wx.y * view.k;
+    } else if (drag) { const w = toWorld(p.x, p.y); drag.x = w.x; drag.y = w.y; }
+    else if (pan) { view.x = pan.vx + (p.x - pan.x); view.y = pan.vy + (p.y - pan.y); }
+  });
+  const release = e => {
+    const had = pointers.delete(e.pointerId);
+    if (!had) return;
+    if (pointers.size < 2) pinch = null;
+    if (tap && !tap.moved && Date.now() - tap.t < 450 && tap.node && tap.node.kind === 'sp' && e.type === 'pointerup') {
+      const n = tap.node;
+      openSpecies(n.tid, n.obs);
+    }
+    if (!pointers.size) { drag = null; pan = null; tap = null; cv.style.cursor = 'grab'; }
+  };
+  cv.addEventListener('pointerup', release);
+  cv.addEventListener('pointercancel', release);
+  cv.addEventListener('wheel', e => { e.preventDefault(); const p = pos(e); zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+
+  // ---- open / close ----
+  api.open = () => {
+    if (api.isOpen) return;
+    if (!state.obs.length) { toast('Load some observations first.'); return; }
+    root.hidden = false; api.isOpen = true;
+    document.body.style.overflow = 'hidden';
+    history.pushState({ web: 1 }, '');
+    build(); resize();
+    for (let i = 0; i < 160; i++) step(16.67); // let it settle into a packed web before the first frame
+    fit();
+    $('webtitle').textContent = leaves.length ? `${leaves.length.toLocaleString()} species · drag a photo, pinch to zoom, tap to open` : 'Nothing to show for the current filters';
+    t = 0; last = 0; raf = requestAnimationFrame(loop);
+  };
+  api.hide = () => {
+    api.isOpen = false; cancelAnimationFrame(raf);
+    root.hidden = true; if (!detail.isOpen) document.body.style.overflow = '';
+    nodes = []; edges = []; leaves = []; queue = []; pointers.clear(); drag = pan = pinch = tap = hover = null;
+  };
+  api.close = () => { if (api.isOpen) history.back(); };
+  $('webclose').onclick = api.close;
+  $('webfit').onclick = fit;
+  $('tabWeb').onclick = api.open;
+  window.addEventListener('resize', () => { if (api.isOpen) resize(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && api.isOpen && !detail.isOpen && !viewer.isOpen) api.close(); });
+  document.addEventListener('visibilitychange', () => { if (api.isOpen && !document.hidden) { last = 0; cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); } });
+  api.debug = () => ({ nodes: nodes.length, leaves: leaves.length, edges: edges.length, withSprite: leaves.filter(n => n.sprite).length, view: { ...view } });
+  return api;
+})();
+
 setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build sync-10 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build web-11 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
