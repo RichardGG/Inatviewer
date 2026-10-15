@@ -193,6 +193,7 @@
   #webcanvas { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
   #webbar { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:10px; padding:calc(8px + env(safe-area-inset-top)) 12px 28px; background:linear-gradient(rgba(11,18,21,.85), rgba(11,18,21,0)); pointer-events:none; }
   #webbar .ib { pointer-events:auto; color:#e6ece6; background:rgba(255,255,255,.08); border-radius:50%; }
+  #webbar .ib.on { background:var(--accent); color:#fff; }
   #webtitle { flex:1; min-width:0; font-weight:600; font-size:14px; text-shadow:0 1px 3px #000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #webinfo { position:absolute; left:0; right:0; bottom:0; display:flex; flex-direction:column; gap:1px; text-align:left; border:0; color:#e6ece6; font:inherit; cursor:pointer;
              padding:34px 18px calc(14px + env(safe-area-inset-bottom)); background:linear-gradient(rgba(11,18,21,0), rgba(11,18,21,.92) 38%); }
@@ -455,6 +456,7 @@
   <div id="webbar">
     <button class="ib" id="webclose" aria-label="Close"><i data-i="x"></i></button>
     <span id="webtitle"></span>
+    <button class="ib" id="webcolour" aria-label="Arrange by colour" title="Arrange by average colour" aria-pressed="false"><i data-i="palette"></i></button>
     <button class="ib" id="webfit" aria-label="Fit to screen" title="Fit to screen"><i data-i="locate-fixed"></i></button>
   </div>
   <button id="webinfo" type="button" hidden>
@@ -496,7 +498,7 @@ const KEY = 'inat_token';
 const SHOWN_RANKS = new Set(['kingdom','phylum','class','order','family','genus']);
 const $ = id => document.getElementById(id);
 // Lucide icons (https://lucide.dev, ISC licence), inlined so there is no network dependency.
-const ICONS = {"clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
+const ICONS = {"clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","palette":"<path d=\"M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\"/> <circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
 ICONS.heart = '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>';
 ICONS['share-2'] = "<circle cx=\"18\" cy=\"5\" r=\"3\"/> <circle cx=\"6\" cy=\"12\" r=\"3\"/> <circle cx=\"18\" cy=\"19\" r=\"3\"/> <line x1=\"8.59\" x2=\"15.42\" y1=\"13.51\" y2=\"17.49\"/> <line x1=\"15.41\" x2=\"8.59\" y1=\"6.51\" y2=\"10.49\"/>";
 ICONS['git-compare'] = "<circle cx=\"18\" cy=\"18\" r=\"3\"/> <circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M13 6h3a2 2 0 0 1 2 2v7\"/> <path d=\"M11 18H8a2 2 0 0 1-2-2V9\"/>";
@@ -3447,6 +3449,7 @@ const web = (() => {
   const MAX_HI = 4, TIERS = [['square', 96], ['small', 192], ['medium', 384], ['large', 640]], KEEP_SHARP = 240; // photo size and sprite width by how big the cell is on screen
   let cells = [], byKey = new Map(), borders = [], leaves = [];
   let W = 0, H = 0, dpr = 1, dirty = false, raf = 0, loadingHi = 0, focus = null, anim = null, sharp = new Set();
+  let arrange = 'kin', kinBorders = [], morph = null, pendingColour = false;
   const view = { x: 0, y: 0, k: 1 };
   const pointers = new Map();
   let pan = null, pinch = null, tap = null, dz = null, lastTap = null, pendingOpen = 0, queue = [], loading = 0;
@@ -3457,6 +3460,11 @@ const web = (() => {
     raf = 0; if (!api.isOpen) return;
     dirty = false;
     if (anim) { const t = Math.min(1, (performance.now() - anim.t0) / anim.ms), e = 1 - (1 - t) ** 3; view.k = anim.k0 + (anim.k1 - anim.k0) * e; view.x = anim.x0 + (anim.x1 - anim.x0) * e; view.y = anim.y0 + (anim.y1 - anim.y0) * e; if (t >= 1) anim = null; else dirty = true; }
+    if (morph) {
+      const t = Math.min(1, (performance.now() - morph.t0) / morph.ms), e = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      for (const n of leaves) { n.x = n.fx + (n.gx - n.fx) * e; n.y = n.fy + (n.gy - n.fy) * e; }
+      if (t >= 1) finishMorph(); else dirty = true;
+    }
     draw(); if (dirty) raf = requestAnimationFrame(frame);
   }
   const cx = (q, r) => S * SQ3 * (q + r / 2), cy = r => S * 1.5 * r;
@@ -3536,6 +3544,8 @@ const web = (() => {
       const mx = (n.x + m.x) / 2, my = (n.y + m.y) / 2, ex = -(m.y - n.y), ey = m.x - n.x, el = Math.hypot(ex, ey) || 1, hx = ex / el * S / 2, hy = ey / el * S / 2;
       borders[Math.min(4, c)].push([mx - hx, my - hy, mx + hx, my + hy]);
     }
+    for (const n of leaves) { n.tq = n.q; n.tr = n.r; n.tx = n.x; n.ty = n.y; }
+    kinBorders = borders; arrange = 'kin'; pendingColour = false; morph = null;
     queue = leaves.slice().sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y)); // photos: nearest the middle first
     loading = 0; loadingHi = 0; focus = null; sharp = new Set();
     pump();
@@ -3554,17 +3564,39 @@ const web = (() => {
     g.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, w, h);
     return c;
   }
+  // average colour of a photo (centre part), as luminance / hue / saturation; null if the browser won't let us read the pixels
+  function avgColour(img) {
+    try {
+      const c = document.createElement('canvas'); c.width = c.height = 12;
+      const g = c.getContext('2d', { willReadFrequently: true }), iw = img.naturalWidth, ih = img.naturalHeight, m = Math.min(iw, ih) * 0.7;
+      g.drawImage(img, (iw - m) / 2, (ih - m) / 2, m, m, 0, 0, 12, 12);
+      const d = g.getImageData(0, 0, 12, 12).data;
+      let r = 0, gg = 0, b = 0;
+      for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; }
+      const n = d.length / 4; r /= n * 255; gg /= n * 255; b /= n * 255;
+      const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), l = (mx + mn) / 2, dl = mx - mn;
+      const sat = dl === 0 ? 0 : dl / (1 - Math.abs(2 * l - 1));
+      let h = 0;
+      if (dl) h = mx === r ? ((gg - b) / dl + 6) % 6 : mx === gg ? (b - r) / dl + 2 : (r - gg) / dl + 4;
+      return { y: 0.299 * r + 0.587 * gg + 0.114 * b, h: h * 60, s: sat };
+    } catch { return null; }
+  }
   function pump() {
     while (api.isOpen && loading < 6 && queue.length) {
       const n = queue.shift(), url = photosOf(n.obs || {})[0];
-      if (!url) continue;
+      if (!url) { n.col = null; continue; }
       loading++;
-      const im = new Image();
-      im.onload = () => { n.base = n.sprite = sprite(im, TIERS[0][1]); n.tier = 0; loading--; redraw(); pump(); };
-      im.onerror = () => { loading--; pump(); };
-      im.src = sized(url, TIERS[0][0]);
+      const load = cors => {
+        const im = new Image();
+        if (cors) im.crossOrigin = 'anonymous'; // lets us read the colours; some servers refuse, then it is retried without
+        im.onload = () => { n.base = n.sprite = sprite(im, TIERS[0][1]); n.tier = 0; n.col = cors ? avgColour(im) : null; loading--; redraw(); pump(); colourProgress(); };
+        im.onerror = () => { if (cors) { load(false); return; } n.col = null; loading--; pump(); colourProgress(); };
+        im.src = sized(url, TIERS[0][0]);
+      };
+      load(true);
     }
   }
+
   function upgrade(n, tier) {
     n.pend = tier; loadingHi++;
     const im = new Image();
@@ -3581,6 +3613,60 @@ const web = (() => {
       if (n.x < x0 - 100 || n.x > x1 + 100 || n.y < y0 - 100 || n.y > y1 + 100) { n.sprite = n.base; n.tier = 0; sharp.delete(n); }
     }
   }
+
+  // ---- arrangement: by relatedness (the honeycomb of groups) or by average colour (same shape, rows from light to dark, each row by hue) ----
+  const reindex = () => { byKey = new Map(); for (const n of leaves) byKey.set(key(n.q, n.r), n); };
+  function colourSlots() {
+    const rows = new Map();
+    for (const n of leaves) { if (!rows.has(n.tr)) rows.set(n.tr, []); rows.get(n.tr).push(n); }
+    const slots = [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, cs]) => cs.sort((a, b) => a.tx - b.tx).map(c => ({ q: c.tq, r: c.tr, x: c.tx, y: c.ty })));
+    const order = leaves.slice().sort((a, b) => (b.col ? b.col.y : -1) - (a.col ? a.col.y : -1)); // lightest first; unreadable ones last
+    let i = 0;
+    for (const row of slots) {
+      const chunk = order.slice(i, i + row.length); i += row.length;
+      chunk.sort((a, b) => (a.col && a.col.s >= 0.12 ? a.col.h : -1) - (b.col && b.col.s >= 0.12 ? b.col.h : -1)); // greys first, then round the colour wheel
+      chunk.forEach((n, j) => { n.cq = row[j].q; n.cr = row[j].r; n.cx = row[j].x; n.cy = row[j].y; });
+    }
+  }
+  function startMorph(toColour) {
+    if (morph) finishMorph();
+    for (const n of leaves) { n.fx = n.x; n.fy = n.y; n.gx = toColour ? n.cx : n.tx; n.gy = toColour ? n.cy : n.ty; n.gq = toColour ? n.cq : n.tq; n.gr = toColour ? n.cr : n.tr; }
+    arrange = toColour ? 'colour' : 'kin';
+    borders = toColour ? [] : kinBorders;
+    morph = { t0: performance.now(), ms: 700 };
+    redraw();
+  }
+  function finishMorph() {
+    for (const n of leaves) { n.x = n.gx; n.y = n.gy; n.q = n.gq; n.r = n.gr; }
+    morph = null; reindex();
+  }
+  const colourReady = () => leaves.every(n => n.col !== undefined);
+  function colourProgress() {
+    if (!pendingColour) return;
+    const done = leaves.filter(n => n.col !== undefined).length;
+    if (done < leaves.length) { $('webtitle').textContent = `Reading colours… ${done}/${leaves.length}`; return; }
+    pendingColour = false;
+    if (!leaves.some(n => n.col)) { // the photo server doesn't let the page read pixels
+      arrange = 'kin'; $('webcolour').classList.remove('on'); $('webcolour').setAttribute('aria-pressed', 'false');
+      $('webtitle').textContent = 'Colours can’t be read from these photos here';
+      return;
+    }
+    $('webtitle').textContent = `${leaves.length.toLocaleString()} species · by colour`;
+    colourSlots(); startMorph(true);
+  }
+  function setArrange(mode) {
+    const btn = $('webcolour');
+    btn.classList.toggle('on', mode === 'colour'); btn.setAttribute('aria-pressed', String(mode === 'colour'));
+    if (mode === 'colour') {
+      if (arrange === 'colour' || pendingColour) return;
+      pendingColour = true; arrange = 'kin'; colourProgress();
+    } else {
+      pendingColour = false;
+      $('webtitle').textContent = `${leaves.length.toLocaleString()} species`;
+      if (arrange === 'colour' || morph) startMorph(false);
+    }
+  }
+  $('webcolour').onclick = () => setArrange($('webcolour').classList.contains('on') ? 'kin' : 'colour');
 
   // ---- drawing ----
   const toWorld = (px, py) => ({ x: (px - view.x) / view.k, y: (py - view.y) / view.k });
@@ -3733,13 +3819,14 @@ const web = (() => {
     root.hidden = false; api.isOpen = true;
     document.body.style.overflow = 'hidden';
     history.pushState({ web: 1 }, '');
+    $('webcolour').classList.remove('on'); $('webcolour').setAttribute('aria-pressed', 'false');
     resize(); build(); resize(); fit();
     $('webtitle').textContent = leaves.length ? `${leaves.length.toLocaleString()} species` : 'Nothing to show for the current filters';
   };
   api.hide = () => {
     api.isOpen = false; cancelAnimationFrame(raf); raf = 0; clearTimeout(pendingOpen);
     root.hidden = true; if (!detail.isOpen) document.body.style.overflow = '';
-    leaves = []; byKey = new Map(); borders = []; queue = []; sharp = new Set(); pointers.clear(); pan = pinch = tap = dz = lastTap = focus = anim = null;
+    leaves = []; byKey = new Map(); borders = []; kinBorders = []; morph = null; pendingColour = false; queue = []; sharp = new Set(); pointers.clear(); pan = pinch = tap = dz = lastTap = focus = anim = null;
     $('webinfo').hidden = true;
   };
   api.close = () => { if (api.isOpen) history.back(); };
@@ -3748,8 +3835,9 @@ const web = (() => {
   $('tabWeb').onclick = api.open;
   window.addEventListener('resize', () => { if (api.isOpen) resize(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && api.isOpen && !detail.isOpen && !viewer.isOpen) api.close(); });
-  api.debug = () => ({ leaves: leaves.length, tiers: [0, 1, 2, 3].map(t => leaves.filter(n => n.sprite && n.tier === t).length), withSprite: leaves.filter(n => n.sprite).length, view: { ...view }, focus: focus && focus.label, borders: borders.map(b => b.length) });
+  api.debug = () => ({ arrange, pendingColour, coloured: leaves.filter(n => n.col).length, leaves: leaves.length, tiers: [0, 1, 2, 3].map(t => leaves.filter(n => n.sprite && n.tier === t).length), withSprite: leaves.filter(n => n.sprite).length, view: { ...view }, focus: focus && focus.label, borders: borders.map(b => b.length) });
   api.positions = () => leaves.map(n => [n.x, n.y]);
+  api.colours = () => leaves.map(n => ({ x: Math.round(n.x), y: Math.round(n.y), col: n.col }));
   return api;
 })();
 
@@ -3757,7 +3845,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build web-17 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build web-18 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
