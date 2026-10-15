@@ -3477,27 +3477,23 @@ const web = (() => {
     const total = count(rootNode);
     const depthOf = (n, d) => { n.depth = d; return n.kids.length ? Math.max(...n.kids.map(k => depthOf(k, d + 1))) : d; };
     const maxD = Math.max(1, depthOf(rootNode, 0));
-    // photos fill a disc, kin side by side in angle (so each group sits along its own spoke); every group joint sits at the centre of
-    // its members, so the connecting lines radiate outwards from the middle
+    // photos sit in a few staggered rings round the rim, kin side by side; the groups they belong to sit inside, nearer the centre the
+    // higher the rank, so the connecting lines radiate outwards from the middle
     const avgR = leaves.reduce((a, n) => a + n.r, 0) / Math.max(1, leaves.length);
-    const R = Math.max(80, Math.sqrt(Math.max(total, 1)) * avgR * 0.8);
+    const gap = avgR * 1.75, R0 = Math.max(120, Math.sqrt(Math.max(total, 1)) * avgR * 1.15);
+    const perRing = Math.max(8, 2 * Math.PI * R0 / (avgR * 2.05));
+    const rings = Math.max(1, Math.ceil(total / perRing)), Rin = Math.max(50, R0 - rings * gap - 30);
     let li = 0;
-    const order = n => n.kind === 'sp' ? [n] : n.kids.flatMap(order);
-    const ordered = order(rootNode);
-    ordered.forEach((n, i) => {
-      const a = 2 * Math.PI * (i + 0.5) / ordered.length, rad = R * Math.sqrt((i * 0.6180339887) % 1);
-      n.hx = Math.cos(a) * rad; n.hy = Math.sin(a) * rad;
-    });
-    const centre = n => {
-      if (n.kind === 'sp') return n;
-      let sx = 0, sy = 0, c = 0;
-      for (const k of n.kids) { centre(k); sx += k.hx * k.leaves; sy += k.hy * k.leaves; c += k.leaves; }
-      n.hx = c ? sx / c : 0; n.hy = c ? sy / c : 0;
-      return n;
+    const place = (n, a0, a1) => {
+      const a = (a0 + a1) / 2;
+      const rad = n.kind === 'sp' ? R0 - (li++ % rings) * gap : Rin * (n.depth / Math.max(1, maxD - 1));
+      n.hx = Math.cos(a) * rad; n.hy = Math.sin(a) * rad; // where the layout wants it
+      let acc = a0;
+      for (const k of n.kids) { const span = (a1 - a0) * (k.leaves / Math.max(1, n.leaves)); place(k, acc, acc + span); acc += span; }
     };
-    centre(rootNode);
+    place(rootNode, 0, Math.PI * 2);
     rootNode.hx = rootNode.hy = 0;
-    for (const n of nodes) { n.x = n.hx + (Math.random() - .5) * 4; n.y = n.hy + (Math.random() - .5) * 4; }
+    for (const n of nodes) { n.x = n.hx; n.y = n.hy; }
     for (const n of nodes) if (n.parent) edges.push({ a: n.parent, b: n, L: Math.hypot(n.hx - n.parent.hx, n.hy - n.parent.hy) * 0.95, hue: n.hue ?? 0 });
     const by = new Map();
     for (const e of edges) { const k = Math.round(e.hue / 30) % 12; if (!by.has(k)) by.set(k, { hue: k * 30, list: [] }); by.get(k).list.push(e); }
@@ -3539,7 +3535,7 @@ const web = (() => {
   }
 
   // ---- physics ----
-  const K = 0.03, DAMP = 0.93, KA = 0.007, TURN = 0.045, VMAX = 14;
+  const K = 0.03, DAMP = 0.88, KA = 0.02, TURN = 0.005, VMAX = 12;
   function step(dt) {
     const s = Math.min(2, dt / 16.67);
     t += dt / 1000;
@@ -3549,13 +3545,13 @@ const web = (() => {
       b.vx -= dx * f; b.vy -= dy * f;
     }
     // each node is drawn gently towards its place in the layout, which slowly turns and breathes; noise adds the drift
-    const ang = t * TURN, ca = Math.cos(ang), sa = Math.sin(ang), br = 1 + 0.05 * Math.sin(t * 0.4);
+    const ang = t * TURN, ca = Math.cos(ang), sa = Math.sin(ang), br = 1 + 0.008 * Math.sin(t * 0.3);
     for (let i = 0; i < nodes.length; i++) {
       const n = nodes[i];
       if (n.pinned) continue;
       const tx = (n.hx * ca - n.hy * sa) * br, ty = (n.hx * sa + n.hy * ca) * br;
-      n.vx += (tx - n.x) * KA * s + Math.sin(t * 0.7 + i * 1.37) * 0.03 * s;
-      n.vy += (ty - n.y) * KA * s + Math.cos(t * 0.6 + i * 2.11) * 0.03 * s;
+      n.vx += (tx - n.x) * KA * s;
+      n.vy += (ty - n.y) * KA * s;
     }
     // photos overlap a little, but not completely: neighbours found through a coarse grid
     const CELL = 64, HS = 4096;
@@ -3571,7 +3567,7 @@ const web = (() => {
         for (let j = head[hash(gx, gy)]; j !== -1; j = next[j]) {
           if (j <= i) continue;
           const b = nodes[j], dx = b.x - a.x, dy = b.y - a.y;
-          const minD = (a.r + b.r) * (a.kind === 'sp' && b.kind === 'sp' ? 0.74 : 0.5), d2 = dx * dx + dy * dy;
+          const minD = (a.r + b.r) * (a.kind === 'sp' && b.kind === 'sp' ? 0.9 : 0.5), d2 = dx * dx + dy * dy;
           if (d2 >= minD * minD) continue;
           const d = Math.sqrt(d2) || 0.01, ov = minD - d, nx = dx / d, ny = dy / d, push = ov * 0.3;
           if (!a.pinned && a !== held) { a.x -= nx * push; a.y -= ny * push; a.vx -= nx * ov * 0.02 * s; a.vy -= ny * ov * 0.02 * s; }
@@ -3622,7 +3618,7 @@ const web = (() => {
     for (const b of buckets) {
       ctx.beginPath();
       for (const e of b.list) { ctx.moveTo(e.a.x, e.a.y); ctx.lineTo(e.b.x, e.b.y); }
-      ctx.strokeStyle = `hsla(${b.hue} 85% 68% / .85)`; ctx.lineWidth = Math.max(1.4, 3 / Math.sqrt(k)); ctx.stroke();
+      ctx.strokeStyle = `hsla(${b.hue} 80% 70% / .6)`; ctx.lineWidth = Math.max(1, 1.8 / Math.sqrt(k)); ctx.stroke();
     }
     for (const n of nodes) {
       if (n.kind !== 'tx' || n.x < x0 || n.x > x1 || n.y < y0 || n.y > y1) continue;
@@ -3630,15 +3626,24 @@ const web = (() => {
       ctx.fillStyle = `hsl(${n.hue} 55% 42%)`; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.stroke();
     }
     ctx.restore();
-    // names, kept at a readable size: the bigger the picture is on screen, the more of them show
+    // names, kept at a readable size: the bigger the picture is on screen, the more of them show; none may overlap another
+    const rankShow = { kingdom: 0, class: 0, order: 0.9, family: 1.5, genus: 2.4 }, taken = [];
+    const free = (text, x, y, size) => {
+      ctx.font = `600 ${size}px system-ui, sans-serif`;
+      const w = ctx.measureText(text).width + 6, r = [x - w / 2, y, x + w / 2, y + size + 4];
+      for (const q of taken) if (r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1]) return false;
+      taken.push(r); return true;
+    };
+    const wanted = [];
     for (const n of nodes) {
       if (n.kind === 'root') continue;
       const px = n.x * k + view.x, py = n.y * k + view.y, pr = n.r * k;
       if (px < -60 || px > W + 60 || py < -40 || py > H + 40) continue;
-      const rankShow = { kingdom: 0, class: 0, order: 0.9, family: 1.5, genus: 2.4 };
-      if (n.kind === 'tx') { if (k >= rankShow[n.rank]) label(n.label, px, py + pr + 3, 11, 0.95); }
-      else if (n === hover || pr >= 34) label(n.label, px, py + pr * 0.5 - 7, Math.min(13, 9 + pr / 14), n === hover ? 1 : 0.9);
+      if (n.kind === 'tx') { if (k >= rankShow[n.rank]) wanted.push({ n, px, py: py + pr + 3, size: 11, a: 0.95, pri: 2 + ['genus', 'family', 'order', 'class', 'kingdom'].indexOf(n.rank) }); }
+      else if (n === hover || pr >= 34) wanted.push({ n, px, py: py + pr * 0.5 - 7, size: Math.min(13, 9 + pr / 14), a: n === hover ? 1 : 0.9, pri: n === hover ? 9 : 1 });
     }
+    wanted.sort((a, b) => b.pri - a.pri);
+    for (const w of wanted) if (free(w.n.label, w.px, w.py, w.size)) label(w.n.label, w.px, w.py, w.size, w.a);
   }
 
   function loop(now) {
@@ -3749,6 +3754,7 @@ const web = (() => {
   window.addEventListener('resize', () => { if (api.isOpen) resize(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && api.isOpen && !detail.isOpen && !viewer.isOpen) api.close(); });
   document.addEventListener('visibilitychange', () => { if (api.isOpen && !document.hidden) { last = 0; cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); } });
+  api.positions = () => leaves.map(n => [n.x, n.y]);
   api.debug = () => ({ nodes: nodes.length, leaves: leaves.length, edges: edges.length, withSprite: leaves.filter(n => n.sprite).length, view: { ...view } });
   return api;
 })();
@@ -3757,7 +3763,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build web-11 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build web-12 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
