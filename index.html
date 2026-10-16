@@ -195,6 +195,31 @@
   #webbar .ib { pointer-events:auto; color:#e6ece6; background:rgba(255,255,255,.08); border-radius:50%; }
   #webbar .ib.on { background:var(--accent); color:#fff; }
   #webtitle { flex:1; min-width:0; font-weight:600; font-size:14px; text-shadow:0 1px 3px #000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* World: the most observed animal over each country */
+  #world { position:fixed; inset:0; z-index:800; background:#0b1a22; color:#e6ece6; }
+  #world[hidden] { display:none; }
+  #worldmap { position:absolute; inset:0; z-index:0; background:#0b1a22; }
+  #worldbar { position:absolute; z-index:5; top:0; left:0; right:0; display:flex; align-items:center; gap:10px; padding:calc(8px + env(safe-area-inset-top)) 12px 8px; background:linear-gradient(rgba(11,18,21,.92), rgba(11,18,21,0)); pointer-events:none; }
+  #worldbar .ib, #worldmode { pointer-events:auto; }
+  #worldbar .ib { color:#e6ece6; background:rgba(255,255,255,.08); border-radius:50%; }
+  #worldtitle { flex:1; min-width:0; font-weight:600; font-size:14px; text-shadow:0 1px 3px #000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #worldmode { display:flex; border:1px solid rgba(255,255,255,.25); border-radius:16px; overflow:hidden; }
+  #worldmode button { background:rgba(255,255,255,.06); color:#e6ece6; border:0; padding:5px 11px; font-size:13px; border-radius:0; }
+  #worldmode button.on { background:var(--accent); color:#fff; }
+  #worldchips { position:absolute; z-index:5; top:calc(58px + env(safe-area-inset-top)); left:0; right:0; display:flex; gap:6px; overflow-x:auto; padding:2px 12px 6px; scrollbar-width:none; }
+  #worldchips::-webkit-scrollbar { display:none; }
+  #worldchips button { flex:none; background:rgba(20,32,38,.85); color:#e6ece6; border:1px solid rgba(255,255,255,.2); border-radius:16px; padding:4px 12px; font-size:13px; }
+  #worldchips button.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  #worldinfo { position:absolute; z-index:5; left:10px; right:10px; bottom:calc(12px + env(safe-area-inset-bottom)); display:flex; gap:12px; align-items:center; text-align:left; color:#e6ece6; font:inherit; cursor:pointer;
+               background:rgba(14,24,30,.94); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:10px; box-shadow:0 6px 22px rgba(0,0,0,.5); }
+  #worldinfo[hidden] { display:none; }
+  #worldphoto { width:64px; height:64px; border-radius:50%; object-fit:cover; background:#1d2a2f; flex:none; }
+  #worldinfo .wtxt { display:flex; flex-direction:column; min-width:0; }
+  #worldname { font-size:16px; font-weight:700; } #websci, #worldsci { font-size:13px; font-style:italic; color:#b9c6bb; } #worldwhere { font-size:12px; color:#8fa092; margin-top:2px; }
+  .wm { background:none; border:0; }
+  .wmi { position:absolute; transform:translate(-50%,-50%); border-radius:50%; overflow:hidden; border:2px solid #fff; background:#1d2a2f; box-shadow:0 2px 8px rgba(0,0,0,.55); cursor:pointer; }
+  .wmi img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+  .wmi.sel { border-color:var(--accent); border-width:3px; z-index:9; }
   #webinfo { position:absolute; left:0; right:0; bottom:0; display:flex; flex-direction:column; gap:1px; text-align:left; border:0; color:#e6ece6; font:inherit; cursor:pointer;
              padding:34px 18px calc(14px + env(safe-area-inset-bottom)); background:linear-gradient(rgba(11,18,21,0), rgba(11,18,21,.92) 38%); }
   #webinfo[hidden] { display:none; }
@@ -342,6 +367,7 @@
       <button id="tabPlace" role="tab"><i data-i="map"></i><span>Place</span></button>
       <button id="tabExplore" role="tab"><i data-i="compass"></i><span>Nearby</span></button>
       <button id="tabWeb" role="tab" aria-haspopup="dialog"><i data-i="network"></i><span>Web</span></button>
+      <button id="tabWorld" role="tab" aria-haspopup="dialog"><i data-i="globe"></i><span>World</span></button>
     </div>
     <div id="iconbar">
       <div id="fbtns" class="ibgroup">
@@ -461,6 +487,21 @@
   </div>
   <button id="webinfo" type="button" hidden>
     <span id="webname"></span><span id="websci"></span><span id="webrank"></span>
+  </button>
+</div>
+
+<div id="world" role="dialog" aria-modal="true" aria-label="Top animal per country" hidden>
+  <div id="worldmap"></div>
+  <div id="worldbar">
+    <button class="ib" id="worldclose" aria-label="Close"><i data-i="x"></i></button>
+    <span id="worldtitle"></span>
+    <div id="worldmode" role="group" aria-label="Whose observations">
+      <button type="button" data-mode="all" class="on">Everyone</button><button type="button" data-mode="mine">Mine</button>
+    </div>
+  </div>
+  <div id="worldchips" role="group" aria-label="Animal group"></div>
+  <button id="worldinfo" type="button" hidden>
+    <img id="worldphoto" alt=""><span class="wtxt"><span id="worldname"></span><span id="worldsci"></span><span id="worldwhere"></span></span>
   </button>
 </div>
 
@@ -1235,7 +1276,7 @@ viewer.track.addEventListener('scroll', () => {
   const i = Math.round(viewer.track.scrollLeft / viewer.track.clientWidth);
   if (i !== viewer.idx) { viewer.idx = i; viewer.counter(); }
 });
-window.addEventListener('popstate', () => { if (viewer.isOpen) viewer.hide(); else if (detail.isOpen) detail.hide(); else if (web.isOpen) web.hide(); });
+window.addEventListener('popstate', () => { if (viewer.isOpen) viewer.hide(); else if (detail.isOpen) detail.hide(); else if (web.isOpen) web.hide(); else if (world.isOpen) world.hide(); });
 $('vclose').onclick = () => viewer.close();
 $('vprev').onclick = () => viewer.go(-1);
 $('vnext').onclick = () => viewer.go(1);
@@ -3322,7 +3363,7 @@ $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = tru
   // don't hijack horizontal gestures that belong to something else (carousels, maps, chip rows, inputs, overlays)
   const blocked = el => {
     if (!el.closest) return true;
-    if (el.closest('input, textarea, select, .leaflet-container, .ctrack, .clsrow, #detail, #viewer, #web, #jumpsug, #expsug, [data-noswipe]')) return true;
+    if (el.closest('input, textarea, select, .leaflet-container, .ctrack, .clsrow, #detail, #viewer, #web, #world, #jumpsug, #expsug, [data-noswipe]')) return true;
     for (let e = el; e && e !== results; e = e.parentElement) {
       const cs = getComputedStyle(e);
       if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 2) return true;
@@ -3859,11 +3900,282 @@ const web = (() => {
   return api;
 })();
 
+
+// ---------- World: the most observed animal over each country ----------
+// A plain map of country shapes (a small public data file) with the photo of the top animal on each country. "Everyone" asks iNaturalist for
+// the most observed species in each country (one request each, remembered for a month); "Mine" counts your own observations per country.
+const world = (() => {
+  const root = $('world'), ctl = { isOpen: false };
+  const TOPO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json';
+  const TTL = 30 * 864e5;
+  const GROUPS = [['', 'All animals'], ...EXP_CLASSES.slice(0, 8)];
+  // the data file abbreviates some names; iNaturalist spells others differently
+  const ALIAS = {
+    'United States of America': ['United States'], 'Dem. Rep. Congo': ['Democratic Republic of the Congo', 'Congo (Kinshasa)'], 'Congo': ['Republic of the Congo', 'Congo (Brazzaville)'],
+    'Dominican Rep.': ['Dominican Republic'], 'Central African Rep.': ['Central African Republic'], 'Bosnia and Herz.': ['Bosnia and Herzegovina'], 'Eq. Guinea': ['Equatorial Guinea'],
+    'S. Sudan': ['South Sudan'], 'W. Sahara': ['Western Sahara'], 'Solomon Is.': ['Solomon Islands'], 'Falkland Is.': ['Falkland Islands'],
+    'Fr. S. Antarctic Lands': ['French Southern and Antarctic Lands', 'French Southern Territories'], 'eSwatini': ['Eswatini', 'Swaziland'], 'Czechia': ['Czech Republic'],
+    "Côte d'Ivoire": ['Ivory Coast'], 'N. Cyprus': ['Northern Cyprus'], 'North Macedonia': ['Macedonia'], 'Myanmar': ['Burma'], 'Timor-Leste': ['East Timor'],
+    'Russia': ['Russian Federation'], 'South Korea': ['Korea, Republic of', 'Republic of Korea'], 'North Korea': ['Korea, Democratic People\'s Republic of'],
+    'Palestine': ['Palestinian Territories', 'State of Palestine'], 'Laos': ['Lao People\'s Democratic Republic'], 'Vietnam': ['Viet Nam'], 'Syria': ['Syrian Arab Republic'],
+    'Iran': ['Iran, Islamic Republic of'], 'Moldova': ['Moldova, Republic of'], 'Brunei': ['Brunei Darussalam'], 'Tanzania': ['Tanzania, United Republic of'], 'Bolivia': ['Bolivia, Plurinational State of'],
+    'Venezuela': ['Venezuela, Bolivarian Republic of'], 'Libya': ['Libyan Arab Jamahiriya'], 'Gambia': ['The Gambia'], 'Bahamas': ['The Bahamas'], 'Turkey': ['Türkiye'],
+  };
+  const norm = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/^the /, '');
+  const variants = name => [name, ...(ALIAS[name] || [])];
+  const hueOf = id => (Math.imul(id | 0, 2654435761) >>> 0) % 360;
+
+  let map = null, geo = [], layerOf = new Map(), // name -> [layers]
+   markerOf = new Map(), results = new Map(), places = {}, topCache = {};
+  let mode = 'all', group = '', seq = 0, selected = null, loadingNote = '';
+
+  // ---- country shapes: the TopoJSON file turned into GeoJSON, with a point for the marker and the size of the main landmass ----
+  function topoToGeo(topo) {
+    const { scale, translate } = topo.transform;
+    const arcs = topo.arcs.map(a => { let x = 0, y = 0; return a.map(([dx, dy]) => { x += dx; y += dy; return [x * scale[0] + translate[0], y * scale[1] + translate[1]]; }); });
+    const arc = i => i >= 0 ? arcs[i] : arcs[~i].slice().reverse();
+    const ring = idx => { // a ring that crosses the date line is made continuous (longitudes past 180) so it is drawn as one shape
+      const pts = idx.flatMap((i, j) => { const a = arc(i); return j ? a.slice(1) : a; });
+      let off = 0;
+      for (let i = 1; i < pts.length; i++) { const d = pts[i][0] + off - pts[i - 1][0]; if (d > 180) off -= 360; else if (d < -180) off += 360; pts[i] = [pts[i][0] + off, pts[i][1]]; }
+      return pts;
+    };
+    const geom = g => g.type === 'Polygon' ? { type: 'Polygon', coordinates: g.arcs.map(ring) } : { type: 'MultiPolygon', coordinates: g.arcs.map(pg => pg.map(ring)) };
+    return topo.objects.countries.geometries.map(g => ({ type: 'Feature', id: g.id, properties: g.properties || {}, geometry: geom(g) }));
+  }
+  function describe(f) { // marker position (centre of the largest piece of land) and that piece's bounds
+    const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    let best = null, bestA = -1;
+    for (const pg of polys) {
+      const r = pg[0]; let a = 0, cx = 0, cy = 0, w = 180, e = -180, s2 = 90, n = -90;
+      for (let i = 0; i < r.length - 1; i++) {
+        const [x0, y0] = r[i], [x1, y1] = r[i + 1], c = x0 * y1 - x1 * y0;
+        a += c; cx += (x0 + x1) * c; cy += (y0 + y1) * c;
+        w = Math.min(w, x0); e = Math.max(e, x0); s2 = Math.min(s2, y0); n = Math.max(n, y0);
+      }
+      const area = Math.abs(a) / 2;
+      if (area > bestA) { bestA = area; best = { lng: a ? cx / (3 * a) : (w + e) / 2, lat: a ? cy / (3 * a) : (s2 + n) / 2, w, e, s: s2, n, area }; }
+    }
+    return best;
+  }
+  async function loadGeo() {
+    if (geo.length) return;
+    let topo = await idb.get('worldgeo');
+    if (!topo) {
+      log(`GET ${TOPO_URL}`);
+      const res = await fetch(TOPO_URL);
+      if (!res.ok) throw new Error(`country shapes: ${res.status}`);
+      topo = await res.json(); await idb.set('worldgeo', topo);
+    }
+    geo = topoToGeo(topo).filter(f => f.properties.name && f.properties.name !== 'Antarctica');
+    for (const f of geo) {
+      f.name = f.properties.name; f.info = describe(f); f.norms = new Set(variants(f.name).map(norm));
+      const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+      f.wraps = polys.some(pg => pg.some(r => r.some(pt => pt[0] > 180 || pt[0] < -180)));
+      if (f.info.lng > 180) f.info.lng -= 360; else if (f.info.lng < -180) f.info.lng += 360;
+    }
+  }
+
+  // ---- results ----
+  const shown = r => r && r.taxon && r.taxon.id;
+  function setResult(name, r) { if (r) results.set(name, r); else results.delete(name); paint(name); }
+  function paint(name) {
+    const f = geo.find(x => x.name === name), lay = layerOf.get(name), r = results.get(name);
+    if (lay) for (const l of lay) l.setStyle({ fillColor: shown(r) ? `hsl(${hueOf(r.taxon.id)} 45% 36%)` : '#17262e', fillOpacity: shown(r) ? 0.7 : 0.9 });
+    let m = markerOf.get(name);
+    if (!shown(r)) { if (m) { m.remove(); markerOf.delete(name); } return; }
+    if (!m) {
+      const icon = L.divIcon({ className: 'wm', html: '<div class="wmi"><img alt=""></div>', iconSize: [0, 0] });
+      m = L.marker([f.info.lat, f.info.lng], { icon, keyboard: false }).addTo(map);
+      m.on('click', () => select(name));
+      markerOf.set(name, m);
+    }
+    const img = m.getElement() && m.getElement().querySelector('img');
+    if (img && img.getAttribute('src') !== r.taxon.photo) img.src = r.taxon.photo || '';
+    layout();
+  }
+  function layout() { // photo size follows how big the country is on screen; tiny ones wait until zoomed in
+    if (!map) return;
+    for (const [name, m] of markerOf) {
+      const f = geo.find(x => x.name === name), el = m.getElement() && m.getElement().firstChild;
+      if (!f || !el) continue;
+      const a = map.latLngToContainerPoint([f.info.s, f.info.w]), b = map.latLngToContainerPoint([f.info.n, f.info.e]);
+      const size = Math.min(62, Math.min(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) * 0.8);
+      el.style.display = size < 14 && name !== selected ? 'none' : 'block';
+      el.style.width = el.style.height = Math.max(20, size) + 'px';
+      el.classList.toggle('sel', name === selected);
+    }
+  }
+  function select(name) {
+    selected = name; layout();
+    const r = results.get(name), info = $('worldinfo');
+    if (!shown(r)) { info.hidden = true; return; }
+    info.hidden = false;
+    $('worldphoto').src = r.taxon.photo || '';
+    $('worldname').textContent = r.taxon.common || r.taxon.name;
+    $('worldsci').textContent = r.taxon.common && r.taxon.common !== r.taxon.name ? r.taxon.name : '';
+    $('worldwhere').textContent = `${r.count.toLocaleString()} ${mode === 'mine' ? 'of your observations' : 'research-grade observations'} in ${name}`;
+  }
+  $('worldinfo').onclick = () => { const r = results.get(selected); if (shown(r)) openSpecies(r.taxon.id, r.obs); };
+
+  // ---- "Mine": count my own observations per country ----
+  async function computeMine() {
+    $('worldtitle').textContent = 'Looking up places…';
+    await ensurePlaces();
+    const byNorm = new Map();
+    for (const f of geo) for (const v of f.norms) byNorm.set(v, f.name);
+    const per = new Map(), unmatched = new Set();
+    const inGroup = o => group ? o.anc.some(id => (CLASS_IDS[id] || (CLASS_NAMES.has(state.names[id]?.name) ? state.names[id].name : null)) === group) : o.anc.includes(1);
+    for (const o of state.obs) {
+      if (!inGroup(o)) continue;
+      for (const pid of o.pids || []) {
+        const pl = state.places[pid];
+        if (!pl || pl.missing || pl.level !== 0) continue;
+        const poly = byNorm.get(norm(pl.name));
+        if (!poly) { unmatched.add(pl.name); break; }
+        const sid = speciesIdOf(o) ?? o.tid;
+        if (!per.has(poly)) per.set(poly, new Map());
+        const m = per.get(poly);
+        if (!m.has(sid)) m.set(sid, []);
+        m.get(sid).push(o);
+        break;
+      }
+    }
+    if (unmatched.size) log(`world: no map shape for ${[...unmatched].join(', ')}`, 'w');
+    results = new Map();
+    for (const [poly, m] of per) {
+      let bestSid = null, bestList = null;
+      for (const [sid, list] of m) if (!bestList || list.length > bestList.length) { bestSid = sid; bestList = list; }
+      const th = thumbObs(bestList), nm = state.names[bestSid] || {};
+      results.set(poly, { count: bestList.length, obs: th, taxon: { id: bestSid, name: nm.name || th.name, common: nm.common || th.common, photo: photosOf(th)[0] ? sized(photosOf(th)[0], 'small') : '' } });
+    }
+    for (const f of geo) paint(f.name);
+    $('worldtitle').textContent = `${isOther() ? '@' + (state.user?.login || '') : 'Your'} top animal per country · ${results.size} countries`;
+  }
+
+  // ---- "Everyone": iNaturalist's most observed species in each country ----
+  async function findPlace(f) {
+    for (const v of variants(f.name)) {
+      const d = await api(`/places/autocomplete?q=${encodeURIComponent(v)}&per_page=10`);
+      await sleep(650);
+      const cands = (d.results || []).filter(p => p.admin_level === 0);
+      const hit = cands.find(p => [p.name, p.display_name].some(t => variants(f.name).map(norm).includes(norm(t)))) || (cands.length === 1 && v === f.name ? cands[0] : null);
+      if (hit) return { id: hit.id, name: hit.name };
+    }
+    log(`world: no iNaturalist country for "${f.name}"`, 'w');
+    return 0;
+  }
+  async function loadEveryone() {
+    const my = ++seq, gk = group;
+    results = new Map();
+    [places, topCache] = await Promise.all([idb.get('worldplaces').then(x => x || {}), idb.get('worldtop').then(x => x || {})]);
+    const fresh = e => e && Date.now() - e.t < TTL;
+    const todo = [];
+    for (const f of geo) {
+      const pl = places[f.name], e = pl ? topCache[`${pl.id}|${gk}`] : null;
+      if (e && fresh(e)) { if (!e.none) results.set(f.name, { count: e.count, taxon: e.taxon }); } else todo.push(f);
+    }
+    for (const f of geo) paint(f.name);
+    const c = map.getCenter();
+    todo.sort((a, b) => Math.hypot(a.info.lat - c.lat, a.info.lng - c.lng) - Math.hypot(b.info.lat - c.lat, b.info.lng - c.lng)); // what is on screen first
+    let done = geo.length - todo.length, errors = 0;
+    const title = () => { $('worldtitle').textContent = `Top ${group ? GROUPS.find(g => g[0] === group)[1].toLowerCase() : 'animal'} per country · ${done}/${geo.length}`; };
+    title();
+    for (const f of todo) {
+      if (my !== seq || !ctl.isOpen) return;
+      try {
+        let pl = places[f.name];
+        if (pl === undefined) { pl = places[f.name] = await findPlace(f); await idb.set('worldplaces', places); if (my !== seq) return; }
+        if (pl) {
+          const d = await api(`/observations/species_counts?place_id=${pl.id}&per_page=1&quality_grade=research&${group ? 'iconic_taxa=' + group : 'taxon_id=1'}`);
+          await sleep(650);
+          if (my !== seq || !ctl.isOpen) return;
+          const top = (d.results || [])[0], t = top && top.taxon;
+          const rec = t ? { t: Date.now(), count: top.count, taxon: { id: t.id, name: t.name, common: t.preferred_common_name || '', photo: t.default_photo?.square_url ? sized(t.default_photo.square_url, 'small') : (t.default_photo?.medium_url || '') } } : { t: Date.now(), none: true };
+          topCache[`${pl.id}|${gk}`] = rec;
+          if (!rec.none) setResult(f.name, { count: rec.count, taxon: rec.taxon });
+          if (done % 8 === 0) await idb.set('worldtop', topCache);
+        }
+        done++; errors = 0; title();
+      } catch (e) {
+        log(`world: ${f.name} failed: ${e.message}`, 'w');
+        if (++errors >= 5) { $('worldtitle').textContent = 'iNaturalist is not answering; try again later'; break; }
+        await sleep(2000);
+      }
+    }
+    await idb.set('worldtop', topCache);
+    if (my === seq && errors < 5) $('worldtitle').textContent = `Top ${group ? GROUPS.find(g => g[0] === group)[1].toLowerCase() : 'animal'} per country · ${results.size} countries`;
+  }
+
+  async function refresh() {
+    seq++;
+    selected = null; $('worldinfo').hidden = true;
+    results = new Map();
+    for (const f of geo) paint(f.name); // clears the previous markers
+    if (mode === 'mine') await computeMine(); else await loadEveryone();
+  }
+
+  // ---- UI ----
+  function drawChips() {
+    const box = $('worldchips'); box.replaceChildren();
+    for (const [k, label] of GROUPS) {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = group === k ? 'on' : '';
+      b.onclick = () => { group = k; drawChips(); refresh(); };
+      box.append(b);
+    }
+  }
+  for (const b of $('worldmode').querySelectorAll('button')) b.onclick = () => {
+    mode = b.dataset.mode;
+    for (const x of $('worldmode').querySelectorAll('button')) x.classList.toggle('on', x === b);
+    refresh();
+  };
+
+  ctl.open = async () => {
+    if (ctl.isOpen) return;
+    root.hidden = false; ctl.isOpen = true;
+    document.body.style.overflow = 'hidden';
+    history.pushState({ world: 1 }, '');
+    drawChips();
+    $('worldtitle').textContent = 'Loading the map…';
+    try {
+      await ensureLeaflet(); await loadGeo();
+    } catch (e) { log(`world: ${e.stack || e}`, 'e'); $('worldtitle').textContent = `Could not load the map (${e.message})`; return; }
+    if (!ctl.isOpen) return;
+    if (!map) {
+      map = L.map('worldmap', { zoomSnap: 0.25, minZoom: 1, maxBounds: [[-85, -200], [85, 200]], maxBoundsViscosity: 0.8, attributionControl: false, zoomControl: false, worldCopyJump: false });
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+      const shift = (f, d) => ({ ...f, geometry: { type: f.geometry.type, coordinates: f.geometry.type === 'Polygon' ? f.geometry.coordinates.map(r => r.map(([x, y]) => [x + d, y])) : f.geometry.coordinates.map(pg => pg.map(r => r.map(([x, y]) => [x + d, y]))) } });
+      const feats = [];
+      for (const f of geo) { feats.push(f); if (f.wraps) feats.push(shift(f, -360)); }
+      L.geoJSON({ type: 'FeatureCollection', features: feats }, {
+        style: () => ({ color: '#0b1a22', weight: 0.8, fillColor: '#17262e', fillOpacity: 0.9 }),
+        onEachFeature: (f, lay) => { const n = f.properties.name; if (!layerOf.has(n)) layerOf.set(n, []); layerOf.get(n).push(lay); lay.on('click', () => select(n)); },
+      }).addTo(map);
+      map.on('zoomend moveend', layout);
+      map.fitBounds([[-56, -168], [78, 178]]);
+    }
+    map.invalidateSize(); map.fitBounds([[-56, -168], [78, 178]], { animate: false });
+    refresh();
+  };
+  ctl.hide = () => {
+    ctl.isOpen = false; seq++;
+    root.hidden = true; if (!detail.isOpen) document.body.style.overflow = '';
+    $('worldinfo').hidden = true;
+  };
+  ctl.close = () => { if (ctl.isOpen) history.back(); };
+  $('worldclose').onclick = ctl.close;
+  $('tabWorld').onclick = ctl.open;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && ctl.isOpen && !detail.isOpen && !viewer.isOpen) ctl.close(); });
+  ctl.debug = () => ({ mode, group, countries: geo.length, results: results.size, markers: markerOf.size, places: Object.keys(places).length,
+    sample: [...results.entries()].slice(0, 4).map(([k, v]) => [k, v.taxon.common || v.taxon.name, v.count]) });
+  return ctl;
+})();
+
 setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build web-19 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build world-21 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

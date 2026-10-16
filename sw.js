@@ -54,7 +54,7 @@ self.addEventListener('fetch', e => {
   if (u.origin === location.origin) {
     if (u.pathname.endsWith('/sw.js')) return;
     e.respondWith(req.mode === 'navigate' ? shellNav(req) : staleWhileRevalidate(req));
-  } else if (u.hostname === 'cdnjs.cloudflare.com') {
+  } else if (u.hostname === 'cdnjs.cloudflare.com' || u.hostname === 'cdn.jsdelivr.net') { // libraries and the country shapes for the World map
     e.respondWith(cacheFirst(req, LIBS));
   } else if (u.hostname.endsWith('tile.openstreetmap.org')) {
     e.respondWith(cacheFirst(req, TILES, 600));

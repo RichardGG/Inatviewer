@@ -26,3 +26,9 @@ The service worker caches the app itself, Leaflet, map tiles and photos, so the 
 your cached observations. iNaturalist API calls are never cached by the service worker. Recent Nearby searches
 are stored separately (IndexedDB key `nearby`, up to 15) and can be reopened from the history button on the Nearby map.
 Bump `VER` in `sw.js` to force the cached libraries, tiles and photos to be dropped.
+
+## World map
+
+The **World** tab shows the most observed animal over each country. *Everyone* asks iNaturalist for the top species per country (two
+requests per country the first time, about four minutes; answers are kept in IndexedDB for 30 days), *Mine* counts your own observations
+per country. The animal group chips narrow it to birds, mammals and so on. Country outlines come from the `world-atlas` file on jsDelivr.
