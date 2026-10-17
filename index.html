@@ -969,6 +969,7 @@ function setPanel(open) {
 $('acct').onclick = () => setPanel($('login').hidden);
 
 // ---------- API ----------
+const apiStats = { limited: 0 }; // how many times iNaturalist has answered 429 (too many requests)
 async function api(path, token, opts = {}) {
   const url = API + path, method = opts.method || 'GET';
   const mask = token ? ` [auth ${token.slice(0, 6)}…(${token.length} chars)]` : ' [no auth]';
@@ -993,6 +994,7 @@ async function api(path, token, opts = {}) {
     const body = (await res.text().catch(() => '')).slice(0, 300);
     log(`  body: ${body}`, 'e');
     if (res.status === 401 || res.status === 403) throw new Error('Token rejected or expired. Get a fresh one and paste it again.');
+    if (res.status === 429) apiStats.limited++;
     if (res.status === 429 || res.status >= 500) {
       if (attempt < 3) { log(`  retrying in ${2 * attempt}s`, 'w'); await sleep(2000 * attempt); continue; }
     }
@@ -3928,6 +3930,15 @@ const world = (() => {
   let map = null, geo = [], layerOf = new Map(), // name -> [layers]
    markerOf = new Map(), results = new Map(), places = {}, topCache = {};
   let mode = 'all', group = '', seq = 0, selected = null, loadingNote = '';
+  // Requests are spaced by their START time (not start + answer + pause), so two can be in flight and the answers' latency is hidden.
+  // iNaturalist asks for no more than about 60 requests a minute and throttles beyond ~100; 750 ms is 80, slowing down if it ever says 429.
+  let nextSlot = 0, paceMs = 750, seenLimited = 0;
+  const pace = async () => {
+    if (apiStats.limited > seenLimited) { seenLimited = apiStats.limited; paceMs = Math.min(2500, Math.round(paceMs * 1.6)); log(`world: iNaturalist asked us to slow down; one request every ${paceMs} ms now`, 'w'); }
+    const now = performance.now(), at = Math.max(now, nextSlot);
+    nextSlot = at + paceMs;
+    if (at > now) await sleep(at - now);
+  };
 
   // ---- country shapes: the TopoJSON file turned into GeoJSON, with a point for the marker and the size of the main landmass ----
   function topoToGeo(topo) {
@@ -4054,12 +4065,41 @@ const world = (() => {
   }
 
   // ---- "Everyone": iNaturalist's most observed species in each country ----
+  // iNaturalist's country places have ids in a few known stretches; reading those in bulk (50 ids per request) finds nearly every country
+  // at once, instead of one search per country. Whatever it misses is searched for by name.
+  const SCAN = [[1, 50], [6600, 7500]];
+  let countryIdx = null;
+  const searched = new Set(); // names already searched for in this visit
+  let scanning = null;
+  const scanCountries = () => scanning || (scanning = scanCountriesOnce().finally(() => { scanning = null; })); // one scan at a time, however many callers
+  async function scanCountriesOnce() {
+    if (countryIdx) return;
+    const saved = await idb.get('worldscan');
+    if (saved && saved.v === 1) { countryIdx = new Map(saved.list.map(c => [c.n, c])); return; }
+    const list = [];
+    $('worldtitle').textContent = 'Finding the countries on iNaturalist…';
+    for (const [lo, hi] of SCAN) for (let start = lo; start <= hi; start += 50) {
+      const ids = []; for (let i = start; i < Math.min(start + 50, hi + 1); i++) ids.push(i);
+      await pace();
+      try {
+        const d = await api(`/places/${ids.join(',')}?per_page=50`);
+        for (const p of d.results || []) if (p.admin_level === 0) for (const t of [p.name, p.display_name]) if (t) list.push({ n: norm(t), id: p.id, name: p.name });
+      } catch (e) { log(`world: country scan ${start}: ${e.message}`, 'w'); }
+    }
+    countryIdx = new Map(list.map(c => [c.n, c]));
+    log(`world: bulk scan found ${new Set(list.map(c => c.id)).size} countries`);
+    if (list.length) await idb.set('worldscan', { v: 1, list });
+  }
   async function findPlace(f) {
+    const wanted = variants(f.name).map(norm);
+    for (const w of wanted) { const c = countryIdx && countryIdx.get(w); if (c) return { id: c.id, name: c.name }; }
+    if (places[f.name] === 0 && searched.has(f.name)) return 0;
+    searched.add(f.name);
     for (const v of variants(f.name)) {
+      await pace();
       const d = await api(`/places/autocomplete?q=${encodeURIComponent(v)}&per_page=10`);
-      await sleep(650);
       const cands = (d.results || []).filter(p => p.admin_level === 0);
-      const hit = cands.find(p => [p.name, p.display_name].some(t => variants(f.name).map(norm).includes(norm(t)))) || (cands.length === 1 && v === f.name ? cands[0] : null);
+      const hit = cands.find(p => [p.name, p.display_name].some(t => wanted.includes(norm(t)))) || (cands.length === 1 && v === f.name ? cands[0] : null);
       if (hit) return { id: hit.id, name: hit.name };
     }
     log(`world: no iNaturalist country for "${f.name}"`, 'w');
@@ -4104,34 +4144,40 @@ const world = (() => {
     for (const f of geo) paint(f.name);
     const c = map.getCenter();
     todo.sort((a, b) => Math.hypot(a.info.lat - c.lat, a.info.lng - c.lng) - Math.hypot(b.info.lat - c.lat, b.info.lng - c.lng)); // what is on screen first
-    let done = geo.length - todo.length, errors = 0;
-    const title = () => { $('worldtitle').textContent = `Top ${group ? GROUPS.find(g => g[0] === group)[1].toLowerCase() : 'animal'} per country · ${done}/${geo.length}`; };
+    let done = geo.length - todo.length, errors = 0, saved = 0;
+    const label = () => group ? GROUPS.find(g => g[0] === group)[1].toLowerCase() : 'animal';
+    const title = () => { $('worldtitle').textContent = `Top ${label()} per country · ${done}/${geo.length}`; };
     title();
-    for (const f of todo) {
-      if (my !== seq || !ctl.isOpen) return;
-      try {
-        let pl = places[f.name];
-        if (pl === undefined) { pl = places[f.name] = await findPlace(f); await idb.set('worldplaces', places); if (my !== seq) return; }
-        if (pl) {
-          const d = await api(`/observations/species_counts?place_id=${pl.id}&per_page=1&quality_grade=research&${group ? 'iconic_taxa=' + group : 'taxon_id=1'}`);
-          await sleep(650);
-          if (my !== seq || !ctl.isOpen) return;
-          const top = (d.results || [])[0], t = top && top.taxon;
-          const rec = t ? { t: Date.now(), count: top.count, taxon: { id: t.id, name: t.name, common: t.preferred_common_name || '', iconic: t.iconic_taxon_name || '', photo: t.default_photo?.square_url ? sized(t.default_photo.square_url, 'small') : (t.default_photo?.medium_url || '') } } : { t: Date.now(), none: true };
-          topCache[`${pl.id}|${gk}`] = rec;
-          if (!gk && !rec.none && GROUPS.some(g => g[0] && g[0] === rec.taxon.iconic)) topCache[`${pl.id}|${rec.taxon.iconic}`] = rec; // the overall top is also the top of its own group
-          if (!rec.none) setResult(f.name, { count: rec.count, taxon: rec.taxon });
-          if (done % 8 === 0) await idb.set('worldtop', topCache);
+    if (todo.some(f => !places[f.name])) { await scanCountries(); if (my !== seq) return; } // countries not yet matched to an iNaturalist place
+    const next = (() => { let i = 0; return () => todo[i++]; })();
+    const worker = async () => {
+      for (let f = next(); f; f = next()) {
+        if (my !== seq || !ctl.isOpen || errors >= 5) return;
+        try {
+          let pl = places[f.name];
+          if (!pl) { pl = places[f.name] = (pl === undefined || countryIdx) ? await findPlace(f) : 0; if (my !== seq) return; } // a miss from before the bulk scan existed is tried again
+          if (pl) {
+            await pace();
+            const d = await api(`/observations/species_counts?place_id=${pl.id}&per_page=1&quality_grade=research&${group ? 'iconic_taxa=' + group : 'taxon_id=1'}`);
+            if (my !== seq || !ctl.isOpen) return;
+            const top = (d.results || [])[0], t = top && top.taxon;
+            const rec = t ? { t: Date.now(), count: top.count, taxon: { id: t.id, name: t.name, common: t.preferred_common_name || '', iconic: t.iconic_taxon_name || '', photo: t.default_photo?.square_url ? sized(t.default_photo.square_url, 'small') : (t.default_photo?.medium_url || '') } } : { t: Date.now(), none: true };
+            topCache[`${pl.id}|${gk}`] = rec;
+            if (!gk && !rec.none && GROUPS.some(g => g[0] && g[0] === rec.taxon.iconic)) topCache[`${pl.id}|${rec.taxon.iconic}`] = rec; // the overall top is also the top of its own group
+            if (!rec.none) setResult(f.name, { count: rec.count, taxon: rec.taxon });
+          }
+          done++; errors = 0; title();
+          if (++saved % 10 === 0) { await idb.set('worldplaces', places); await idb.set('worldtop', topCache); }
+        } catch (e) {
+          log(`world: ${f.name} failed: ${e.message}`, 'w');
+          if (++errors >= 5) { $('worldtitle').textContent = 'iNaturalist is not answering; try again later'; return; }
+          await sleep(2000);
         }
-        done++; errors = 0; title();
-      } catch (e) {
-        log(`world: ${f.name} failed: ${e.message}`, 'w');
-        if (++errors >= 5) { $('worldtitle').textContent = 'iNaturalist is not answering; try again later'; break; }
-        await sleep(2000);
       }
-    }
-    await idb.set('worldtop', topCache);
-    if (my === seq && errors < 5) $('worldtitle').textContent = `Top ${group ? GROUPS.find(g => g[0] === group)[1].toLowerCase() : 'animal'} per country · ${results.size} countries`;
+    };
+    await Promise.all([worker(), worker()]);
+    await idb.set('worldplaces', places); await idb.set('worldtop', topCache);
+    if (my === seq && errors < 5) $('worldtitle').textContent = `Top ${label()} per country · ${results.size} countries`;
   }
 
   async function refresh() {
@@ -4202,7 +4248,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build world-22 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build world-23 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
