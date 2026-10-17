@@ -225,11 +225,14 @@
   #worldlist .nm b { font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #worldlist .nm i { font-size:12px; color:#b9c6bb; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #worldlist .ct { font-size:12px; color:#8fa092; flex:none; }
+  #worldlist li.seen { background:rgba(127,196,90,.15); box-shadow:inset 3px 0 0 #7fc45a; }
+  #worldlist .you { font-size:12px; color:#9fdc7e; font-weight:600; }
   #worldlist li.wait { cursor:default; color:#8fa092; font-size:13px; justify-content:center; }
   .wm { background:none; border:0; }
   .wmi { position:absolute; transform:translate(-50%,-50%); border-radius:50%; overflow:hidden; border:2px solid #fff; background:#1d2a2f; box-shadow:0 2px 8px rgba(0,0,0,.55); cursor:pointer; }
   .wmi img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
-  .wmi.sel { border-color:var(--accent); border-width:3px; z-index:9; }
+  .wmi.seen { border-color:#7fc45a; box-shadow:0 0 0 2px rgba(127,196,90,.45), 0 2px 8px rgba(0,0,0,.55); }
+  .wmi.sel { border-color:#ffd54a; border-width:3px; z-index:9; }
   #webinfo { position:absolute; left:0; right:0; bottom:0; display:flex; flex-direction:column; gap:1px; text-align:left; border:0; color:#e6ece6; font:inherit; cursor:pointer;
              padding:34px 18px calc(14px + env(safe-area-inset-bottom)); background:linear-gradient(rgba(11,18,21,0), rgba(11,18,21,.92) 38%); }
   #webinfo[hidden] { display:none; }
@@ -3940,7 +3943,7 @@ const world = (() => {
 
   let map = null, geo = [], layerOf = new Map(), // name -> [layers]
    markerOf = new Map(), results = new Map(), places = {}, topCache = {};
-  let mode = 'all', group = '', seq = 0, selected = null, loadingNote = '';
+  let mode = 'all', group = '', seq = 0, selected = null, loadingNote = '', seenCounts = new Map(); // species id → how many times I have observed it
   // Requests are spaced by their START time (not start + answer + pause), so two can be in flight and the answers' latency is hidden.
   // iNaturalist asks for no more than about 60 requests a minute and throttles beyond ~100; 750 ms is 80, slowing down if it ever says 429.
   let nextSlot = 0, paceMs = 750, seenLimited = 0, cachesLoaded = false;
@@ -4013,6 +4016,7 @@ const world = (() => {
     }
     const img = m.getElement() && m.getElement().querySelector('img');
     if (img && img.getAttribute('src') !== top.photo) img.src = top.photo || '';
+    m.getElement() && m.getElement().firstChild.classList.toggle('seen', seenCounts.has(top.id));
     layout();
   }
   function layout() { // photo size follows how big the country is on screen; tiny ones wait until zoomed in
@@ -4037,8 +4041,10 @@ const world = (() => {
       const rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = i + 1;
       const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.src = it.taxon.photo || '';
       const nm = document.createElement('span'); nm.className = 'nm';
+      const seen = seenCounts.get(it.taxon.id); if (seen) li.classList.add('seen');
       const b = document.createElement('b'); b.textContent = it.taxon.common || it.taxon.name; nm.append(b);
       if (it.taxon.common && it.taxon.common !== it.taxon.name) { const sci = document.createElement('i'); sci.textContent = it.taxon.name; nm.append(sci); }
+      if (seen) { const you = document.createElement('span'); you.className = 'you'; you.textContent = `✓ You've seen it · ${seen} observation${seen > 1 ? 's' : ''}`; nm.append(you); }
       const ct = document.createElement('span'); ct.className = 'ct'; ct.textContent = it.count.toLocaleString() + (mode === 'mine' ? ' obs' : '');
       li.append(rk, img, nm, ct);
       li.onclick = () => openSpecies(it.taxon.id, it.obs);
@@ -4246,6 +4252,7 @@ const world = (() => {
     seq++;
     selected = null; $('worldsheet').hidden = true;
     results = new Map();
+    seenCounts = myObs().length ? mySpeciesCounts() : new Map(); // who has seen what (my own observations)
     for (const f of geo) paint(f.name); // clears the previous markers
     if (mode === 'mine') await computeMine(); else await loadEveryone();
   }
@@ -4311,7 +4318,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build world-24 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build world-25 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
