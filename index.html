@@ -210,12 +210,22 @@
   #worldchips::-webkit-scrollbar { display:none; }
   #worldchips button { flex:none; background:rgba(20,32,38,.85); color:#e6ece6; border:1px solid rgba(255,255,255,.2); border-radius:16px; padding:4px 12px; font-size:13px; }
   #worldchips button.on { background:var(--accent); border-color:var(--accent); color:#fff; }
-  #worldinfo { position:absolute; z-index:5; left:10px; right:10px; bottom:calc(12px + env(safe-area-inset-bottom)); display:flex; gap:12px; align-items:center; text-align:left; color:#e6ece6; font:inherit; cursor:pointer;
-               background:rgba(14,24,30,.94); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:10px; box-shadow:0 6px 22px rgba(0,0,0,.5); }
-  #worldinfo[hidden] { display:none; }
-  #worldphoto { width:64px; height:64px; border-radius:50%; object-fit:cover; background:#1d2a2f; flex:none; }
-  #worldinfo .wtxt { display:flex; flex-direction:column; min-width:0; }
-  #worldname { font-size:16px; font-weight:700; } #websci, #worldsci { font-size:13px; font-style:italic; color:#b9c6bb; } #worldwhere { font-size:12px; color:#8fa092; margin-top:2px; }
+  #worldsheet { position:absolute; z-index:6; left:10px; right:10px; bottom:calc(12px + env(safe-area-inset-bottom)); max-height:56vh; display:flex; flex-direction:column; color:#e6ece6;
+                background:rgba(14,24,30,.96); border:1px solid rgba(255,255,255,.14); border-radius:14px; box-shadow:0 6px 22px rgba(0,0,0,.5); overflow:hidden; }
+  #worldsheet[hidden] { display:none; }
+  #worldsheethead { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 8px 6px 14px; border-bottom:1px solid rgba(255,255,255,.1); }
+  #worldcountry { font-size:16px; } #worldnote { display:block; font-size:12px; color:#8fa092; }
+  #worldsheethead .ib { color:#e6ece6; background:rgba(255,255,255,.08); border-radius:50%; flex:none; }
+  #worldlist { list-style:none; margin:0; padding:0; overflow-y:auto; }
+  #worldlist li { display:flex; align-items:center; gap:10px; padding:7px 14px; border-bottom:1px solid rgba(255,255,255,.06); cursor:pointer; }
+  #worldlist li:last-child { border-bottom:0; }
+  #worldlist .rk { width:18px; text-align:right; color:#8fa092; font-size:13px; flex:none; }
+  #worldlist img { width:44px; height:44px; border-radius:50%; object-fit:cover; background:#1d2a2f; flex:none; }
+  #worldlist .nm { display:flex; flex-direction:column; min-width:0; flex:1; }
+  #worldlist .nm b { font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #worldlist .nm i { font-size:12px; color:#b9c6bb; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #worldlist .ct { font-size:12px; color:#8fa092; flex:none; }
+  #worldlist li.wait { cursor:default; color:#8fa092; font-size:13px; justify-content:center; }
   .wm { background:none; border:0; }
   .wmi { position:absolute; transform:translate(-50%,-50%); border-radius:50%; overflow:hidden; border:2px solid #fff; background:#1d2a2f; box-shadow:0 2px 8px rgba(0,0,0,.55); cursor:pointer; }
   .wmi img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
@@ -500,9 +510,10 @@
     </div>
   </div>
   <div id="worldchips" role="group" aria-label="Animal group"></div>
-  <button id="worldinfo" type="button" hidden>
-    <img id="worldphoto" alt=""><span class="wtxt"><span id="worldname"></span><span id="worldsci"></span><span id="worldwhere"></span></span>
-  </button>
+  <div id="worldsheet" hidden>
+    <div id="worldsheethead"><span><b id="worldcountry"></b><span id="worldnote"></span></span><button class="ib" id="worldsheetclose" aria-label="Close list"><i data-i="x"></i></button></div>
+    <ol id="worldlist"></ol>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -3932,7 +3943,7 @@ const world = (() => {
   let mode = 'all', group = '', seq = 0, selected = null, loadingNote = '';
   // Requests are spaced by their START time (not start + answer + pause), so two can be in flight and the answers' latency is hidden.
   // iNaturalist asks for no more than about 60 requests a minute and throttles beyond ~100; 750 ms is 80, slowing down if it ever says 429.
-  let nextSlot = 0, paceMs = 750, seenLimited = 0;
+  let nextSlot = 0, paceMs = 750, seenLimited = 0, cachesLoaded = false;
   const pace = async () => {
     if (apiStats.limited > seenLimited) { seenLimited = apiStats.limited; paceMs = Math.min(2500, Math.round(paceMs * 1.6)); log(`world: iNaturalist asked us to slow down; one request every ${paceMs} ms now`, 'w'); }
     const now = performance.now(), at = Math.max(now, nextSlot);
@@ -3987,14 +3998,13 @@ const world = (() => {
     }
   }
 
-  // ---- results ----
-  const shown = r => r && r.taxon && r.taxon.id;
-  function setResult(name, r) { if (r) results.set(name, r); else results.delete(name); paint(name); }
+  // ---- results: per country a list of up to 10 species (partial = the list is known only as far as it goes) ----
+  const shown = r => r && r.items && r.items.length;
   function paint(name) {
-    const f = geo.find(x => x.name === name), lay = layerOf.get(name), r = results.get(name);
-    if (lay) for (const l of lay) l.setStyle({ fillColor: shown(r) ? `hsl(${hueOf(r.taxon.id)} 45% 36%)` : '#17262e', fillOpacity: shown(r) ? 0.7 : 0.9 });
+    const f = geo.find(x => x.name === name), lay = layerOf.get(name), r = results.get(name), top = shown(r) ? r.items[0].taxon : null;
+    if (lay) for (const l of lay) l.setStyle({ fillColor: top ? `hsl(${hueOf(top.id)} 45% 36%)` : '#17262e', fillOpacity: top ? 0.7 : 0.9 });
     let m = markerOf.get(name);
-    if (!shown(r)) { if (m) { m.remove(); markerOf.delete(name); } return; }
+    if (!top) { if (m) { m.remove(); markerOf.delete(name); } return; }
     if (!m) {
       const icon = L.divIcon({ className: 'wm', html: '<div class="wmi"><img alt=""></div>', iconSize: [0, 0] });
       m = L.marker([f.info.lat, f.info.lng], { icon, keyboard: false }).addTo(map);
@@ -4002,7 +4012,7 @@ const world = (() => {
       markerOf.set(name, m);
     }
     const img = m.getElement() && m.getElement().querySelector('img');
-    if (img && img.getAttribute('src') !== r.taxon.photo) img.src = r.taxon.photo || '';
+    if (img && img.getAttribute('src') !== top.photo) img.src = top.photo || '';
     layout();
   }
   function layout() { // photo size follows how big the country is on screen; tiny ones wait until zoomed in
@@ -4017,17 +4027,51 @@ const world = (() => {
       el.classList.toggle('sel', name === selected);
     }
   }
+  function drawSheet(name) {
+    const r = results.get(name), list = $('worldlist');
+    list.replaceChildren();
+    $('worldcountry').textContent = name;
+    $('worldnote').textContent = mode === 'mine' ? 'Your most observed' + (group ? ' ' + GROUPS.find(g => g[0] === group)[1].toLowerCase() : ' animals') : 'Most observed (research grade)' + (group ? ', ' + GROUPS.find(g => g[0] === group)[1].toLowerCase() : '');
+    (r.items || []).slice(0, 10).forEach((it, i) => {
+      const li = document.createElement('li');
+      const rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = i + 1;
+      const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.src = it.taxon.photo || '';
+      const nm = document.createElement('span'); nm.className = 'nm';
+      const b = document.createElement('b'); b.textContent = it.taxon.common || it.taxon.name; nm.append(b);
+      if (it.taxon.common && it.taxon.common !== it.taxon.name) { const sci = document.createElement('i'); sci.textContent = it.taxon.name; nm.append(sci); }
+      const ct = document.createElement('span'); ct.className = 'ct'; ct.textContent = it.count.toLocaleString() + (mode === 'mine' ? ' obs' : '');
+      li.append(rk, img, nm, ct);
+      li.onclick = () => openSpecies(it.taxon.id, it.obs);
+      list.append(li);
+    });
+    if (r.partial && mode === 'all') { const li = document.createElement('li'); li.className = 'wait'; li.textContent = 'Loading the full top 10…'; list.append(li); }
+  }
   function select(name) {
     selected = name; layout();
-    const r = results.get(name), info = $('worldinfo');
-    if (!shown(r)) { info.hidden = true; return; }
-    info.hidden = false;
-    $('worldphoto').src = r.taxon.photo || '';
-    $('worldname').textContent = r.taxon.common || r.taxon.name;
-    $('worldsci').textContent = r.taxon.common && r.taxon.common !== r.taxon.name ? r.taxon.name : '';
-    $('worldwhere').textContent = `${r.count.toLocaleString()} ${mode === 'mine' ? 'of your observations' : 'research-grade observations'} in ${name}`;
+    const r = results.get(name);
+    if (!shown(r)) { $('worldsheet').hidden = true; return; }
+    $('worldsheet').hidden = false; drawSheet(name);
+    if (mode === 'all' && r.partial) loadFull(name);
   }
-  $('worldinfo').onclick = () => { const r = results.get(selected); if (shown(r)) openSpecies(r.taxon.id, r.obs); };
+  $('worldsheetclose').onclick = () => { selected = null; $('worldsheet').hidden = true; layout(); };
+  // a country whose list came from the "All animals" answers (or an older save) only has the species we already knew about: ask for the rest
+  async function loadFull(name) {
+    const pl = places[name], my = seq, gk = group;
+    if (!pl) return;
+    try {
+      await pace();
+      const d = await api(`/observations/species_counts?place_id=${pl.id}&per_page=10&quality_grade=research&${gk ? 'iconic_taxa=' + gk : 'taxon_id=1'}`);
+      if (my !== seq || gk !== group) return;
+      const items = slimItems(d.results);
+      topCache[`${pl.id}|${gk}`] = { t: Date.now(), items };
+      results.set(name, { items, partial: false });
+      paint(name);
+      if (selected === name) drawSheet(name);
+      idb.set('worldtop', topCache);
+    } catch (e) { log(`world: top 10 for ${name} failed: ${e.message}`, 'w'); }
+  }
+  const slimItems = results => (results || []).slice(0, 10).map(r => ({ count: r.count, taxon: { id: r.taxon.id, name: r.taxon.name, common: r.taxon.preferred_common_name || '', iconic: r.taxon.iconic_taxon_name || '',
+    photo: r.taxon.default_photo?.square_url ? sized(r.taxon.default_photo.square_url, 'small') : (r.taxon.default_photo?.medium_url || '') } }));
 
   // ---- "Mine": count my own observations per country ----
   async function computeMine() {
@@ -4055,10 +4099,11 @@ const world = (() => {
     if (unmatched.size) log(`world: no map shape for ${[...unmatched].join(', ')}`, 'w');
     results = new Map();
     for (const [poly, m] of per) {
-      let bestSid = null, bestList = null;
-      for (const [sid, list] of m) if (!bestList || list.length > bestList.length) { bestSid = sid; bestList = list; }
-      const th = thumbObs(bestList), nm = state.names[bestSid] || {};
-      results.set(poly, { count: bestList.length, obs: th, taxon: { id: bestSid, name: nm.name || th.name, common: nm.common || th.common, photo: photosOf(th)[0] ? sized(photosOf(th)[0], 'small') : '' } });
+      const ranked = [...m.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 10);
+      results.set(poly, { partial: false, items: ranked.map(([sid, list]) => {
+        const th = thumbObs(list), nm = state.names[sid] || {};
+        return { count: list.length, obs: th, taxon: { id: sid, name: nm.name || th.name, common: nm.common || th.common, photo: photosOf(th)[0] ? sized(photosOf(th)[0], 'small') : '' } };
+      }) });
     }
     for (const f of geo) paint(f.name);
     $('worldtitle').textContent = `${isOther() ? '@' + (state.user?.login || '') : 'Your'} top animal per country · ${results.size} countries`;
@@ -4105,41 +4150,54 @@ const world = (() => {
     log(`world: no iNaturalist country for "${f.name}"`, 'w');
     return 0;
   }
-  // answers cached by an earlier version don't say which group the top species is in: look that up (30 species per request)
+  // an answer saved as a single species (earlier version) becomes a list that is known as far as its first entry
+  const normEntry = e => {
+    if (!e) return e;
+    if (!e.items) { e.items = e.none ? [] : [{ count: e.count, taxon: e.taxon }]; e.partial = !e.none; delete e.count; delete e.taxon; }
+    return e;
+  };
+  // answers cached earlier don't say which group a species is in: look that up (30 species per request)
   async function fillIconic() {
     const need = new Map();
-    for (const [k, e] of Object.entries(topCache)) if (k.endsWith('|') && e && !e.none && e.taxon && e.taxon.iconic === undefined) { if (!need.has(e.taxon.id)) need.set(e.taxon.id, []); need.get(e.taxon.id).push(e); }
+    for (const [k, e] of Object.entries(topCache)) if (k.endsWith('|') && e) for (const it of e.items || []) if (it.taxon.iconic === undefined) { if (!need.has(it.taxon.id)) need.set(it.taxon.id, []); need.get(it.taxon.id).push(it.taxon); }
     const ids = [...need.keys()];
     if (!ids.length) return;
     $('worldtitle').textContent = 'Checking which group each top animal is in…';
     for (let i = 0; i < ids.length; i += 30) {
+      await pace();
       const d = await api(`/taxa/${ids.slice(i, i + 30).join(',')}?per_page=30`);
       const got = new Set();
-      for (const t of d.results || []) { got.add(t.id); for (const e of need.get(t.id) || []) e.taxon.iconic = t.iconic_taxon_name || ''; }
-      for (const id of ids.slice(i, i + 30)) if (!got.has(id)) for (const e of need.get(id)) e.taxon.iconic = '';
-      await sleep(650);
+      for (const t of d.results || []) { got.add(t.id); for (const tx of need.get(t.id) || []) tx.iconic = t.iconic_taxon_name || ''; }
+      for (const id of ids.slice(i, i + 30)) if (!got.has(id)) for (const tx of need.get(id)) tx.iconic = '';
     }
     await idb.set('worldtop', topCache);
   }
+  // the members of one group within an "All animals" list are that group's top species, as far as the list reaches
+  const groupPart = (all, g) => { const items = all.items.filter(i => i.taxon.iconic === g); return items.length ? { t: all.t, items, partial: all.partial || items.length < 10 } : null; };
   async function loadEveryone() {
     const my = ++seq, gk = group;
     results = new Map();
-    [places, topCache] = await Promise.all([idb.get('worldplaces').then(x => x || {}), idb.get('worldtop').then(x => x || {})]);
+    if (!cachesLoaded) { // read once; afterwards the copies in memory are the newest (a switch can interrupt a save)
+      [places, topCache] = await Promise.all([idb.get('worldplaces').then(x => x || {}), idb.get('worldtop').then(x => x || {})]);
+      for (const e of Object.values(topCache)) normEntry(e);
+      cachesLoaded = true;
+    }
     const fresh = e => e && Date.now() - e.t < TTL;
     // A group's top species is the overall top species whenever that one already belongs to the group, so the "All animals" answers are reused.
     if (gk) await fillIconic();
+    if (my !== seq) return;
     const todo = [];
     let reused = 0;
     for (const f of geo) {
       const pl = places[f.name], key = pl ? `${pl.id}|${gk}` : '';
       let e = pl ? topCache[key] : null;
       if (pl && gk && !fresh(e)) {
-        const b = topCache[`${pl.id}|`];
-        if (fresh(b) && !b.none && b.taxon.iconic === gk) { e = topCache[key] = { ...b }; reused++; }
+        const b = topCache[`${pl.id}|`], part = fresh(b) && !b.none ? groupPart(b, gk) : null;
+        if (part) { e = topCache[key] = part; reused++; }
       }
-      if (e && fresh(e)) { if (!e.none) results.set(f.name, { count: e.count, taxon: e.taxon }); } else todo.push(f);
+      if (e && fresh(e)) { if (e.items.length) results.set(f.name, { items: e.items, partial: !!e.partial }); } else todo.push(f);
     }
-    if (reused) { log(`world: ${reused} countries took their ${gk} answer from "All animals" (the top animal was already one)`); await idb.set('worldtop', topCache); }
+    if (reused) { log(`world: ${reused} countries took their ${gk} list from "All animals" (its top animals already included some)`); await idb.set('worldtop', topCache); }
     ctl.reused = reused;
     for (const f of geo) paint(f.name);
     const c = map.getCenter();
@@ -4158,13 +4216,16 @@ const world = (() => {
           if (!pl) { pl = places[f.name] = (pl === undefined || countryIdx) ? await findPlace(f) : 0; if (my !== seq) return; } // a miss from before the bulk scan existed is tried again
           if (pl) {
             await pace();
-            const d = await api(`/observations/species_counts?place_id=${pl.id}&per_page=1&quality_grade=research&${group ? 'iconic_taxa=' + group : 'taxon_id=1'}`);
+            const d = await api(`/observations/species_counts?place_id=${pl.id}&per_page=10&quality_grade=research&${group ? 'iconic_taxa=' + group : 'taxon_id=1'}`);
             if (my !== seq || !ctl.isOpen) return;
-            const top = (d.results || [])[0], t = top && top.taxon;
-            const rec = t ? { t: Date.now(), count: top.count, taxon: { id: t.id, name: t.name, common: t.preferred_common_name || '', iconic: t.iconic_taxon_name || '', photo: t.default_photo?.square_url ? sized(t.default_photo.square_url, 'small') : (t.default_photo?.medium_url || '') } } : { t: Date.now(), none: true };
+            const items = slimItems(d.results), rec = { t: Date.now(), items, partial: false };
             topCache[`${pl.id}|${gk}`] = rec;
-            if (!gk && !rec.none && GROUPS.some(g => g[0] && g[0] === rec.taxon.iconic)) topCache[`${pl.id}|${rec.taxon.iconic}`] = rec; // the overall top is also the top of its own group
-            if (!rec.none) setResult(f.name, { count: rec.count, taxon: rec.taxon });
+            if (!gk) for (const g of GROUPS) { // each group's part of this list is that group's top too: keep it for when the group is chosen
+              if (!g[0]) continue;
+              const old = topCache[`${pl.id}|${g[0]}`], part = groupPart(rec, g[0]);
+              if (part && (!fresh(old) || (old.partial && part.partial === false))) topCache[`${pl.id}|${g[0]}`] = part;
+            }
+            if (items.length) setResultItems(f.name, items);
           }
           done++; errors = 0; title();
           if (++saved % 10 === 0) { await idb.set('worldplaces', places); await idb.set('worldtop', topCache); }
@@ -4179,10 +4240,11 @@ const world = (() => {
     await idb.set('worldplaces', places); await idb.set('worldtop', topCache);
     if (my === seq && errors < 5) $('worldtitle').textContent = `Top ${label()} per country · ${results.size} countries`;
   }
+  function setResultItems(name, items) { results.set(name, { items, partial: false }); paint(name); }
 
   async function refresh() {
     seq++;
-    selected = null; $('worldinfo').hidden = true;
+    selected = null; $('worldsheet').hidden = true;
     results = new Map();
     for (const f of geo) paint(f.name); // clears the previous markers
     if (mode === 'mine') await computeMine(); else await loadEveryone();
@@ -4233,14 +4295,15 @@ const world = (() => {
   ctl.hide = () => {
     ctl.isOpen = false; seq++;
     root.hidden = true; if (!detail.isOpen) document.body.style.overflow = '';
-    $('worldinfo').hidden = true;
+    $('worldsheet').hidden = true;
   };
   ctl.close = () => { if (ctl.isOpen) history.back(); };
   $('worldclose').onclick = ctl.close;
   $('tabWorld').onclick = ctl.open;
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && ctl.isOpen && !detail.isOpen && !viewer.isOpen) ctl.close(); });
+  ctl.select = select;
   ctl.debug = () => ({ reused: ctl.reused || 0, mode, group, countries: geo.length, results: results.size, markers: markerOf.size, places: Object.keys(places).length,
-    sample: [...results.entries()].slice(0, 4).map(([k, v]) => [k, v.taxon.common || v.taxon.name, v.count]) });
+    sample: [...results.entries()].slice(0, 4).map(([k, v]) => [k, v.items[0].taxon.common || v.items[0].taxon.name, v.items[0].count, v.items.length, !!v.partial]) });
   return ctl;
 })();
 
@@ -4248,7 +4311,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build world-23 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build world-24 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
