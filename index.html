@@ -4065,16 +4065,42 @@ const world = (() => {
     log(`world: no iNaturalist country for "${f.name}"`, 'w');
     return 0;
   }
+  // answers cached by an earlier version don't say which group the top species is in: look that up (30 species per request)
+  async function fillIconic() {
+    const need = new Map();
+    for (const [k, e] of Object.entries(topCache)) if (k.endsWith('|') && e && !e.none && e.taxon && e.taxon.iconic === undefined) { if (!need.has(e.taxon.id)) need.set(e.taxon.id, []); need.get(e.taxon.id).push(e); }
+    const ids = [...need.keys()];
+    if (!ids.length) return;
+    $('worldtitle').textContent = 'Checking which group each top animal is in…';
+    for (let i = 0; i < ids.length; i += 30) {
+      const d = await api(`/taxa/${ids.slice(i, i + 30).join(',')}?per_page=30`);
+      const got = new Set();
+      for (const t of d.results || []) { got.add(t.id); for (const e of need.get(t.id) || []) e.taxon.iconic = t.iconic_taxon_name || ''; }
+      for (const id of ids.slice(i, i + 30)) if (!got.has(id)) for (const e of need.get(id)) e.taxon.iconic = '';
+      await sleep(650);
+    }
+    await idb.set('worldtop', topCache);
+  }
   async function loadEveryone() {
     const my = ++seq, gk = group;
     results = new Map();
     [places, topCache] = await Promise.all([idb.get('worldplaces').then(x => x || {}), idb.get('worldtop').then(x => x || {})]);
     const fresh = e => e && Date.now() - e.t < TTL;
+    // A group's top species is the overall top species whenever that one already belongs to the group, so the "All animals" answers are reused.
+    if (gk) await fillIconic();
     const todo = [];
+    let reused = 0;
     for (const f of geo) {
-      const pl = places[f.name], e = pl ? topCache[`${pl.id}|${gk}`] : null;
+      const pl = places[f.name], key = pl ? `${pl.id}|${gk}` : '';
+      let e = pl ? topCache[key] : null;
+      if (pl && gk && !fresh(e)) {
+        const b = topCache[`${pl.id}|`];
+        if (fresh(b) && !b.none && b.taxon.iconic === gk) { e = topCache[key] = { ...b }; reused++; }
+      }
       if (e && fresh(e)) { if (!e.none) results.set(f.name, { count: e.count, taxon: e.taxon }); } else todo.push(f);
     }
+    if (reused) { log(`world: ${reused} countries took their ${gk} answer from "All animals" (the top animal was already one)`); await idb.set('worldtop', topCache); }
+    ctl.reused = reused;
     for (const f of geo) paint(f.name);
     const c = map.getCenter();
     todo.sort((a, b) => Math.hypot(a.info.lat - c.lat, a.info.lng - c.lng) - Math.hypot(b.info.lat - c.lat, b.info.lng - c.lng)); // what is on screen first
@@ -4091,8 +4117,9 @@ const world = (() => {
           await sleep(650);
           if (my !== seq || !ctl.isOpen) return;
           const top = (d.results || [])[0], t = top && top.taxon;
-          const rec = t ? { t: Date.now(), count: top.count, taxon: { id: t.id, name: t.name, common: t.preferred_common_name || '', photo: t.default_photo?.square_url ? sized(t.default_photo.square_url, 'small') : (t.default_photo?.medium_url || '') } } : { t: Date.now(), none: true };
+          const rec = t ? { t: Date.now(), count: top.count, taxon: { id: t.id, name: t.name, common: t.preferred_common_name || '', iconic: t.iconic_taxon_name || '', photo: t.default_photo?.square_url ? sized(t.default_photo.square_url, 'small') : (t.default_photo?.medium_url || '') } } : { t: Date.now(), none: true };
           topCache[`${pl.id}|${gk}`] = rec;
+          if (!gk && !rec.none && GROUPS.some(g => g[0] && g[0] === rec.taxon.iconic)) topCache[`${pl.id}|${rec.taxon.iconic}`] = rec; // the overall top is also the top of its own group
           if (!rec.none) setResult(f.name, { count: rec.count, taxon: rec.taxon });
           if (done % 8 === 0) await idb.set('worldtop', topCache);
         }
@@ -4166,7 +4193,7 @@ const world = (() => {
   $('worldclose').onclick = ctl.close;
   $('tabWorld').onclick = ctl.open;
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && ctl.isOpen && !detail.isOpen && !viewer.isOpen) ctl.close(); });
-  ctl.debug = () => ({ mode, group, countries: geo.length, results: results.size, markers: markerOf.size, places: Object.keys(places).length,
+  ctl.debug = () => ({ reused: ctl.reused || 0, mode, group, countries: geo.length, results: results.size, markers: markerOf.size, places: Object.keys(places).length,
     sample: [...results.entries()].slice(0, 4).map(([k, v]) => [k, v.taxon.common || v.taxon.name, v.count]) });
   return ctl;
 })();
@@ -4175,7 +4202,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build world-21 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build world-22 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
