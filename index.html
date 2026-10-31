@@ -323,6 +323,18 @@
     #explore { border-left:0; border-right:0; border-radius:0; padding:8px 8px; }
     .dbody { padding:10px 10px 48px; }
   }
+  /* the tab bar stays above the full-screen Web and World views */
+  body.ovl .tabs { position:fixed; z-index:850; left:0; right:0; margin:0; background:var(--card); }
+  body.ovl #web, body.ovl #world { bottom:var(--tabs-h, 58px); }
+  body.ovl #worldsheet { bottom:12px; }
+  body.ovl #webinfo { padding-bottom:14px; }
+  .tabs.dim button.active { background:transparent; color:var(--muted); box-shadow:none; border-color:var(--line); font-weight:400; }
+  .tabs.dim button.on-ovl { color:var(--accent); font-weight:700; box-shadow:inset 0 3px 0 var(--accent); }
+  @media (min-width: 900px) {
+    body.ovl .tabs { top:0; bottom:auto; padding:6px 10px; border-bottom:1px solid var(--line); }
+    body.ovl #web, body.ovl #world { top:var(--tabs-h, 44px); bottom:0; }
+    .tabs.dim button.on-ovl { background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:none; }
+  }
 </style>
 </head>
 <body>
@@ -3134,7 +3146,16 @@ function setView(v) {
   requestAnimationFrame(() => scrollTo({ top: y }));
 }
 // Tapping a tab switches to it; tapping the already-active tab scrolls it back to the top.
+// Web and World are full-screen but leave the tab bar visible (and usable): tapping another tab closes them.
+function syncOverlayTabs() {
+  const tabs = document.querySelector('.tabs'), open = web.isOpen || world.isOpen;
+  if (open) document.documentElement.style.setProperty('--tabs-h', tabs.offsetHeight + 'px');
+  document.body.classList.toggle('ovl', open);
+  tabs.classList.toggle('dim', open);
+  $('tabWeb').classList.toggle('on-ovl', web.isOpen); $('tabWorld').classList.toggle('on-ovl', world.isOpen);
+}
 function tabTap(v) {
+  for (const o of [web, world]) if (o.isOpen) o.close();
   if (v === view) scrollTo({ top: 0, behavior: 'smooth' });
   else setView(v);
 }
@@ -3898,11 +3919,13 @@ const web = (() => {
 
   // ---- open / close ----
   api.open = () => {
-    if (api.isOpen) return;
+    if (api.isOpen) { api.close(); return; } // the tab tapped again
     if (!state.obs.length) { toast('Load some observations first.'); return; }
+    const from = world.isOpen; if (from) world.hide(); // going straight from the other full-screen view: no extra history entry
     root.hidden = false; api.isOpen = true;
     document.body.style.overflow = 'hidden';
-    history.pushState({ web: 1 }, '');
+    history[from ? 'replaceState' : 'pushState']({ web: 1 }, '');
+    syncOverlayTabs();
     $('webcolour').classList.remove('on'); $('webcolour').setAttribute('aria-pressed', 'false');
     resize(); build(); resize(); fit();
     $('webtitle').textContent = leaves.length ? `${leaves.length.toLocaleString()} species` : 'Nothing to show for the current filters';
@@ -3912,6 +3935,7 @@ const web = (() => {
     root.hidden = true; if (!detail.isOpen) document.body.style.overflow = '';
     leaves = []; byKey = new Map(); borders = []; kinBorders = []; morph = null; pendingColour = false; queue = []; sharp = new Set(); pointers.clear(); pan = pinch = tap = dz = lastTap = focus = anim = null;
     $('webinfo').hidden = true;
+    syncOverlayTabs();
   };
   api.close = () => { if (api.isOpen) history.back(); };
   $('webclose').onclick = api.close;
@@ -4282,10 +4306,12 @@ const world = (() => {
   };
 
   ctl.open = async () => {
-    if (ctl.isOpen) return;
+    if (ctl.isOpen) { ctl.close(); return; } // the tab tapped again
+    const from = web.isOpen; if (from) web.hide();
     root.hidden = false; ctl.isOpen = true;
     document.body.style.overflow = 'hidden';
-    history.pushState({ world: 1 }, '');
+    history[from ? 'replaceState' : 'pushState']({ world: 1 }, '');
+    syncOverlayTabs();
     drawChips();
     $('worldtitle').textContent = 'Loading the map…';
     try {
@@ -4312,6 +4338,7 @@ const world = (() => {
     ctl.isOpen = false; seq++;
     root.hidden = true; if (!detail.isOpen) document.body.style.overflow = '';
     $('worldsheet').hidden = true;
+    syncOverlayTabs();
   };
   ctl.close = () => { if (ctl.isOpen) history.back(); };
   $('worldclose').onclick = ctl.close;
@@ -4327,7 +4354,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build world-25 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build world-26 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
