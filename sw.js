@@ -58,7 +58,7 @@ self.addEventListener('fetch', e => {
     e.respondWith(cacheFirst(req, LIBS));
   } else if (u.hostname.endsWith('tile.openstreetmap.org')) {
     e.respondWith(cacheFirst(req, TILES, 600));
-  } else if (req.destination === 'image' && /(^|\.)inaturalist(-open-data)?\.(org|s3\.amazonaws\.com)$|inaturalist-open-data\.s3/.test(u.hostname)) {
+  } else if (req.destination === 'image' && /(^|\.)inaturalist(-open-data)?\.(org|s3\.amazonaws\.com)$|inaturalist-open-data\.s3|\.workers\.dev$/.test(u.hostname)) {
     e.respondWith(cacheFirst(req, PHOTOS, 800));
   }
 });

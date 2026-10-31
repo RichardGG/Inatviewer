@@ -369,6 +369,12 @@
         (not confidential) with redirect URI <code id="redirecturi"></code>, then paste its Client ID.
       </p>
       <input id="clientid" spellcheck="false" style="width:100%;padding:8px;font:12px monospace;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">
+      <label for="photoproxy" style="display:block;margin-top:10px"><strong>Photo proxy address</strong> (optional)</label>
+      <p class="status" style="margin:4px 0 8px">
+        Only used to read photo colours when iNaturalist's photo servers refuse. The address of your Cloudflare Worker, for example
+        <code>https://inat-photos.yourname.workers.dev/</code>.
+      </p>
+      <input id="photoproxy" spellcheck="false" placeholder="https://…workers.dev/" style="width:100%;padding:8px;font:12px monospace;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">
     </details>
     <div class="row">
       <button id="load" title="Fetch only observations newer than the cache; reuses cached taxonomy">Check for new observations</button>
@@ -3310,6 +3316,8 @@ $('forget').onclick = () => {
 $('oauth').onclick = oauthLogin;
 $('redirecturi').textContent = redirectUri();
 $('clientid').value = clientId();
+try { $('photoproxy').value = localStorage.getItem('inat_photo_proxy') || ''; } catch {}
+$('photoproxy').onchange = () => { try { localStorage.setItem('inat_photo_proxy', $('photoproxy').value.trim()); } catch {} toast('Photo proxy saved'); };
 $('clearcache').onclick = async () => {
   await idb.clear(); state = { user: null, obs: [], complete: true, total: null, names: {}, places: {}, updated: null }; people = []; partners = []; cmpData = new Map(); mine = { obs: [] }; renderPeople();
   $('results').hidden = true; log('all cached data cleared'); status('Cache cleared.');
@@ -3673,31 +3681,48 @@ const web = (() => {
   const hostOf = u => { try { return new URL(u).hostname; } catch { return '?'; } };
   const hostStats = {};
   const stat = (u, ok) => { const h = hostOf(u), st = hostStats[h] || (hostStats[h] = { ok: 0, refused: 0 }); st[ok ? 'ok' : 'refused']++; };
+  // Photo colours are remembered by photo address, so a photo is only ever read once (and never again through the proxy).
+  let colCache = null, colDirty = 0;
+  const photoProxy = () => { try { return (localStorage.getItem('inat_photo_proxy') || '').trim(); } catch { return ''; } };
+  const proxied = u => { const base = photoProxy(); return base ? `${base}${base.includes('?') ? '&' : '?'}url=${encodeURIComponent(u)}` : null; };
+  const blocked = new Set(); // hosts that refused a cross-origin read during this visit: don't ask them again
+  function saveColours() { if (colDirty) { colDirty = 0; idb.set('photocol', colCache); } }
   function pump() {
+    if (!colCache) { colCache = {}; idb.get('photocol').then(c => { colCache = Object.assign(c || {}, colCache); pump(); }); return; }
     while (api.isOpen && loading < 6 && queue.length) {
       const n = queue.shift(), url = photosOf(n.obs || {})[0];
       if (!url) { n.col = null; continue; }
       loading++;
-      const alt = ALT_HOST[hostOf(url)] ? url.replace(hostOf(url), ALT_HOST[hostOf(url)]) : null;
-      const load = stage => { // 0: photo with CORS (colours readable)  1: same photo from the other host with CORS  2: plain (shown, colour unknown)
-        const src = stage === 1 ? alt : url;
-        if (!src) { load(2); return; }
-        const im = new Image();
-        if (stage < 2) im.crossOrigin = 'anonymous';
+      const size = sized(url, TIERS[0][0]), alt = ALT_HOST[hostOf(size)] ? size.replace(hostOf(size), ALT_HOST[hostOf(size)]) : null;
+      // where to try the photo, in order: [address, readable?]. A remembered colour means it only needs showing.
+      const cands = [];
+      if (colCache[size] !== undefined) cands.push([size, false]);
+      else {
+        if (!blocked.has(hostOf(size))) cands.push([size, true]);
+        if (alt && !blocked.has(hostOf(alt))) cands.push([alt, true]);
+        const px = proxied(size); if (px && !blocked.has(hostOf(px))) cands.push([px, true]);
+        cands.push([size, false]);
+      }
+      const attempt = i => {
+        const [src, read] = cands[i], im = new Image();
+        if (read) im.crossOrigin = 'anonymous'; // lets the page read the colours; some servers refuse
         im.onload = () => {
           n.base = n.sprite = sprite(im, TIERS[0][1]); n.tier = 0;
-          n.col = stage < 2 ? avgColour(im) : null;
-          if (stage < 2) stat(src, !!n.col); else stat(url, false);
-          if (stage === 1 && n.col) n.altOk = true;
+          if (read) { n.col = avgColour(im); stat(src, !!n.col); if (n.col) { colCache[size] = n.col; if (++colDirty >= 25) saveColours(); } }
+          else n.col = colCache[size] || null;
           loading--; redraw(); pump(); colourProgress();
         };
         im.onerror = () => {
-          if (stage < 2) { if (!n.logged) { n.logged = true; const h = hostOf(src); if (!(hostStats[h] && hostStats[h].warned)) { (hostStats[h] = hostStats[h] || { ok: 0, refused: 0 }).warned = true; log(`colour: ${h} did not allow a cross-origin read of ${src}${stage === 0 && alt ? `; trying ${hostOf(alt)}` : ''}`, 'w'); } } load(stage + 1); return; }
-          n.col = null; loading--; pump(); colourProgress();
+          if (read) {
+            const h = hostOf(src);
+            if (!blocked.has(h)) { blocked.add(h); log(`colour: ${h} did not allow a cross-origin read of ${src.slice(0, 120)}${i + 1 < cands.length - 1 ? '; trying the next route' : ''}`, 'w'); }
+            attempt(i + 1); return;
+          }
+          n.col = colCache[size] || null; loading--; pump(); colourProgress();
         };
-        im.src = sized(src, TIERS[0][0]);
+        im.src = src;
       };
-      load(0);
+      attempt(0);
     }
   }
 
@@ -3750,6 +3775,7 @@ const web = (() => {
     const done = leaves.filter(n => n.col !== undefined).length;
     if (done < leaves.length) { $('webtitle').textContent = `Reading colours… ${done}/${leaves.length}`; return; }
     pendingColour = false;
+    saveColours();
     log(`colour reading finished: ${leaves.filter(n => n.col).length} of ${leaves.length} photos readable; by host ${JSON.stringify(hostStats)}`);
     if (!leaves.some(n => n.col)) { // the photo server doesn't let the page read pixels
       arrange = 'kin'; $('webcolour').classList.remove('on'); $('webcolour').setAttribute('aria-pressed', 'false');
@@ -4354,7 +4380,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build world-26 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build world-27 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

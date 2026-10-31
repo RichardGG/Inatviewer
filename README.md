@@ -32,3 +32,9 @@ Bump `VER` in `sw.js` to force the cached libraries, tiles and photos to be drop
 The **World** tab shows the most observed animal over each country. *Everyone* asks iNaturalist for the top species per country (two
 requests per country the first time, about four minutes; answers are kept in IndexedDB for 30 days), *Mine* counts your own observations
 per country. The animal group chips narrow it to birds, mammals and so on. Country outlines come from the `world-atlas` file on jsDelivr.
+
+## Photo proxy (optional)
+
+Reading photo colours needs the page to be allowed to read the photo pixels. If iNaturalist's photo servers refuse, create a free
+Cloudflare Worker that forwards only iNaturalist photo addresses (see the code in the project notes / chat), paste its address under
+⚙ → "Or use an API token / OAuth settings" → "Photo proxy address". Colours are remembered per photo, so a photo goes through the proxy once.
