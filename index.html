@@ -314,6 +314,15 @@
   #log { max-height:260px; overflow:auto; font:11px/1.45 monospace; white-space:pre-wrap; margin:8px 0 0;
          padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); }
   #log .e { color:#c0392b; } #log .w { color:#b9770e; }
+  /* phones and small tablets: the lists and galleries use the full width instead of sitting in a padded card */
+  @media (max-width: 899px) {
+    main { padding:10px 0 64px; }
+    header.top, #viewing, #status, #summary, #loadall, #locTools, #filterwrap, #login { margin-left:12px; margin-right:12px; }
+    #iconbar { margin:0 0 6px; padding:0 6px; }
+    #tree, #recent { border-left:0; border-right:0; border-radius:0; padding:6px 3px; }
+    #explore { border-left:0; border-right:0; border-radius:0; padding:8px 8px; }
+    .dbody { padding:10px 10px 48px; }
+  }
 </style>
 </head>
 <body>
