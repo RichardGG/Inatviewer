@@ -1412,7 +1412,7 @@ function shuffleKey(id, seed = shuffleSeed) {
 const GAL = ['recent', 'tree', 'place'];
 const isGal = v => GAL.includes(v);
 const GAL_PAGE = 150;
-const TAG_COLORS = ['#ffe27a', '#f7a8bd', '#9fd2f2', '#b3df9c', '#f9bd80', '#cdb3ea'];
+const TAG_COLORS = ['#d4eda9', '#b5e0a0', '#97d3a0', '#7fc6a4', '#9fd6b8', '#c3e8cc']; // shades of green, one per level
 const collapsed = { recent: new Set(), tree: new Set(), place: new Set() }; // keys of the collapsed groups, per sort
 const gal = { sort: 'recent', items: [], groups: [], byKey: new Map(), cells: [], limit: GAL_PAGE, shownTo: 0, drawnSort: '' };
 const ordinal = n => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
@@ -4516,7 +4516,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-7 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-8 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
