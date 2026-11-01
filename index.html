@@ -384,8 +384,8 @@
   .tag:active { filter:brightness(.94); }
   .tag.flash { animation:flash 1.8s ease-out; }
   /* collapsed group: a small pile of overlapping Polaroids */
-  .stack { position:relative; display:block; width:72%; aspect-ratio:1 / 1.08; padding:0; border:0; background:none; cursor:pointer; }
-  .stack .mini { position:absolute; width:56%; aspect-ratio:1 / 1.1; background:#fbfaf4; padding:4px 4px 0; border-radius:2px; box-shadow:0 2px 6px rgba(0,0,0,.4);
+  .stack { position:relative; display:block; width:100%; aspect-ratio:1 / 1.08; padding:0; border:0; background:none; cursor:pointer; }
+  .stack .mini { position:absolute; width:50%; aspect-ratio:1 / 1.1; background:#fbfaf4; padding:4px 4px 0; border-radius:2px; box-shadow:0 2px 6px rgba(0,0,0,.4);
                  left:calc(var(--k) * var(--sx, 17%)); bottom:calc(var(--k) * var(--sy, 7%)); transform:rotate(var(--r, 0deg)); z-index:calc(10 - var(--k)); }
   .stack .mini img { width:100%; height:calc(100% - 14px); object-fit:cover; display:block; background:#d9d9d2; }
   .stack .sn { position:absolute; right:0; bottom:0; z-index:9; min-width:24px; padding:2px 7px; border-radius:12px; background:rgba(0,0,0,.72); color:#fff; font-size:12px; text-align:center; }
@@ -1534,9 +1534,9 @@ function tagEl(g, compact) {
 function stackEl(g) {
   const s = document.createElement('button'); s.type = 'button'; s.className = 'stack';
   s.title = `${g.main}: tap to show its photos`; s.setAttribute('aria-label', s.title);
-  const n = g.last - g.first + 1, m = Math.min(n, 6); // up to six photos sampled evenly across the group
+  const n = g.last - g.first + 1, m = Math.min(n, 3); // three photos sampled evenly across the group
   const picks = [...new Set(Array.from({ length: m }, (_, j) => g.first + Math.round(j * (n - 1) / Math.max(1, m - 1))))].reverse(); // last is drawn first (underneath)
-  s.style.setProperty('--sx', (44 / Math.max(1, picks.length - 1)) + '%'); s.style.setProperty('--sy', (20 / Math.max(1, picks.length - 1)) + '%');
+  s.style.setProperty('--sx', (60 / Math.max(1, picks.length - 1)) + '%'); s.style.setProperty('--sy', (26 / Math.max(1, picks.length - 1)) + '%');
   picks.forEach((idx, j) => {
     const ph = photosOf(gal.items[idx].o), mini = document.createElement('span');
     mini.className = 'mini'; mini.style.setProperty('--k', picks.length - 1 - j); mini.style.setProperty('--r', ((shuffleKey(String(idx), 'stk') % 13) - 6) + 'deg');
@@ -4515,7 +4515,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-13 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-14 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
