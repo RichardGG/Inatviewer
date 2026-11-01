@@ -3773,8 +3773,7 @@ const cutouts = (() => {
     for (let y = 0; y < canvas.height; y++) for (let x = 0; x < canvas.width; x++) if (d[(y * canvas.width + x) * 4 + 3] > 40) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
     return x1 > x0 && y1 > y0 ? { x0: x0 / canvas.width, y0: y0 / canvas.height, x1: (x1 + 1) / canvas.width, y1: (y1 + 1) / canvas.height } : null;
   }
-  async function aiCut(img) {
-    const id = modelId();
+  async function aiCut(img, id) {
     if (!id || broken.has(id)) return null;
     let pipe; try { pipe = await getPipe(id); } catch { return null; }
     const url = await imageUrl(img);
@@ -3822,8 +3821,8 @@ const cutouts = (() => {
     } catch (e) { log(`cut-outs: Segment Anything failed on a photo: ${e && e.message || e}`, 'w'); return null; }
     finally { URL.revokeObjectURL(url); }
   }
-  async function compute(mode, img) {
-    if (mode === 'ai') return aiCut(img);
+  async function compute(mode, img, model) {
+    if (mode === 'ai') return aiCut(img, model);
     if (mode === 'sam') return samCut(img);
     await new Promise(r => setTimeout(r)); // let the page breathe between photos
     const seg = segment(img);
@@ -3841,7 +3840,7 @@ const cutouts = (() => {
     let blob = memory.get(key) || await idb.get(key);
     if (!blob) {
       const img = await readable(it.url);
-      blob = img ? await compute(mode, img) : null;
+      blob = img ? await compute(mode, img, it.model) : null; // the model the tile was queued with, even if another has been picked since
       if (!blob) { failed++; it.tile.classList.remove('cutwait'); it.tile.classList.add('cutfail'); note(); return; }
       memory.set(key, blob); idb.set(key, blob);
     }
@@ -3861,7 +3860,7 @@ const cutouts = (() => {
   ctl.attach = (tile, im, url) => {
     if (!cutMode) return;
     tile.classList.add('cutwait');
-    itemOf.set(tile, { tile, im, url, mode: cutMode, key: keyOf() });
+    itemOf.set(tile, { tile, im, url, mode: cutMode, model: modelId(), key: keyOf() });
     io.observe(tile);
   };
   ctl.setMode = m => {
@@ -4748,7 +4747,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build cut-31 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build cut-32 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
