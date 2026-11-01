@@ -344,6 +344,12 @@
                unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   @font-face { font-family:'Caveat'; font-style:normal; font-weight:700; font-display:swap; src:url('vendor/fonts/caveat-latin-ext-700-normal.woff2') format('woff2');
                unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+  /* dark mode: a muted green behind the white stickers, so they do not glare against near-black */
+  @media (prefers-color-scheme: dark) {
+    body.stkview { background:#2a4636; }
+    body.stkview #iconbar { background:#21392b; }
+    body.stkview #recent.stkmode .dh { background:#2a4636; color:#bcd6c6; border-bottom-color:rgba(255,255,255,.14); }
+  }
   /* Recent with cut-outs: stickers (white outline, shadow outside) in a masonry, no card box */
   #recent.stkmode { background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
   .rgrid.stk { display:block; }
@@ -1618,6 +1624,7 @@ function renderRecent(obs) {
                   : list.sort((a, b) => recentDate(b).localeCompare(recentDate(a)) || b.id - a.id);
   const PAGE = 60;
   const sticker = cutouts.sticker(); // cut-outs on: sticker layout, in a masonry of columns
+  document.body.classList.toggle('stkview', sticker);
   const gridEl = document.createElement('div'); gridEl.className = 'rgrid' + (sticker ? ' stk' : '');
   el.classList.toggle('stkmode', sticker);
   const ncols = innerWidth < 560 ? 2 : innerWidth < 900 ? 3 : 4;
@@ -3209,6 +3216,7 @@ function setView(v) {
   $('jumpwrap').hidden = v === 'recent' || v === 'explore';
   $('bsearch').hidden = v === 'recent' || v === 'explore';
   $('bcut').hidden = v !== 'recent';
+  document.body.classList.toggle('stkview', v === 'recent' && cutouts.sticker());
   if (v !== 'recent' && !$('pcut').hidden) { $('pcut').hidden = true; $('bcut').classList.remove('open'); }
   if (v === 'recent' || v === 'explore') { $('psearch').hidden = true; $('bsearch').classList.remove('open'); }
   $('recentTools').hidden = v !== 'recent';
@@ -4849,7 +4857,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build sticker-36 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build sticker-37 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
