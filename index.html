@@ -1617,21 +1617,16 @@ addEventListener('resize', () => { if (isGal(view)) spanTags(); });
 const barHeight = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar-h')) || 0;
 // Redraw after a collapse/expand keeping the group's label where it was (or, from the sticky header, bringing the group's first cell under it).
 function redrawKeep(key, fromBar) {
-  const sel = k => `.tag[data-key="${CSS.escape(k)}"]`;
-  let top = null;
-  if (!fromBar) { const t = $('gal').querySelector(sel(key)); if (t) top = t.getBoundingClientRect().top; }
   drawGallery();
   const g = gal.byKey.get(key);
   if (!g) return;
   // expanding can push the group beyond the photos drawn so far: draw further pages until its first cell exists
   for (let guard = 0; gal.shownTo <= g.first && gal.shownTo < gal.items.length && guard < 200; guard++) { gal.limit += GAL_PAGE; drawGallery(); }
-  const want = top != null ? top : barHeight() + ($('pathbar').firstElementChild.offsetHeight || 40) + 6;
-  // put the group's label back where it was; repeated for a few frames in case the layout settles late (photos, fonts)
+  // bring the group's first cell (tabs and all) to the top of the viewport, just under the bar
   const fix = () => {
     const cell = $('gal').querySelector(`.cell[data-i="${g.first}"]`);
     if (!cell) return;
-    const t = (top != null && cell.querySelector(sel(key))) || cell;
-    const d = t.getBoundingClientRect().top - want;
+    const d = cell.getBoundingClientRect().top - (barHeight() + 6);
     if (Math.abs(d) > 1) scrollBy(0, d);
   };
   fix();
@@ -4511,7 +4506,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-18 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-19 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
