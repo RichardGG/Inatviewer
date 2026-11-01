@@ -3916,12 +3916,12 @@ const cutouts = (() => {
   ctl.enhance = enhance;
   // ---- sticker: a thick white outline round the cut-out (the shadow outside it is CSS on the image) ----
   async function makeSticker(blob) {
-    const bmp = await createImageBitmap(blob), w = bmp.width, h = bmp.height, p = Math.max(6, Math.round(Math.max(w, h) * 0.04));
+    const bmp = await createImageBitmap(blob), w = bmp.width, h = bmp.height, p = Math.max(3, Math.round(Math.max(w, h) * 0.02)); // outline width: 2% of the size
     const sil = document.createElement('canvas'); sil.width = w; sil.height = h;
     const sg = sil.getContext('2d'); sg.drawImage(bmp, 0, 0); sg.globalCompositeOperation = 'source-in'; sg.fillStyle = '#fff'; sg.fillRect(0, 0, w, h);
     const c = document.createElement('canvas'); c.width = w + 2 * p; c.height = h + 2 * p;
     const g = c.getContext('2d');
-    for (const [r, n] of [[p, 36], [p * 0.66, 24], [p * 0.33, 16]]) for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; g.drawImage(sil, p + Math.cos(a) * r, p + Math.sin(a) * r); }
+    for (const [r, n] of [[p, 32], [p * 0.66, 20], [p * 0.33, 12]]) for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; g.drawImage(sil, p + Math.cos(a) * r, p + Math.sin(a) * r); }
     g.drawImage(bmp, p, p);
     return toBlob(c, 'image/webp', 0.92);
   }
@@ -3946,7 +3946,7 @@ const cutouts = (() => {
       if (eb instanceof Blob) { blob = eb; key = ekey; }
     }
     if (ctl.sticker()) { // the sticker version (outline added) is saved too, so it is made once
-      const skey = `stk1${it.enh ? 'e' : ''}:${it.base}:${it.url}`;
+      const skey = `stk2${it.enh ? 'e' : ''}:${it.base}:${it.url}`; // stk2: the thinner outline (stk1 copies are older and thicker)
       let sb = memory.get(skey) || await idb.get(skey);
       if (!sb) { sb = await makeSticker(blob).catch(() => null); if (sb) { memory.set(skey, sb); idb.set(skey, sb); } }
       if (sb) { blob = sb; key = skey; }
@@ -3999,7 +3999,7 @@ const cutouts = (() => {
   $('cutenh').onchange = () => { cutEnh = $('cutenh').checked; try { localStorage.setItem('inat_cut_enh', cutEnh ? '1' : '0'); } catch {} queue.length = 0; done = 0; failed = 0; fromSaved = 0; madeNow = 0; show(true); };
   $('cutcustom').onchange = () => { cutCustom = $('cutcustom').value.trim(); try { localStorage.setItem('inat_cut_custom', cutCustom); } catch {} queue.length = 0; drawChips(); show(true); }; // (the panel is not redrawn here, or a tap that caused this change would be lost)
   $('cutclear').onclick = async () => {
-    const keys = (await idb.keys()).filter(k => typeof k === 'string' && (k.startsWith('cut:') || k.startsWith('stk1') || k.startsWith('enh1:')));
+    const keys = (await idb.keys()).filter(k => typeof k === 'string' && (k.startsWith('cut:') || k.startsWith('stk') || k.startsWith('enh1:')));
     for (const k of keys) await idb.del(k);
     memory.clear(); for (const u of objUrls.values()) URL.revokeObjectURL(u); objUrls.clear();
     toast(`${keys.length} saved cut-outs cleared`); show(true);
@@ -4857,7 +4857,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build sticker-37 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build sticker-38 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
