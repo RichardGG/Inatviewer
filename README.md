@@ -50,3 +50,7 @@ The scissors button in the Recent tab's icon bar offers: Off (default), Focus cr
 (subject found by colour contrast with the photo's edges, no model) and Cut-out · AI model (a background-removal model chosen in the panel: MODNet, RMBG-1.4, BiRefNet lite, IS-Net or any
 Hugging Face id; loaded from jsDelivr / Hugging Face on first use) and Cut-out · Segment Anything (SlimSAM prompted with the centre of the photo). Photos are read through the photo proxy when iNaturalist's servers refuse; results are saved per
 photo in IndexedDB (`cut:` keys) and can be cleared from the same panel.
+
+With any cut-out approach except Focus crop, the Recent tab switches to a sticker layout: each animal is a cut-out with a thick white outline and
+a drop shadow, in a masonry of columns (no card boxes), its name in a handwriting font (Caveat, pinned in `package.json` and copied into
+`vendor/fonts/` at deploy time) and the date, photo count and badges as slightly crooked stickers on its edges. RMBG-1.4 is the default AI model.

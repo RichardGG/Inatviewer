@@ -339,6 +339,36 @@
     body.ovl #web, body.ovl #world { top:var(--tabs-h, 44px); bottom:0; }
     .tabs.dim button.on-ovl { background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:none; }
   }
+  /* handwriting for the sticker layout (Caveat, pinned and copied into vendor/ at deploy time) */
+  @font-face { font-family:'Caveat'; font-style:normal; font-weight:700; font-display:swap; src:url('vendor/fonts/caveat-latin-700-normal.woff2') format('woff2');
+               unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+  @font-face { font-family:'Caveat'; font-style:normal; font-weight:700; font-display:swap; src:url('vendor/fonts/caveat-latin-ext-700-normal.woff2') format('woff2');
+               unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+  /* Recent with cut-outs: stickers (white outline, shadow outside) in a masonry, no card box */
+  #recent.stkmode { background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
+  .rgrid.stk { display:block; }
+  .rgrid.stk .mason { display:flex; gap:10px; align-items:flex-start; margin-bottom:6px; }
+  .rgrid.stk .mcol { flex:1; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .rgrid.stk .tile, .rgrid.stk .tile.cut { position:relative; aspect-ratio:auto; background:none; border-radius:0; overflow:visible; --r:0; }
+  .rgrid.stk .tile .pic { position:relative; inset:auto; display:block; width:100%; height:auto; background:none; cursor:pointer; }
+  .rgrid.stk .tile img, .rgrid.stk .tile.cut .pic img { width:100%; height:auto; object-fit:contain; padding:0; display:block; filter:drop-shadow(0 5px 6px rgba(0,0,0,.4)); }
+  .rgrid.stk .tile.cutwait img { aspect-ratio:1; object-fit:cover; border-radius:16px; opacity:.55; filter:none; }
+  .rgrid.stk .tile.cutfail img { border:6px solid #fff; border-radius:10px; box-shadow:0 5px 12px rgba(0,0,0,.4); filter:none; background:#fff; }
+  .rgrid.stk .tile .cap { position:static; display:block; background:none; margin:2px 0 0; padding:0 4px; text-align:center; color:var(--fg); text-shadow:none;
+                          font:700 29px/1 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; transform:rotate(-1.5deg); letter-spacing:.2px;
+                          white-space:normal; overflow:visible; text-overflow:clip; -webkit-line-clamp:unset; display:block; word-break:break-word; }
+  .rgrid.stk .tile .cap:hover { text-decoration:none; color:var(--accent); }
+  /* the other details are small stickers stuck on the edges, each a little crooked */
+  .rgrid.stk .tile .badge, .rgrid.stk .tile .raretag, .rgrid.stk .tile .newtag, .rgrid.stk .tile .othertag, .rgrid.stk .tile .dtag, .rgrid.stk .tile .ctag {
+    position:absolute; z-index:3; width:auto; height:auto; margin:0; background:#fff; color:#2b2b2b; border:2px solid #fff; border-radius:7px; padding:0 7px;
+    font:700 12px/1.55 system-ui,sans-serif; box-shadow:0 2px 6px rgba(0,0,0,.42); pointer-events:none; white-space:nowrap; }
+  .rgrid.stk .tile .badge { top:4%; right:-3px; bottom:auto; left:auto; transform:rotate(calc(var(--r) * 1deg + 7deg)); }
+  .rgrid.stk .tile .raretag { top:6%; left:-3px; transform:rotate(calc(var(--r) * 1deg - 6deg)); }
+  .rgrid.stk .tile .raretag.concern, .rgrid.stk .tile .raretag.rare, .rgrid.stk .tile .raretag.legend { color:#fff; }
+  .rgrid.stk .tile .newtag { top:-4px; left:50%; right:auto; transform:translateX(-50%) rotate(calc(var(--r) * 1deg - 3deg)); background:#d9480f; border-color:#fff; color:#fff; }
+  .rgrid.stk .tile .othertag { bottom:20%; left:-3px; right:auto; transform:rotate(calc(var(--r) * 1deg - 5deg)); }
+  .rgrid.stk .tile .dtag { bottom:7%; right:-3px; transform:rotate(calc(var(--r) * 1deg + 6deg)); }
+  .rgrid.stk .tile .ctag { bottom:7%; left:-3px; transform:rotate(calc(var(--r) * 1deg - 6deg)); background:#fffbe0; }
 </style>
 </head>
 <body>
@@ -1595,7 +1625,18 @@ function renderRecent(obs) {
        : shuffled ? list.sort((a, b) => shuffleKey(a.id, recentSeed) - shuffleKey(b.id, recentSeed))
                   : list.sort((a, b) => recentDate(b).localeCompare(recentDate(a)) || b.id - a.id);
   const PAGE = 60;
-  const gridEl = document.createElement('div'); gridEl.className = 'rgrid';
+  const sticker = cutouts.sticker(); // cut-outs on: sticker layout, in a masonry of columns
+  const gridEl = document.createElement('div'); gridEl.className = 'rgrid' + (sticker ? ' stk' : '');
+  el.classList.toggle('stkmode', sticker);
+  const ncols = innerWidth < 560 ? 2 : innerWidth < 900 ? 3 : 4;
+  let mason = null;
+  const newMason = () => { const m = document.createElement('div'); m.className = 'mason'; m.cols = Array.from({ length: ncols }, () => { const c = document.createElement('div'); c.className = 'mcol'; m.append(c); return c; }); gridEl.append(m); return m; };
+  const place = t => { // into the shortest column so far
+    if (!mason) mason = newMason();
+    let best = mason.cols[0], bh = Infinity;
+    for (const c of mason.cols) { const h = c.offsetHeight || c.children.length * 260; if (h < bh) { bh = h; best = c; } }
+    best.append(t);
+  };
   let shown = 0, lastKey = null;
   el.replaceChildren();
   const moreBtn = document.createElement('button');
@@ -1605,6 +1646,7 @@ function renderRecent(obs) {
     const ph = photosOf(o);
     const t = document.createElement('div');
     t.className = 'tile'; markBrow(t, o.tid, o.id);
+    if (sticker) t.style.setProperty('--r', String((o.id % 7) - 3)); // each sticker sits a little differently
     t.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'View photos');
@@ -1614,6 +1656,11 @@ function renderRecent(obs) {
     im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
     b.append(im);
     cutouts.attach(t, im, sized(ph[0], 'medium'));
+    if (sticker) { // details as stickers on the edges
+      const dt = recentDate(o);
+      if (dt) { const d = document.createElement('span'); d.className = 'dtag'; d.textContent = new Date(dt + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); b.append(d); }
+      if (o._n != null) { const c = document.createElement('span'); c.className = 'ctag'; c.textContent = `${o._n} obs`; b.append(c); }
+    }
     if (ph.length > 1) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `1/${ph.length}`; b.append(n); }
     { const fs = favStats().get(o.tid); if (o._n != null ? (fs && fs.newN > 0) : isNewObs(o)) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.textContent = 'NEW'; b.append(nt); } }
     if (favMode === 'others' && o.ff > 0) { const ot = document.createElement('span'); ot.className = 'othertag'; ot.innerHTML = ic('heart', 12, true) + ' ' + o.ff; ot.title = `Favourited by ${o.ff} other ${o.ff > 1 ? 'people' : 'person'}`; t.append(ot); }
@@ -1636,9 +1683,10 @@ function renderRecent(obs) {
         h.textContent = key ? new Date(key + 'T00:00:00').toLocaleDateString(undefined,
           { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
           : 'Date unknown (use "Re-download observations" to fill in dates)';
-        frag.append(h); lastKey = key;
+        if (sticker) { gridEl.append(h); mason = newMason(); } else frag.append(h);
+        lastKey = key;
       }
-      frag.append(tile(o));
+      if (sticker) place(tile(o)); else frag.append(tile(o));
     }
     shown = Math.min(list.length, shown + PAGE);
     gridEl.append(frag);
@@ -1770,10 +1818,13 @@ const DEFAULT_PHOTO_PROXY = 'https://inat-photos.richardgg.workers.dev/'; // a C
 const getPhotoProxy = () => { try { return (localStorage.getItem('inat_photo_proxy') || '').trim() || DEFAULT_PHOTO_PROXY; } catch { return DEFAULT_PHOTO_PROXY; } };
 const CUT_MODES = [['', 'Off'], ['focus', 'Focus crop'], ['quick', 'Cut-out · quick'], ['ai', 'Cut-out · AI model'], ['sam', 'Cut-out · Segment Anything (centre)']];
 // background-removal models (Hugging Face ids, run in the browser); the last entry takes any id typed in
-const CUT_MODELS = [['Xenova/modnet', 'MODNet'], ['briaai/RMBG-1.4', 'RMBG-1.4'], ['onnx-community/BiRefNet_lite-ONNX', 'BiRefNet lite'], ['onnx-community/ISNet-ONNX', 'IS-Net'], ['custom', 'Other…']];
-let cutModel = 'Xenova/modnet', cutCustom = '';
-try { cutModel = localStorage.getItem('inat_cut_model') || cutModel; cutCustom = localStorage.getItem('inat_cut_custom') || ''; } catch {}
-if (!CUT_MODELS.some(m => m[0] === cutModel)) cutModel = 'Xenova/modnet';
+const CUT_MODELS = [['briaai/RMBG-1.4', 'RMBG-1.4'], ['Xenova/modnet', 'MODNet'], ['onnx-community/BiRefNet_lite-ONNX', 'BiRefNet lite'], ['onnx-community/ISNet-ONNX', 'IS-Net'], ['custom', 'Other…']];
+let cutModel = 'briaai/RMBG-1.4', cutCustom = ''; // RMBG-1.4 turned out the most reliable on real photos
+try {
+  if (localStorage.getItem('inat_cut_model_v') !== '2') { localStorage.setItem('inat_cut_model_v', '2'); localStorage.removeItem('inat_cut_model'); } // one-time move to the new default
+  cutModel = localStorage.getItem('inat_cut_model') || cutModel; cutCustom = localStorage.getItem('inat_cut_custom') || '';
+} catch {}
+if (!CUT_MODELS.some(m => m[0] === cutModel)) cutModel = 'briaai/RMBG-1.4';
 let cutMode = ''; try { cutMode = localStorage.getItem('inat_cut') || ''; } catch {} if (!CUT_MODES.some(m => m[0] === cutMode)) cutMode = '';
 let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite) | 'others' (faved by other users) | 'theirs' / 'mine' (someone else's account: their favourites / ones I faved)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
@@ -3841,19 +3892,36 @@ const cutouts = (() => {
     return mode === 'focus' ? focusCrop(img, seg) : quickCut(img, seg);
   }
 
+  // ---- sticker: a thick white outline round the cut-out (the shadow outside it is CSS on the image) ----
+  async function makeSticker(blob) {
+    const bmp = await createImageBitmap(blob), w = bmp.width, h = bmp.height, p = Math.max(6, Math.round(Math.max(w, h) * 0.04));
+    const sil = document.createElement('canvas'); sil.width = w; sil.height = h;
+    const sg = sil.getContext('2d'); sg.drawImage(bmp, 0, 0); sg.globalCompositeOperation = 'source-in'; sg.fillStyle = '#fff'; sg.fillRect(0, 0, w, h);
+    const c = document.createElement('canvas'); c.width = w + 2 * p; c.height = h + 2 * p;
+    const g = c.getContext('2d');
+    for (const [r, n] of [[p, 36], [p * 0.66, 24], [p * 0.33, 16]]) for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; g.drawImage(sil, p + Math.cos(a) * r, p + Math.sin(a) * r); }
+    g.drawImage(bmp, p, p);
+    return toBlob(c, 'image/webp', 0.92);
+  }
   // ---- tiles: processed when they scroll into view, a couple at a time ----
   const io = new IntersectionObserver(entries => {
     for (const e of entries) if (e.isIntersecting) { io.unobserve(e.target); const it = itemOf.get(e.target); if (it) { queue.push(it); pump(); } }
   }, { rootMargin: '400px' });
   function note() { const n = $('cutnote'); if (n) n.textContent = cutMode ? `${done} shown (${fromSaved} from saved copies, ${madeNow} made now)${failed ? `, ${failed} without a clear subject` : ''}. Cut-outs are made as photos scroll into view.` : ''; }
   async function run(it) {
-    const mode = it.mode, key = `cut:${it.key}:${it.url}`;
+    const mode = it.mode; let key = `cut:${it.key}:${it.url}`;
     let blob = memory.get(key) || await idb.get(key), saved = !!blob;
     if (!blob) {
       const img = await readable(it.url);
       blob = img ? await compute(mode, img, it.model) : null; // the model the tile was queued with, even if another has been picked since
       if (!blob) { failed++; it.tile.classList.remove('cutwait'); it.tile.classList.add('cutfail'); note(); return; }
       memory.set(key, blob); idb.set(key, blob);
+    }
+    if (ctl.sticker()) { // the sticker version (outline added) is saved too, so it is made once
+      const skey = `stk1:${it.key}:${it.url}`;
+      let sb = memory.get(skey) || await idb.get(skey);
+      if (!sb) { sb = await makeSticker(blob).catch(() => null); if (sb) { memory.set(skey, sb); idb.set(skey, sb); } }
+      if (sb) { blob = sb; key = skey; }
     }
     if (!it.tile.isConnected || it.key !== keyOf()) return;
     let u = objUrls.get(key); if (!u) { u = URL.createObjectURL(blob); objUrls.set(key, u); }
@@ -3879,6 +3947,7 @@ const cutouts = (() => {
     queue.length = 0; done = 0; failed = 0; fromSaved = 0; madeNow = 0;
     ctl.drawPanel(); drawChips(); show(true);
   };
+  ctl.sticker = () => cutMode === 'quick' || cutMode === 'ai' || cutMode === 'sam';
   ctl.label = () => cutMode === 'ai' ? `Cut-out · AI · ${modelName()}` : CUT_MODES.find(m => m[0] === cutMode)[1];
   ctl.drawPanel = () => {
     const box = $('cutchips'); box.replaceChildren();
@@ -3900,7 +3969,7 @@ const cutouts = (() => {
   };
   $('cutcustom').onchange = () => { cutCustom = $('cutcustom').value.trim(); try { localStorage.setItem('inat_cut_custom', cutCustom); } catch {} queue.length = 0; drawChips(); show(true); }; // (the panel is not redrawn here, or a tap that caused this change would be lost)
   $('cutclear').onclick = async () => {
-    const keys = (await idb.keys()).filter(k => typeof k === 'string' && k.startsWith('cut:'));
+    const keys = (await idb.keys()).filter(k => typeof k === 'string' && (k.startsWith('cut:') || k.startsWith('stk1:')));
     for (const k of keys) await idb.del(k);
     memory.clear(); for (const u of objUrls.values()) URL.revokeObjectURL(u); objUrls.clear();
     toast(`${keys.length} saved cut-outs cleared`); show(true);
@@ -4758,7 +4827,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build cut-33 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build sticker-34 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

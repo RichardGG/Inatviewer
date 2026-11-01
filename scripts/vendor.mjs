@@ -15,6 +15,8 @@ const copies = [
   [join(nm, '@huggingface/transformers/dist/transformers.min.js'), 'transformers/transformers.min.js'],
   [join(nm, '@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.mjs'), 'transformers/ort-wasm-simd-threaded.jsep.mjs'],
   [join(nm, '@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.wasm'), 'transformers/ort-wasm-simd-threaded.jsep.wasm'],
+  [join(nm, '@fontsource/caveat/files/caveat-latin-700-normal.woff2'), 'fonts/caveat-latin-700-normal.woff2'],
+  [join(nm, '@fontsource/caveat/files/caveat-latin-ext-700-normal.woff2'), 'fonts/caveat-latin-ext-700-normal.woff2'],
 ];
 rmSync(out, { recursive: true, force: true });
 for (const [from, to] of copies) {
