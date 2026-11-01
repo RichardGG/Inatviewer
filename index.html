@@ -359,8 +359,9 @@
   .rgrid.pol .tile:hover { transform:rotate(0deg) scale(1.03); z-index:4; }
   .rgrid.pol .tile .pic { position:relative; inset:auto; display:block; width:100%; height:auto; aspect-ratio:1; background:#d9d9d2; overflow:hidden; cursor:pointer; }
   .rgrid.pol .tile img { width:100%; height:100%; object-fit:cover; display:block; }
-  .rgrid.pol .tile .cap { position:static; display:block; background:none; text-shadow:none; color:#252a33; padding:0 4px; height:54px; line-height:54px; text-align:center;
-                          font:700 24px/54px 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transform:rotate(-1deg); }
+  .rgrid.pol .tile .cap { position:static; display:flex; align-items:center; justify-content:center; background:none; text-shadow:none; color:#252a33; padding:0 5px; height:58px; line-height:1.02; text-align:center;
+                          font:700 26px/1.02 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; white-space:normal; overflow:hidden; transform:rotate(-1deg); }
+  .rgrid.pol .tile .cap span { display:block; max-width:100%; word-break:break-word; }
   .rgrid.pol .tile .cap:hover { text-decoration:none; color:#1f5a2a; }
   /* Recent with cut-outs: stickers (white outline, shadow outside) in a masonry, no card box */
   #recent.stkmode { background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
@@ -1625,6 +1626,16 @@ function uniqueSpecies(obs) {
 }
 const recentDate = o => o._last ?? o.date ?? '';
 
+// Polaroid titles: the handwriting wraps onto more lines and shrinks until the whole name fits the strip.
+function fitCaption(cap) {
+  const span = cap.firstElementChild;
+  if (!span || !cap.clientHeight) return; // not laid out yet (hidden tab): the observer below calls this again when it is
+  let size = 26;
+  cap.style.fontSize = size + 'px';
+  while (span.scrollHeight > cap.clientHeight + 1 && size > 12) { size -= 1; cap.style.fontSize = size + 'px'; }
+}
+const capObserver = new ResizeObserver(es => { for (const e of es) fitCaption(e.target); });
+if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('.rgrid.pol .tile .cap').forEach(fitCaption));
 function renderRecent(obs) {
   const el = $('recent');
   const shuffled = recentSeed != null;
@@ -1679,6 +1690,7 @@ function renderRecent(obs) {
     cap.className = 'cap'; cap.textContent = o.common || o.name;
     cap.href = `https://www.inaturalist.org/taxa/${o.tid}`; cap.target = '_blank'; cap.rel = 'noopener';
     speciesLink(cap, o.tid);
+    if (pol) { const sp = document.createElement('span'); sp.textContent = cap.textContent; cap.replaceChildren(sp); capObserver.observe(cap); }
     t.append(b, cap);
     return t;
   }
@@ -4897,7 +4909,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build polaroid-40 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build polaroid-41 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
