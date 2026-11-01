@@ -362,7 +362,7 @@
   @media (min-width:1100px) { .pgrid { --cols:5; } }
   @media (min-width:1400px) { .pgrid { --cols:6; } }
   .cell { min-width:0; display:flex; flex-direction:column; justify-content:flex-end; scroll-margin-top:calc(var(--bar-h, 0px) + 60px); }
-  .cell .tags { display:flex; flex-flow:row wrap; align-items:flex-end; gap:0; margin:0 0 6px; width:calc(var(--span, 1) * 100% + (var(--span, 1) - 1) * var(--gx, 14px)); position:relative; z-index:3; }
+  .cell .tags { display:flex; flex-flow:row wrap; align-items:flex-end; gap:0; margin:0 0 6px; padding-top:6px; width:calc(var(--span, 1) * 100% + (var(--span, 1) - 1) * var(--gx, 14px)); position:relative; z-index:3; }
   .pgrid .tile { position:relative; aspect-ratio:auto; background:#fbfaf4; border-radius:3px; overflow:visible; padding:9px 9px 0;
                  box-shadow:0 4px 12px rgba(0,0,0,.38), 0 1px 2px rgba(0,0,0,.28); transform:rotate(var(--rot, 0deg)); transition:transform .15s; }
   .pgrid .tile:hover { transform:rotate(0deg) scale(1.03); z-index:4; }
@@ -381,7 +381,7 @@
   .tag small.sci { font-style:italic; }
   .tag::after { content:'▾'; position:absolute; right:7px; top:6px; font-size:11px; opacity:.45; }
   .tag.col::after { content:'▸'; }
-  .tag.sm { padding:3px 18px 3px 8px; }
+  .tag.sm { padding:3px 18px 9px 8px; margin-top:-6px; } /* wrapped rows overlap: the next row's rounded corners show the tab behind */
   .tag.sm b { display:inline; font-size:14px; } .tag.sm small { display:inline; margin:0 0 0 6px; font-size:10px; }
   .tag.sm::after { top:3px; right:5px; }
   .tag:active { filter:brightness(.94); }
@@ -396,7 +396,7 @@
   @media (max-width:480px) { #iconbar .ib.tb { width:36px; } }
   #pathbar { position:sticky; top:var(--bar-h, 0px); height:0; z-index:55; transition:top .2s; }
   #pathbar[hidden] { display:none; }
-  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; flex-wrap:wrap; gap:0; padding:6px 8px 8px; background:linear-gradient(var(--card) 70%, transparent); }
+  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; flex-wrap:wrap; gap:0; padding:12px 8px 8px; background:linear-gradient(var(--card) 70%, transparent); }
   #pathbar .tag { max-width:100%; }
 </style>
 </head>
@@ -1581,7 +1581,7 @@ function drawGallery() {
     if (n >= gal.limit) break;
     const cell = document.createElement('div'); cell.className = 'cell'; cell.dataset.i = i;
     const tags = it.starts.filter(g => k < 0 || it.path.indexOf(g) <= k);
-    if (tags.length) { const box = document.createElement('div'); box.className = 'tags'; tags.forEach(g => box.append(tagEl(g, false))); cell.append(box); }
+    if (tags.length) { const box = document.createElement('div'); box.className = 'tags'; tags.forEach(g => box.append(tagEl(g, true))); cell.append(box); }
     cell.append(k < 0 ? polTile(it.o) : stackEl(it.path[k]));
     grid.append(cell); n++;
     gal.cells.push({ el: cell, tagGroups: tags, path: k < 0 ? it.path : it.path.slice(0, k + 1) });
@@ -4516,7 +4516,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-6 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-7 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
