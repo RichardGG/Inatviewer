@@ -1819,13 +1819,16 @@ const addScript = src => new Promise((res, rej) => {
   s.src = src; s.onload = res; s.onerror = () => rej(new Error(`failed to load ${src}`));
   document.head.append(s);
 });
+// The deploy workflow puts pinned copies of the libraries in vendor/ (see .github/workflows/pages.yml); without a build the same versions come from the CDNs.
+const VENDOR = 'vendor/';
 async function ensureLeaflet() {
   if (window.L && L.markerClusterGroup) return;
-  log('loading Leaflet from cdnjs');
-  addCss(LEAFLET + 'leaflet.css');
-  addCss(CLUSTER + 'MarkerCluster.css'); addCss(CLUSTER + 'MarkerCluster.Default.css');
-  await addScript(LEAFLET + 'leaflet.js');
-  await addScript(CLUSTER + 'leaflet.markercluster.js');
+  let lbase = VENDOR + 'leaflet/', cbase = VENDOR + 'leaflet.markercluster/';
+  try { await addScript(lbase + 'leaflet.js'); log('Leaflet from vendor/'); }
+  catch { lbase = LEAFLET; cbase = CLUSTER; log('loading Leaflet from cdnjs'); await addScript(lbase + 'leaflet.js'); }
+  addCss(lbase + 'leaflet.css');
+  addCss(cbase + 'MarkerCluster.css'); addCss(cbase + 'MarkerCluster.Default.css');
+  await addScript(cbase + 'leaflet.markercluster.js');
 }
 
 function setArea(a) {
@@ -3568,7 +3571,7 @@ $('tree').addEventListener('toggle', scheduleExpCol, true); // toggle doesn't bu
 //   focus: crop square around the main subject      quick: subject cut out by colour contrast with the photo's edges
 //   ai:    a background-removal model run in the browser (downloads once; not tested against every browser)
 const cutouts = (() => {
-  const AI_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3';
+  const AI_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1'; // fallback when there is no vendor/ copy
   const AI_MODEL = 'Xenova/modnet';
   const ALT = { 'static.inaturalist.org': 'inaturalist-open-data.s3.amazonaws.com', 'inaturalist-open-data.s3.amazonaws.com': 'static.inaturalist.org' };
   const host = u => { try { return new URL(u).hostname; } catch { return '?'; } };
@@ -3741,7 +3744,13 @@ const cutouts = (() => {
   const modelId = () => cutModel === 'custom' ? cutCustom.trim() : cutModel;
   const modelName = () => cutModel === 'custom' ? (cutCustom.trim() || 'custom model') : CUT_MODELS.find(m => m[0] === cutModel)[1];
   let tfModule = null;
-  const loadTf = () => tfModule || (tfModule = import(AI_URL).then(m => { m.env.allowLocalModels = false; return m; }));
+  const loadTf = () => tfModule || (tfModule = (async () => {
+    let m, base = new URL(VENDOR + 'transformers/', location.href).href;
+    try { m = await import(base + 'transformers.min.js'); m.env.backends.onnx.wasm.wasmPaths = base; log('AI library from vendor/'); } // pinned copy served by this site
+    catch (e) { log(`cut-outs: no local AI library (${e && e.message || e}); using the CDN copy`, 'w'); m = await import(AI_URL); }
+    m.env.allowLocalModels = false;
+    return m;
+  })());
   const pipes = new Map(), broken = new Set();
   const fail = (what, e) => { broken.add(what); log(`cut-outs: ${what} could not be loaded: ${e && e.message || e}`, 'e'); toast(`The ${what} model could not be loaded here`); };
   function getPipe(id) {
@@ -4341,7 +4350,7 @@ const web = (() => {
 // the most observed species in each country (one request each, remembered for a month); "Mine" counts your own observations per country.
 const world = (() => {
   const root = $('world'), ctl = { isOpen: false };
-  const TOPO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json';
+  const TOPO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json'; // fallback when there is no vendor/ copy
   const TTL = 30 * 864e5;
   const GROUPS = [['', 'All animals'], ...EXP_CLASSES.slice(0, 8)];
   // the data file abbreviates some names; iNaturalist spells others differently
@@ -4406,8 +4415,8 @@ const world = (() => {
     if (geo.length) return;
     let topo = await idb.get('worldgeo');
     if (!topo) {
-      log(`GET ${TOPO_URL}`);
-      const res = await fetch(TOPO_URL);
+      let res = await fetch(VENDOR + 'world-atlas/countries-110m.json').catch(() => null);
+      if (!res || !res.ok) { log(`GET ${TOPO_URL}`); res = await fetch(TOPO_URL); }
       if (!res.ok) throw new Error(`country shapes: ${res.status}`);
       topo = await res.json(); await idb.set('worldgeo', topo);
     }
@@ -4740,7 +4749,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build cut-29 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build cut-30 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

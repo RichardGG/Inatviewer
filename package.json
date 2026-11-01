@@ -1,0 +1,14 @@
+{
+  "name": "inat-viewer",
+  "private": true,
+  "description": "Static iNaturalist viewer. These packages are not committed: the Pages workflow installs them (exact versions, checksums in package-lock.json) and copies the needed files into vendor/ when it builds the site.",
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "3.8.1",
+    "leaflet": "1.9.4",
+    "leaflet.markercluster": "1.5.3",
+    "world-atlas": "2.0.2"
+  }
+}

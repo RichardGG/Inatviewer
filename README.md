@@ -6,7 +6,12 @@ taxonomic tree (kingdom → genus → species), so closely related species sit t
 
 The token is cached in `localStorage`; observations and taxonomy are cached in IndexedDB so repeat visits render instantly and only fetch new observations. A debug log is available on the page.
 
-Enable Pages: Settings → Pages → Deploy from branch `main` / root.
+Enable Pages: Settings → Pages → Build and deployment → Source: **GitHub Actions**. The workflow in `.github/workflows/pages.yml` installs the
+pinned third-party packages from `package-lock.json` (`npm ci --ignore-scripts`), copies the few files the page needs into `vendor/`
+(`scripts/vendor.mjs`: Leaflet, markercluster, the country shapes, the AI library and its wasm engine), and deploys the site. `vendor/` is
+not committed. Without a build (opening `index.html` directly, or Pages set to deploy from the branch) the page falls back to the same
+pinned versions on the CDNs. To change a version: edit `package.json`, run `npm install --ignore-scripts`, commit `package-lock.json`.
+To try the vendored copy locally: `npm ci --ignore-scripts && npm run vendor`, then serve the folder.
 
 ## Login
 
