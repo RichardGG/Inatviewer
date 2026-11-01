@@ -508,6 +508,7 @@
           <div id="cutmodels" class="clsrow" role="group" aria-label="AI model"></div>
           <input id="cutcustom" spellcheck="false" placeholder="Hugging Face model id, e.g. org/name" hidden style="width:100%;margin-top:6px;padding:7px;font:12px monospace;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">
         </div>
+        <label class="status" style="display:block;margin-top:8px"><input type="checkbox" id="cutenh"> Brighten dark photos (raises brightness, contrast and saturation in proportion to how dark the animal is)</label>
         <p class="status" id="cutnote" style="margin:8px 0 0"></p>
         <button class="secondary" id="cutclear" style="margin-top:8px">Clear saved cut-outs</button>
       </div>
@@ -1811,6 +1812,7 @@ try {
   cutModel = localStorage.getItem('inat_cut_model') || cutModel; cutCustom = localStorage.getItem('inat_cut_custom') || '';
 } catch {}
 if (!CUT_MODELS.some(m => m[0] === cutModel)) cutModel = 'briaai/RMBG-1.4';
+let cutEnh = true; try { cutEnh = localStorage.getItem('inat_cut_enh') !== '0'; } catch {} // brighten dark photos
 let cutMode = ''; try { cutMode = localStorage.getItem('inat_cut') || ''; } catch {} if (!CUT_MODES.some(m => m[0] === cutMode)) cutMode = '';
 let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite) | 'others' (faved by other users) | 'theirs' / 'mine' (someone else's account: their favourites / ones I faved)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
@@ -3625,7 +3627,8 @@ const cutouts = (() => {
   const memory = new Map(), objUrls = new Map(), itemOf = new Map();
   const queue = [];
   let running = 0, done = 0, failed = 0, fromSaved = 0, madeNow = 0;
-  const keyOf = () => cutMode === 'ai' ? `ai:${modelId()}` : cutMode; // what a saved cut-out depends on
+  const baseOf = () => cutMode === 'ai' ? `ai:${modelId()}` : cutMode; // what a saved cut-out depends on
+  const keyOf = () => baseOf() + (cutEnh ? '+e' : '');                 // ...and what is shown (brightened or not)
   const ctl = { setMode: null, attach: null, drawPanel: null };
 
   // ---- reading the pixels ----
@@ -3878,6 +3881,31 @@ const cutouts = (() => {
     return mode === 'focus' ? focusCrop(img, seg) : quickCut(img, seg);
   }
 
+  // ---- dark photos: brightness, contrast and saturation are raised in proportion to how dark the subject is ----
+  const DARK_BELOW = 0.42;
+  async function enhance(blob) {
+    const bmp = await createImageBitmap(blob), c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(bmp, 0, 0);
+    const img = g.getImageData(0, 0, c.width, c.height), d = img.data;
+    let sum = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 128) { sum += (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / 255; n++; }
+    if (!n) return null;
+    const mean = sum / n;
+    if (mean >= DARK_BELOW) return null; // bright enough: leave it alone
+    const k = Math.min(1, (DARK_BELOW - mean) / 0.28);                         // 0 (just under the limit) .. 1 (very dark)
+    const target = Math.min(0.5, mean + 0.6 * (0.5 - mean)), gamma = Math.max(0.5, Math.min(1, Math.log(target) / Math.log(Math.max(mean, 0.02))));
+    const contrast = 1 + 0.18 * k, sat = 1 + 0.35 * k, lut = new Uint8ClampedArray(256);
+    for (let v = 0; v < 256; v++) lut[v] = Math.round(255 * Math.min(1, Math.max(0, (Math.pow(v / 255, gamma) - 0.5) * contrast + 0.5)));
+    for (let i = 0; i < d.length; i += 4) {
+      if (!d[i + 3]) continue;
+      const r = lut[d[i]], gg = lut[d[i + 1]], b = lut[d[i + 2]], l = 0.299 * r + 0.587 * gg + 0.114 * b;
+      d[i] = Math.min(255, Math.max(0, l + (r - l) * sat)); d[i + 1] = Math.min(255, Math.max(0, l + (gg - l) * sat)); d[i + 2] = Math.min(255, Math.max(0, l + (b - l) * sat));
+    }
+    g.putImageData(img, 0, 0);
+    log(`cut-outs: brightened a dark photo (average ${mean.toFixed(2)} → about ${target.toFixed(2)})`);
+    return toBlob(c, blob.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp', 0.92);
+  }
+  ctl.enhance = enhance;
   // ---- sticker: a thick white outline round the cut-out (the shadow outside it is CSS on the image) ----
   async function makeSticker(blob) {
     const bmp = await createImageBitmap(blob), w = bmp.width, h = bmp.height, p = Math.max(6, Math.round(Math.max(w, h) * 0.04));
@@ -3895,7 +3923,7 @@ const cutouts = (() => {
   }, { rootMargin: '400px' });
   function note() { const n = $('cutnote'); if (n) n.textContent = cutMode ? `${done} shown (${fromSaved} from saved copies, ${madeNow} made now)${failed ? `, ${failed} without a clear subject` : ''}. Cut-outs are made as photos scroll into view.` : ''; }
   async function run(it) {
-    const mode = it.mode; let key = `cut:${it.key}:${it.url}`;
+    const mode = it.mode; let key = `cut:${it.base}:${it.url}`;
     let blob = memory.get(key) || await idb.get(key), saved = !!blob;
     if (!blob) {
       const img = await readable(it.url);
@@ -3903,8 +3931,14 @@ const cutouts = (() => {
       if (!blob) { failed++; it.tile.classList.remove('cutwait'); it.tile.classList.add('cutfail'); note(); return; }
       memory.set(key, blob); idb.set(key, blob);
     }
+    if (it.enh) { // dark photos are brightened (saved as a separate copy; {same: true} means it did not need it)
+      const ekey = `enh1:${it.base}:${it.url}`;
+      let eb = memory.get(ekey) || await idb.get(ekey);
+      if (!eb) { const r = await enhance(blob).catch(() => null); eb = r || { same: true }; memory.set(ekey, eb); idb.set(ekey, eb); }
+      if (eb instanceof Blob) { blob = eb; key = ekey; }
+    }
     if (ctl.sticker()) { // the sticker version (outline added) is saved too, so it is made once
-      const skey = `stk1:${it.key}:${it.url}`;
+      const skey = `stk1${it.enh ? 'e' : ''}:${it.base}:${it.url}`;
       let sb = memory.get(skey) || await idb.get(skey);
       if (!sb) { sb = await makeSticker(blob).catch(() => null); if (sb) { memory.set(skey, sb); idb.set(skey, sb); } }
       if (sb) { blob = sb; key = skey; }
@@ -3925,7 +3959,7 @@ const cutouts = (() => {
   ctl.attach = (tile, im, url) => {
     if (!cutMode) return;
     tile.classList.add('cutwait');
-    itemOf.set(tile, { tile, im, url, mode: cutMode, model: modelId(), key: keyOf() });
+    itemOf.set(tile, { tile, im, url, mode: cutMode, model: modelId(), base: baseOf(), enh: cutEnh, key: keyOf() });
     io.observe(tile);
   };
   ctl.setMode = m => {
@@ -3951,11 +3985,13 @@ const cutouts = (() => {
       mb.append(b);
     }
     const ci = $('cutcustom'); ci.hidden = cutModel !== 'custom'; ci.value = cutCustom;
+    $('cutenh').checked = cutEnh;
     note();
   };
+  $('cutenh').onchange = () => { cutEnh = $('cutenh').checked; try { localStorage.setItem('inat_cut_enh', cutEnh ? '1' : '0'); } catch {} queue.length = 0; done = 0; failed = 0; fromSaved = 0; madeNow = 0; show(true); };
   $('cutcustom').onchange = () => { cutCustom = $('cutcustom').value.trim(); try { localStorage.setItem('inat_cut_custom', cutCustom); } catch {} queue.length = 0; drawChips(); show(true); }; // (the panel is not redrawn here, or a tap that caused this change would be lost)
   $('cutclear').onclick = async () => {
-    const keys = (await idb.keys()).filter(k => typeof k === 'string' && (k.startsWith('cut:') || k.startsWith('stk1:')));
+    const keys = (await idb.keys()).filter(k => typeof k === 'string' && (k.startsWith('cut:') || k.startsWith('stk1') || k.startsWith('enh1:')));
     for (const k of keys) await idb.del(k);
     memory.clear(); for (const u of objUrls.values()) URL.revokeObjectURL(u); objUrls.clear();
     toast(`${keys.length} saved cut-outs cleared`); show(true);
@@ -4813,7 +4849,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build sticker-35 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build sticker-36 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
