@@ -362,8 +362,8 @@
   @media (min-width:1100px) { .pgrid { --cols:5; } }
   @media (min-width:1400px) { .pgrid { --cols:6; } }
   .cell { min-width:0; display:flex; flex-direction:column; justify-content:flex-end; scroll-margin-top:calc(var(--bar-h, 0px) + 60px); }
-  .cell .tags { display:flex; flex-flow:row wrap; align-items:flex-end; gap:0; margin:0 0 6px; padding-top:6px; width:calc(var(--span, 1) * 100% + (var(--span, 1) - 1) * var(--gx, 14px)); position:relative; z-index:3; }
-  .pgrid .tile { position:relative; aspect-ratio:auto; background:#fbfaf4; border-radius:3px; overflow:visible; padding:9px 9px 0;
+  .cell .tags { display:flex; flex-flow:row wrap; align-items:flex-end; gap:0; margin:0 0 -9px; padding-top:6px; width:calc(var(--span, 1) * 100% + (var(--span, 1) - 1) * var(--gx, 14px)); position:relative; z-index:3; }
+  .pgrid .tile { position:relative; z-index:4; aspect-ratio:auto; background:#fbfaf4; border-radius:3px; overflow:visible; padding:9px 9px 0;
                  box-shadow:0 4px 12px rgba(0,0,0,.38), 0 1px 2px rgba(0,0,0,.28); transform:rotate(var(--rot, 0deg)); transition:transform .15s; }
   .pgrid .tile:hover { transform:rotate(0deg) scale(1.03); z-index:4; }
   .pgrid .tile .pic { position:relative; inset:auto; display:block; width:100%; height:auto; aspect-ratio:1; background:#d9d9d2; overflow:hidden; cursor:pointer; }
@@ -379,14 +379,14 @@
   .tag b { display:block; font-weight:400; font-size:17px; line-height:1.1; overflow-wrap:anywhere; }
   .tag small { display:block; margin-top:2px; font-size:11px; opacity:.72; overflow-wrap:anywhere; }
   .tag small.sci { font-style:italic; }
-  .tag.sm { padding:3px 8px 9px; margin-top:-6px; } /* wrapped rows overlap: the next row's rounded corners show the tab behind */
+  .tag.sm { padding:3px 8px 13px; margin-top:-6px; } /* wrapped rows overlap: the next row's rounded corners show the tab behind */
   .tag.sm b { display:block; font-size:14px; } .tag.sm small { display:block; margin:1px 0 0; font-size:10px; }
   .tag:active { filter:brightness(.94); }
   .tag.flash { animation:flash 1.8s ease-out; }
   /* collapsed group: a small pile of overlapping Polaroids */
-  .stack { position:relative; display:block; width:100%; aspect-ratio:1 / 1.08; padding:0; border:0; background:none; cursor:pointer; }
-  .stack .mini { position:absolute; width:50%; aspect-ratio:1 / 1.1; background:#fbfaf4; padding:4px 4px 0; border-radius:2px; box-shadow:0 2px 6px rgba(0,0,0,.4);
-                 left:calc(var(--k) * var(--sx, 17%)); bottom:calc(var(--k) * var(--sy, 7%)); transform:rotate(var(--r, 0deg)); z-index:calc(10 - var(--k)); }
+  .stack { position:relative; z-index:4; display:block; width:100%; aspect-ratio:1 / 1.08; padding:0; border:0; background:none; cursor:pointer; }
+  .stack .mini { position:absolute; width:54%; aspect-ratio:1 / 1.1; background:#fbfaf4; padding:4px 4px 0; border-radius:2px; box-shadow:0 2px 6px rgba(0,0,0,.4);
+                 left:calc(var(--cx) * 46%); top:calc(var(--cy) * 45%); transform:rotate(var(--r, 0deg)); }
   .stack .mini img { width:100%; height:calc(100% - 14px); object-fit:cover; display:block; background:#d9d9d2; }
   .stack .sn { position:absolute; right:0; bottom:0; z-index:9; min-width:24px; padding:2px 7px; border-radius:12px; background:rgba(0,0,0,.72); color:#fff; font-size:12px; text-align:center; }
   /* sticky header: the labels of the group you are in; zero height so showing it never shifts the grid */
@@ -1499,14 +1499,10 @@ function polTile(o) {
   t.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
   const b = document.createElement('button');
   b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'View photos');
-  { const rb = rarityBadge(rarityOf(o)); if (rb) b.append(rb); }
   const im = document.createElement('img');
   im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
   im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
   b.append(im);
-  if (o._n == null && ph.length > 1) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `1/${ph.length}`; b.append(n); }
-  else if (o._n != null) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `${o._n} obs`; b.append(n); }
-  { const fs = favStats().get(o.tid); if (o._n != null ? (fs && fs.newN > 0) : isNewObs(o)) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.textContent = 'NEW'; b.append(nt); } }
   if (favMode === 'others' && o.ff > 0) { const ot = document.createElement('span'); ot.className = 'othertag'; ot.innerHTML = ic('heart', 12, true) + ' ' + o.ff; ot.title = `Favourited by ${o.ff} other ${o.ff > 1 ? 'people' : 'person'}`; t.append(ot); }
   b.onclick = () => openSpecies(o.tid, o);
   const cap = document.createElement('a'); // the name opens the species page on iNaturalist
@@ -1534,12 +1530,11 @@ function tagEl(g, compact) {
 function stackEl(g) {
   const s = document.createElement('button'); s.type = 'button'; s.className = 'stack';
   s.title = `${g.main}: tap to expand every ${g.rank}`; s.setAttribute('aria-label', s.title);
-  const n = g.last - g.first + 1, m = Math.min(n, 3); // three photos sampled evenly across the group
-  const picks = [...new Set(Array.from({ length: m }, (_, j) => g.first + Math.round(j * (n - 1) / Math.max(1, m - 1))))].reverse(); // last is drawn first (underneath)
-  s.style.setProperty('--sx', (60 / Math.max(1, picks.length - 1)) + '%'); s.style.setProperty('--sy', (26 / Math.max(1, picks.length - 1)) + '%');
+  const n = g.last - g.first + 1, m = Math.min(n, 4); // four photos (2 x 2) sampled evenly across the group
+  const picks = [...new Set(Array.from({ length: m }, (_, j) => g.first + Math.round(j * (n - 1) / Math.max(1, m - 1))))];
   picks.forEach((idx, j) => {
     const ph = photosOf(gal.items[idx].o), mini = document.createElement('span');
-    mini.className = 'mini'; mini.style.setProperty('--k', picks.length - 1 - j); mini.style.setProperty('--r', ((shuffleKey(String(idx), 'stk') % 13) - 6) + 'deg');
+    mini.className = 'mini'; mini.style.setProperty('--cx', j % 2); mini.style.setProperty('--cy', j >> 1); mini.style.setProperty('--r', ((shuffleKey(String(idx), 'stk') % 9) - 4) + 'deg');
     const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
     im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
     mini.append(im); s.append(mini);
@@ -4510,7 +4505,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-16 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-17 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
