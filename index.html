@@ -17,7 +17,8 @@
     :root { --bg:#14181a; --fg:#e6ece6; --muted:#8c9a8e; --accent:#7fc45a; --line:#2a3330; --card:#1b2124; }
   }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,sans-serif; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; } /* handwriting everywhere (Caveat); font-size-adjust keeps its small letters readable */
+  button, input, select { font-family:inherit; }
   main { max-width:900px; margin:0 auto; padding:24px 16px 64px; }
   h1 { margin:0; font-size:1.6rem; }
   #acct { border:0; background:transparent; color:var(--muted); }
@@ -344,9 +345,6 @@
                unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   @font-face { font-family:'Caveat'; font-style:normal; font-weight:700; font-display:swap; src:url('vendor/fonts/caveat-latin-ext-700-normal.woff2') format('woff2');
                unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
-  /* clean typewriter for the group labels (Courier Prime, pinned and copied into vendor/ at deploy time) */
-  @font-face { font-family:'Courier Prime'; font-style:normal; font-weight:400; font-display:swap; src:url('vendor/fonts/courier-prime-latin-400-normal.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-  @font-face { font-family:'Courier Prime'; font-style:italic; font-weight:400; font-display:swap; src:url('vendor/fonts/courier-prime-latin-400-italic.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   /* the desk the Polaroids lie on */
   body.stkview { --desk:#e6e0d2; --paper:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .25  0 0 0 0 .2  0 0 0 0 .1  0 0 0 .4 -.1'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"), url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='.012 .03' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .25  0 0 0 0 .15  0 0 0 .32 -.1'/></filter><rect width='100%25' height='100%25' filter='url(%23m)'/></svg>"); background:var(--paper), var(--desk); }
   body.stkview #iconbar { background:#f4f0e6; }
@@ -374,14 +372,14 @@
   .pgrid .tile .cap:hover { text-decoration:none; color:#1f5a2a; }
   /* coloured typewriter stickers; the common name large, the scientific name small underneath */
   .tag { --tc:#ffe27a; --tr:0deg; margin:0; display:inline-block; max-width:100%; text-align:left; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
-         font:400 12px/1.15 'Courier Prime','American Typewriter','Courier New',monospace; color:#eef5e2; padding:6px 9px; border:0; border-radius:10px 30px 0 0 / 10px 100% 0 0; position:relative;
+         font:400 12px/1.15 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; color:#eef5e2; padding:6px 9px; border:0; border-radius:10px 30px 0 0 / 10px 100% 0 0; position:relative;
          background:linear-gradient(180deg, rgba(255,255,255,.4), rgba(255,255,255,0) 35%, rgba(0,0,0,0) 62%, rgba(0,0,0,.26)), var(--tc);
          box-shadow:-5px 0 6px -3px rgba(0,0,0,.4); } /* a folder tab: rounded front, a long curve down the back; each tab overlaps the one before it */
   .tag b { display:block; font-weight:400; font-size:17px; line-height:1.1; overflow-wrap:anywhere; }
   .tag small { display:block; margin-top:2px; font-size:11px; opacity:.72; overflow-wrap:anywhere; }
   .tag small.sci { font-style:italic; }
   .tag.sm { padding:3px 30px 13px 14px; margin:-6px 0 0 -22px; } /* wrapped rows overlap: the next row's angled sides show the tab behind */
-  .tag.sm b { display:block; font-size:14px; } .tag.sm small { display:block; margin:1px 0 0; font-size:10px; }
+  .tag.sm b { display:block; font-size:17px; } .tag.sm small { display:block; margin:0; font-size:13px; }
   .tag:active { filter:brightness(.94); }
   .tag.flash { animation:flash 1.8s ease-out; }
   /* collapsed group: a small pile of overlapping Polaroids */
@@ -4511,7 +4509,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-24 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-25 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

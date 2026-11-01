@@ -14,8 +14,6 @@ const copies = [
   [join(nm, 'world-atlas/countries-110m.json'), 'world-atlas/countries-110m.json'],
   [join(nm, '@fontsource/caveat/files/caveat-latin-700-normal.woff2'), 'fonts/caveat-latin-700-normal.woff2'],
   [join(nm, '@fontsource/caveat/files/caveat-latin-ext-700-normal.woff2'), 'fonts/caveat-latin-ext-700-normal.woff2'],
-  [join(nm, '@fontsource/courier-prime/files/courier-prime-latin-400-normal.woff2'), 'fonts/courier-prime-latin-400-normal.woff2'],
-  [join(nm, '@fontsource/courier-prime/files/courier-prime-latin-400-italic.woff2'), 'fonts/courier-prime-latin-400-italic.woff2'],
 ];
 rmSync(out, { recursive: true, force: true });
 for (const [from, to] of copies) {

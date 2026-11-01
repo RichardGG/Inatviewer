@@ -48,7 +48,7 @@ Cloudflare Worker that forwards only iNaturalist photo addresses (see the code i
 
 Recent, Taxonomy and Place are one **Photos** tab; the sort button (arrows icon) switches between *By date*, *Taxonomy* and *By place*. Every photo is a Polaroid
 (white frame, handwritten name in Caveat, a small random tilt fixed per observation) in one strict grid. A group is not a row in between: its coloured
-typewriter-font label (Courier Prime; common name large, scientific name small) sits above the first Polaroid of the group. Dates are grouped as
+handwriting-font label (Caveat; common name large, scientific name small) sits above the first Polaroid of the group. Dates are grouped as
 [2026][March][5th], taxonomy by rank, places by country/state/county/city.
 
 Tap a label to collapse every group of its level into small overlapping stacks of Polaroids (tap a label or a stack again to expand them all; the group you tapped stays where it is on screen); the button on the right of the icon bar collapses or expands everything. While scrolling, the labels of the group you are in sit side by side
