@@ -53,4 +53,4 @@ photo in IndexedDB (`cut:` keys) and can be cleared from the same panel.
 
 With any cut-out approach except Focus crop, the Recent tab switches to a sticker layout: each animal is a cut-out with a thick white outline and
 a drop shadow, in a masonry of columns (no card boxes), its name in a handwriting font (Caveat, pinned in `package.json` and copied into
-`vendor/fonts/` at deploy time) and the date, photo count and badges as slightly crooked stickers on its edges. RMBG-1.4 is the default AI model.
+`vendor/fonts/` at deploy time) with the small badges hidden. RMBG-1.4 is the default AI model.

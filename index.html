@@ -358,17 +358,8 @@
                           font:700 29px/1 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; transform:rotate(-1.5deg); letter-spacing:.2px;
                           white-space:normal; overflow:visible; text-overflow:clip; -webkit-line-clamp:unset; display:block; word-break:break-word; }
   .rgrid.stk .tile .cap:hover { text-decoration:none; color:var(--accent); }
-  /* the other details are small stickers stuck on the edges, each a little crooked */
-  .rgrid.stk .tile .badge, .rgrid.stk .tile .raretag, .rgrid.stk .tile .newtag, .rgrid.stk .tile .othertag, .rgrid.stk .tile .dtag, .rgrid.stk .tile .ctag {
-    position:absolute; z-index:3; width:auto; height:auto; margin:0; background:#fff; color:#2b2b2b; border:2px solid #fff; border-radius:7px; padding:0 7px;
-    font:700 12px/1.55 system-ui,sans-serif; box-shadow:0 2px 6px rgba(0,0,0,.42); pointer-events:none; white-space:nowrap; }
-  .rgrid.stk .tile .badge { top:4%; right:-3px; bottom:auto; left:auto; transform:rotate(calc(var(--r) * 1deg + 7deg)); }
-  .rgrid.stk .tile .raretag { top:6%; left:-3px; transform:rotate(calc(var(--r) * 1deg - 6deg)); }
-  .rgrid.stk .tile .raretag.concern, .rgrid.stk .tile .raretag.rare, .rgrid.stk .tile .raretag.legend { color:#fff; }
-  .rgrid.stk .tile .newtag { top:-4px; left:50%; right:auto; transform:translateX(-50%) rotate(calc(var(--r) * 1deg - 3deg)); background:#d9480f; border-color:#fff; color:#fff; }
-  .rgrid.stk .tile .othertag { bottom:20%; left:-3px; right:auto; transform:rotate(calc(var(--r) * 1deg - 5deg)); }
-  .rgrid.stk .tile .dtag { bottom:7%; right:-3px; transform:rotate(calc(var(--r) * 1deg + 6deg)); }
-  .rgrid.stk .tile .ctag { bottom:7%; left:-3px; transform:rotate(calc(var(--r) * 1deg - 6deg)); background:#fffbe0; }
+  /* sticker layout shows just the sticker and its name: the small badges (photo count, rarity, NEW, faves) are hidden */
+  .rgrid.stk .tile .badge, .rgrid.stk .tile .raretag, .rgrid.stk .tile .newtag, .rgrid.stk .tile .othertag { display:none; }
 </style>
 </head>
 <body>
@@ -1656,11 +1647,6 @@ function renderRecent(obs) {
     im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
     b.append(im);
     cutouts.attach(t, im, sized(ph[0], 'medium'));
-    if (sticker) { // details as stickers on the edges
-      const dt = recentDate(o);
-      if (dt) { const d = document.createElement('span'); d.className = 'dtag'; d.textContent = new Date(dt + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); b.append(d); }
-      if (o._n != null) { const c = document.createElement('span'); c.className = 'ctag'; c.textContent = `${o._n} obs`; b.append(c); }
-    }
     if (ph.length > 1) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `1/${ph.length}`; b.append(n); }
     { const fs = favStats().get(o.tid); if (o._n != null ? (fs && fs.newN > 0) : isNewObs(o)) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.textContent = 'NEW'; b.append(nt); } }
     if (favMode === 'others' && o.ff > 0) { const ot = document.createElement('span'); ot.className = 'othertag'; ot.innerHTML = ic('heart', 12, true) + ' ' + o.ff; ot.title = `Favourited by ${o.ff} other ${o.ff > 1 ? 'people' : 'person'}`; t.append(ot); }
@@ -4827,7 +4813,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build sticker-34 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build sticker-35 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
