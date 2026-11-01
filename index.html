@@ -3246,6 +3246,17 @@ function show(keepStatus) {
   log(`rendered in ${Math.round(performance.now() - t0)}ms (${species} species)`);
 }
 
+// Ask the browser not to evict this site's saved data (observations, cut-outs...) when space is short, and note the answer in the log.
+async function keepStorage() {
+  try {
+    if (!navigator.storage) return;
+    const persisted = navigator.storage.persisted ? await navigator.storage.persisted() : false;
+    const granted = persisted || (navigator.storage.persist ? await navigator.storage.persist() : false);
+    const est = navigator.storage.estimate ? await navigator.storage.estimate() : {};
+    log(`storage: ${granted ? 'persistent (kept unless you clear site data)' : 'best-effort (the browser may evict it when space is short)'}; using ${((est.usage || 0) / 1048576).toFixed(1)} MB of about ${((est.quota || 0) / 1048576).toFixed(0)} MB`);
+  } catch (e) { log(`storage check failed: ${e.message}`, 'w'); }
+}
+
 // ---------- refresh ----------
 const FIRST_LOAD_CAP = 3000; // someone else's account: newest observations first, the rest on request
 async function refresh({ full = false, retried = false, moreHistory = false } = {}) {
@@ -3576,7 +3587,7 @@ const cutouts = (() => {
   const blocked = new Set();
   const memory = new Map(), objUrls = new Map(), itemOf = new Map();
   const queue = [];
-  let running = 0, done = 0, failed = 0;
+  let running = 0, done = 0, failed = 0, fromSaved = 0, madeNow = 0;
   const keyOf = () => cutMode === 'ai' ? `ai:${modelId()}` : cutMode; // what a saved cut-out depends on
   const ctl = { setMode: null, attach: null, drawPanel: null };
 
@@ -3834,10 +3845,10 @@ const cutouts = (() => {
   const io = new IntersectionObserver(entries => {
     for (const e of entries) if (e.isIntersecting) { io.unobserve(e.target); const it = itemOf.get(e.target); if (it) { queue.push(it); pump(); } }
   }, { rootMargin: '400px' });
-  function note() { const n = $('cutnote'); if (n) n.textContent = cutMode ? `${done} done${failed ? `, ${failed} without a clear subject` : ''} so far. Cut-outs are made as photos scroll into view.` : ''; }
+  function note() { const n = $('cutnote'); if (n) n.textContent = cutMode ? `${done} shown (${fromSaved} from saved copies, ${madeNow} made now)${failed ? `, ${failed} without a clear subject` : ''}. Cut-outs are made as photos scroll into view.` : ''; }
   async function run(it) {
     const mode = it.mode, key = `cut:${it.key}:${it.url}`;
-    let blob = memory.get(key) || await idb.get(key);
+    let blob = memory.get(key) || await idb.get(key), saved = !!blob;
     if (!blob) {
       const img = await readable(it.url);
       blob = img ? await compute(mode, img, it.model) : null; // the model the tile was queued with, even if another has been picked since
@@ -3847,7 +3858,7 @@ const cutouts = (() => {
     if (!it.tile.isConnected || it.key !== keyOf()) return;
     let u = objUrls.get(key); if (!u) { u = URL.createObjectURL(blob); objUrls.set(key, u); }
     it.im.src = u; it.tile.classList.remove('cutwait'); if (mode !== 'focus') it.tile.classList.add('cut');
-    done++; note();
+    done++; if (saved) fromSaved++; else madeNow++; note();
   }
   function pump() {
     const max = cutMode === 'ai' || cutMode === 'sam' ? 1 : 2;
@@ -3865,7 +3876,7 @@ const cutouts = (() => {
   };
   ctl.setMode = m => {
     cutMode = m; try { localStorage.setItem('inat_cut', m); } catch {}
-    queue.length = 0; done = 0; failed = 0;
+    queue.length = 0; done = 0; failed = 0; fromSaved = 0; madeNow = 0;
     ctl.drawPanel(); drawChips(); show(true);
   };
   ctl.label = () => cutMode === 'ai' ? `Cut-out · AI · ${modelName()}` : CUT_MODES.find(m => m[0] === cutMode)[1];
@@ -3881,7 +3892,7 @@ const cutouts = (() => {
     for (const [id, label] of CUT_MODELS) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (cutModel === id ? ' on' : ''); b.textContent = label;
       b.setAttribute('aria-pressed', String(cutModel === id));
-      b.onclick = () => { cutModel = id; try { localStorage.setItem('inat_cut_model', id); } catch {} queue.length = 0; done = 0; failed = 0; ctl.drawPanel(); drawChips(); show(true); };
+      b.onclick = () => { cutModel = id; try { localStorage.setItem('inat_cut_model', id); } catch {} queue.length = 0; done = 0; failed = 0; fromSaved = 0; madeNow = 0; ctl.drawPanel(); drawChips(); show(true); };
       mb.append(b);
     }
     const ci = $('cutcustom'); ci.hidden = cutModel !== 'custom'; ci.value = cutCustom;
@@ -4747,10 +4758,11 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build cut-32 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build cut-33 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
+  keepStorage();
   await loadCache();
   renderPeople();
   drawCmpChips();
