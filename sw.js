@@ -1,8 +1,8 @@
 // Makes iNat Viewer installable and usable offline: the app shell, Leaflet, map tiles and photos are cached.
 // iNaturalist API calls are not handled here; the page keeps its own data in IndexedDB.
 const VER = 'v1';
-const SHELL = `shell-${VER}`, LIBS = `libs-${VER}`, TILES = `tiles-${VER}`, PHOTOS = `photos-${VER}`;
-const KEEP = [SHELL, LIBS, TILES, PHOTOS];
+const SHELL = `shell-${VER}`, TILES = `tiles-${VER}`, PHOTOS = `photos-${VER}`;
+const KEEP = [SHELL, TILES, PHOTOS];
 const SHELL_FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -54,8 +54,6 @@ self.addEventListener('fetch', e => {
   if (u.origin === location.origin) {
     if (u.pathname.endsWith('/sw.js')) return;
     e.respondWith(req.mode === 'navigate' ? shellNav(req) : staleWhileRevalidate(req));
-  } else if (u.hostname === 'cdnjs.cloudflare.com' || u.hostname === 'cdn.jsdelivr.net') { // libraries and the country shapes for the World map
-    e.respondWith(cacheFirst(req, LIBS));
   } else if (u.hostname.endsWith('tile.openstreetmap.org')) {
     e.respondWith(cacheFirst(req, TILES, 600));
   } else if (req.destination === 'image' && /(^|\.)inaturalist(-open-data)?\.(org|s3\.amazonaws\.com)$|inaturalist-open-data\.s3|\.workers\.dev$/.test(u.hostname)) {

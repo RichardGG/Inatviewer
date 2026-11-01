@@ -9,8 +9,8 @@ The token is cached in `localStorage`; observations and taxonomy are cached in I
 Enable Pages: Settings → Pages → Build and deployment → Source: **GitHub Actions**. The workflow in `.github/workflows/pages.yml` installs the
 pinned third-party packages from `package-lock.json` (`npm ci --ignore-scripts`), copies the few files the page needs into `vendor/`
 (`scripts/vendor.mjs`: Leaflet, markercluster, the country shapes, the AI library and its wasm engine), and deploys the site. `vendor/` is
-not committed. Without a build (opening `index.html` directly, or Pages set to deploy from the branch) the page falls back to the same
-pinned versions on the CDNs. To change a version: edit `package.json`, run `npm install --ignore-scripts`, commit `package-lock.json`.
+not committed. There is no CDN fallback: the maps and AI cut-outs need `vendor/`, so Pages must use the GitHub Actions source (a plain
+branch deploy, or opening `index.html` directly, has no `vendor/` and those features report the missing file). To change a version: edit `package.json`, run `npm install --ignore-scripts`, commit `package-lock.json`.
 To try the vendored copy locally: `npm ci --ignore-scripts && npm run vendor`, then serve the folder.
 
 ## Login
