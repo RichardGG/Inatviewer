@@ -51,5 +51,5 @@ Recent, Taxonomy and Place are one **Photos** tab; the sort button (arrows icon)
 typewriter-font label (Courier Prime; common name large, scientific name small) sits above the first Polaroid of the group. Dates are grouped as
 [2026][March][5th], taxonomy by rank, places by country/state/county/city.
 
-Tap a label to collapse every group of its level into small overlapping stacks of Polaroids (tap again to expand them; tapping a stack expands just that one); hold a label to collapse or expand only that group; the button on the right of the icon bar collapses or expands everything. While scrolling, the labels of the group you are in sit side by side
+Tap a label to collapse every group of its level into small overlapping stacks of Polaroids (tap a label or a stack again to expand them all; the group you tapped stays where it is on screen); the button on the right of the icon bar collapses or expands everything. While scrolling, the labels of the group you are in sit side by side
 (wrapping onto more lines) in a sticky header under the icon bar. Fonts are pinned in `package.json` and copied into `vendor/fonts/` at deploy time.

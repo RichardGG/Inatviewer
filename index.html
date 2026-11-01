@@ -367,7 +367,7 @@
                  box-shadow:0 4px 12px rgba(0,0,0,.38), 0 1px 2px rgba(0,0,0,.28); transform:rotate(var(--rot, 0deg)); transition:transform .15s; }
   .pgrid .tile:hover { transform:rotate(0deg) scale(1.03); z-index:4; }
   .pgrid .tile .pic { position:relative; inset:auto; display:block; width:100%; height:auto; aspect-ratio:1; background:#d9d9d2; overflow:hidden; cursor:pointer; }
-  .pgrid .tile img { width:100%; height:100%; object-fit:cover; display:block; }
+  .pgrid .tile img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; } /* out of flow, so whether a photo has loaded never changes the layout */
   .pgrid .tile .cap { position:static; display:flex; align-items:center; justify-content:center; background:none; text-shadow:none; color:#252a33; padding:0 5px; height:58px; line-height:1.02; text-align:center;
                       font:700 26px/1.02 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; white-space:normal; overflow:hidden; transform:rotate(-1deg); }
   .pgrid .tile .cap span { display:block; max-width:100%; word-break:break-word; }
@@ -1450,7 +1450,7 @@ function treeItems(root, meta) {
     }
     for (const [ch, rank] of groups) {
       const t = meta.get(ch.id);
-      walk(ch, [...path, mkGroup(ch.id, rank, path.length, ucfirst(t?.common || t?.name || `#${ch.id}`), t?.common ? (t.name || '') : '')]);
+      walk(ch, [...path, mkGroup((path.length ? path[path.length - 1].key + '/' : '') + ch.id, rank, path.length, ucfirst(t?.common || t?.name || `#${ch.id}`), t?.common ? (t.name || '') : '')]);
     }
   }
   walk(root, []);
@@ -1525,7 +1525,7 @@ function tagEl(g, compact) {
   b.dataset.key = g.key; b.dataset.rank = g.rank;
   b.style.setProperty('--tc', TAG_COLORS[g.depth % TAG_COLORS.length]);
   b.style.setProperty('--tr', ((shuffleKey(g.key, 'tag') % 5 - 2) * 0.7).toFixed(1) + 'deg');
-  b.title = `${g.rank}: ${g.main}${g.sub ? ' (' + g.sub + ')' : ''} · tap to ${isCol ? 'expand' : 'collapse'} every ${g.rank}, hold for just this one`;
+  b.title = `${g.rank}: ${g.main}${g.sub ? ' (' + g.sub + ')' : ''} · tap to ${isCol ? 'expand' : 'collapse'} every ${g.rank}`;
   const m = document.createElement('b'); m.textContent = g.main; b.append(m);
   if (g.sub) { const s = document.createElement('small'); s.textContent = g.sub; if (gal.sort === 'tree') s.className = 'sci'; b.append(s); }
   return b;
@@ -1533,7 +1533,7 @@ function tagEl(g, compact) {
 // A collapsed group: up to three of its photos as a small overlapping pile.
 function stackEl(g) {
   const s = document.createElement('button'); s.type = 'button'; s.className = 'stack';
-  s.title = `${g.main}: tap to show its photos`; s.setAttribute('aria-label', s.title);
+  s.title = `${g.main}: tap to expand every ${g.rank}`; s.setAttribute('aria-label', s.title);
   const n = g.last - g.first + 1, m = Math.min(n, 3); // three photos sampled evenly across the group
   const picks = [...new Set(Array.from({ length: m }, (_, j) => g.first + Math.round(j * (n - 1) / Math.max(1, m - 1))))].reverse(); // last is drawn first (underneath)
   s.style.setProperty('--sx', (60 / Math.max(1, picks.length - 1)) + '%'); s.style.setProperty('--sy', (26 / Math.max(1, picks.length - 1)) + '%');
@@ -1545,7 +1545,7 @@ function stackEl(g) {
     mini.append(im); s.append(mini);
   });
   const c = document.createElement('span'); c.className = 'sn'; c.textContent = n; s.append(c);
-  s.onclick = () => toggleGroup(g.key, false);
+  s.onclick = () => toggleRank(g.key, false);
   return s;
 }
 
@@ -1626,11 +1626,20 @@ function redrawKeep(key, fromBar) {
   let top = null;
   if (!fromBar) { const t = $('gal').querySelector(sel(key)); if (t) top = t.getBoundingClientRect().top; }
   drawGallery();
-  const g = gal.byKey.get(key), cell = g && $('gal').querySelector(`.cell[data-i="${g.first}"]`);
-  if (!cell) return;
-  if (top != null) { const t = cell.querySelector(sel(key)) || cell; scrollBy(0, t.getBoundingClientRect().top - top); }
-  else scrollBy(0, cell.getBoundingClientRect().top - barHeight() - ($('pathbar').firstElementChild.offsetHeight || 40) - 6);
-  schedulePath();
+  const g = gal.byKey.get(key);
+  if (!g) return;
+  const want = top != null ? top : barHeight() + ($('pathbar').firstElementChild.offsetHeight || 40) + 6;
+  // put the group's label back where it was; repeated for a few frames in case the layout settles late (photos, fonts)
+  const fix = () => {
+    const cell = $('gal').querySelector(`.cell[data-i="${g.first}"]`);
+    if (!cell) return;
+    const t = (top != null && cell.querySelector(sel(key))) || cell;
+    const d = t.getBoundingClientRect().top - want;
+    if (Math.abs(d) > 1) scrollBy(0, d);
+  };
+  fix();
+  let n = 0; const again = () => { fix(); if (++n < 4) requestAnimationFrame(again); else schedulePath(); };
+  requestAnimationFrame(again);
 }
 function toggleGroup(key, fromBar) {
   const col = collapsed[gal.sort];
@@ -3476,32 +3485,18 @@ function toast(msg) {
   $('toast').textContent = msg; $('toast').classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('show'), 1800);
 }
-// Tap a label to collapse or expand every group of its level; hold it to do that for just this group.
+// Tap a label (or a stack) to collapse or expand every group of its level; the group you tapped stays where it is on screen.
 (() => {
-  let timer, startX, startY, held = false;
-  const cancel = () => clearTimeout(timer);
   for (const host of [$('gal'), $('pathbar')]) {
     const fromBar = host.id === 'pathbar';
-    host.addEventListener('pointerdown', e => {
-      const tag = e.target.closest('.tag');
-      held = false; cancel();
-      if (!tag || e.button > 0) return;
-      startX = e.clientX; startY = e.clientY;
-      timer = setTimeout(() => { held = true; toggleGroup(tag.dataset.key, fromBar); }, 500);
-    });
-    host.addEventListener('pointermove', e => { if (timer && Math.hypot(e.clientX - startX, e.clientY - startY) > 10) cancel(); });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => host.addEventListener(t, cancel));
-    // swallow the click that follows a hold so the label doesn't toggle again
     host.addEventListener('click', e => {
       const tag = e.target.closest('.tag');
       if (!tag) return;
       e.preventDefault(); e.stopPropagation();
-      if (held) { held = false; return; }
       toggleRank(tag.dataset.key, fromBar);
     }, true);
     host.addEventListener('contextmenu', e => { if (e.target.closest('.tag')) e.preventDefault(); });
   }
-  window.addEventListener('scroll', cancel, { passive: true });
 })();
 
 function syncRecentTools() {
@@ -4515,7 +4510,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-14 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-16 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
