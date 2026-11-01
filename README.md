@@ -8,8 +8,8 @@ The token is cached in `localStorage`; observations and taxonomy are cached in I
 
 Enable Pages: Settings → Pages → Build and deployment → Source: **GitHub Actions**. The workflow in `.github/workflows/pages.yml` installs the
 pinned third-party packages from `package-lock.json` (`npm ci --ignore-scripts`), copies the few files the page needs into `vendor/`
-(`scripts/vendor.mjs`: Leaflet, markercluster, the country shapes, the AI library and its wasm engine), and deploys the site. `vendor/` is
-not committed. There is no CDN fallback: the maps and AI cut-outs need `vendor/`, so Pages must use the GitHub Actions source (a plain
+(`scripts/vendor.mjs`: Leaflet, markercluster, the country shapes and the fonts), and deploys the site. `vendor/` is
+not committed. There is no CDN fallback: the maps need `vendor/`, so Pages must use the GitHub Actions source (a plain
 branch deploy, or opening `index.html` directly, has no `vendor/` and those features report the missing file). To change a version: edit `package.json`, run `npm install --ignore-scripts`, commit `package-lock.json`.
 To try the vendored copy locally: `npm ci --ignore-scripts && npm run vendor`, then serve the folder.
 
@@ -44,15 +44,13 @@ Reading photo colours needs the page to be allowed to read the photo pixels. If 
 Cloudflare Worker that forwards only iNaturalist photo addresses (see the code in the project notes / chat), paste its address under
 ⚙ → "Or use an API token / OAuth settings" → "Photo proxy address". Colours are remembered per photo, so a photo goes through the proxy once.
 
-## Cut-outs (Recent tab)
+## Photos tab
 
-The scissors button in the Recent tab's icon bar offers: Off (default), Focus crop (square crop around the main subject), Cut-out · quick
-(subject found by colour contrast with the photo's edges, no model) and Cut-out · AI model (a background-removal model chosen in the panel: MODNet, RMBG-1.4, BiRefNet lite, IS-Net or any
-Hugging Face id; loaded from jsDelivr / Hugging Face on first use) and Cut-out · Segment Anything (SlimSAM prompted with the centre of the photo). Photos are read through the photo proxy when iNaturalist's servers refuse; results are saved per
-photo in IndexedDB (`cut:` keys) and can be cleared from the same panel.
+Recent, Taxonomy and Place are one **Photos** tab; the sort button (arrows icon) switches between *By date*, *Taxonomy* and *By place*. Every photo is a Polaroid
+(white frame, handwritten name in Caveat, a small random tilt fixed per observation) in one strict grid. A group is not a row in between: its coloured
+typewriter-font label (Special Elite; common name large, scientific name small) sits above the first Polaroid of the group. Dates are grouped as
+[2026][March][5th], taxonomy by rank, places by country/state/county/city.
 
-With any cut-out approach except Focus crop, the Recent tab switches to a sticker layout: each animal is a cut-out with a thick white outline and
-a drop shadow, in a masonry of columns (no card boxes), its name in a handwriting font (Caveat, pinned in `package.json` and copied into
-`vendor/fonts/` at deploy time) with the small badges hidden. RMBG-1.4 is the default AI model.
-
-The Polaroid style (same panel) shows the normal Recent photos in white frames with the handwritten name, each tilted by a random angle (up to about 6.5 degrees, fixed per observation).
+Tap a label to collapse its group into a small overlapping stack of Polaroids (tap the stack or the label again to expand); hold a label to collapse or expand every group of
+that rank; the button on the right of the icon bar collapses or expands everything. While scrolling, the labels of the group you are in sit side by side
+(wrapping onto more lines) in a sticky header under the icon bar. Fonts are pinned in `package.json` and copied into `vendor/fonts/` at deploy time.

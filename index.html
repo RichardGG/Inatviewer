@@ -142,8 +142,8 @@
   /* tabs + view controls: stuck to the top, slide away while scrolling down, return on scroll up */
   @keyframes slideInR { from { opacity:0; transform:translateX(36px); } to { opacity:1; transform:none; } }
   @keyframes slideInL { from { opacity:0; transform:translateX(-36px); } to { opacity:1; transform:none; } }
-  .swipe-next #tree, .swipe-next #recent, .swipe-next #explore { animation:slideInR .22s ease-out; }
-  .swipe-prev #tree, .swipe-prev #recent, .swipe-prev #explore { animation:slideInL .22s ease-out; }
+  .swipe-next #gal, .swipe-next #explore { animation:slideInR .22s ease-out; }
+  .swipe-prev #gal, .swipe-prev #explore { animation:slideInL .22s ease-out; }
   #controls { margin:0 0 6px; }
   #iconbar { position:sticky; top:0; z-index:60; display:flex; align-items:center; gap:2px; margin:0 -16px 8px; padding:0 10px; flex-wrap:wrap; background:var(--card); border-top:1px solid var(--line); border-bottom:1px solid var(--line); transition:top .22s ease, box-shadow .2s; }
   body.vexplore #bsearch, body.vexplore #areabtn, body.vexplore #brare, body.vexplore #bcmp, body.vexplore #bfav { display:none !important; }
@@ -323,7 +323,7 @@
     main { padding:10px 0 64px; }
     header.top, #viewing, #status, #summary, #loadall, #locTools, #filterwrap, #login { margin-left:12px; margin-right:12px; }
     #iconbar { margin:0 0 6px; padding:0 6px; }
-    #tree, #recent { border-left:0; border-right:0; border-radius:0; padding:6px 3px; }
+    #gal { border-left:0; border-right:0; border-radius:0; padding:6px 3px; }
     #explore { border-left:0; border-right:0; border-radius:0; padding:8px 8px; }
     .dbody { padding:10px 10px 48px; }
   }
@@ -344,41 +344,60 @@
                unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   @font-face { font-family:'Caveat'; font-style:normal; font-weight:700; font-display:swap; src:url('vendor/fonts/caveat-latin-ext-700-normal.woff2') format('woff2');
                unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
-  /* dark mode: a muted green behind the white stickers, so they do not glare against near-black */
+  /* typewriter for the group labels (Special Elite, pinned and copied into vendor/ at deploy time) */
+  @font-face { font-family:'Special Elite'; font-style:normal; font-weight:400; font-display:swap; src:url('vendor/fonts/special-elite-latin-400-normal.woff2') format('woff2');
+               unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+  /* the desk the Polaroids lie on */
+  body.stkview { background:#e6e0d2; }
+  body.stkview #iconbar { background:#f4f0e6; }
   @media (prefers-color-scheme: dark) {
     body.stkview { background:#2a4636; }
     body.stkview #iconbar { background:#21392b; }
-    body.stkview #recent.stkmode .dh { background:#2a4636; color:#bcd6c6; border-bottom-color:rgba(255,255,255,.14); }
   }
-  /* Recent as Polaroids: the normal photo in a white frame with a handwritten title, each tilted a little */
-  .rgrid.pol { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:24px 16px; padding:12px 8px 4px; }
-  @media (min-width: 900px) { .rgrid.pol { grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:34px 24px; } }
-  .rgrid.pol .dh { grid-column:1 / -1; }
-  .rgrid.pol .tile { position:relative; aspect-ratio:auto; background:#fbfaf4; border-radius:3px; overflow:visible; padding:9px 9px 0;
-                     box-shadow:0 4px 12px rgba(0,0,0,.38), 0 1px 2px rgba(0,0,0,.28); transform:rotate(var(--rot, 0deg)); transition:transform .15s; }
-  .rgrid.pol .tile:hover { transform:rotate(0deg) scale(1.03); z-index:4; }
-  .rgrid.pol .tile .pic { position:relative; inset:auto; display:block; width:100%; height:auto; aspect-ratio:1; background:#d9d9d2; overflow:hidden; cursor:pointer; }
-  .rgrid.pol .tile img { width:100%; height:100%; object-fit:cover; display:block; }
-  .rgrid.pol .tile .cap { position:static; display:flex; align-items:center; justify-content:center; background:none; text-shadow:none; color:#252a33; padding:0 5px; height:58px; line-height:1.02; text-align:center;
-                          font:700 26px/1.02 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; white-space:normal; overflow:hidden; transform:rotate(-1deg); }
-  .rgrid.pol .tile .cap span { display:block; max-width:100%; word-break:break-word; }
-  .rgrid.pol .tile .cap:hover { text-decoration:none; color:#1f5a2a; }
-  /* Recent with cut-outs: stickers (white outline, shadow outside) in a masonry, no card box */
-  #recent.stkmode { background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
-  .rgrid.stk { display:block; }
-  .rgrid.stk .mason { display:flex; gap:10px; align-items:flex-start; margin-bottom:6px; }
-  .rgrid.stk .mcol { flex:1; min-width:0; display:flex; flex-direction:column; gap:14px; }
-  .rgrid.stk .tile, .rgrid.stk .tile.cut { position:relative; aspect-ratio:auto; background:none; border-radius:0; overflow:visible; --r:0; }
-  .rgrid.stk .tile .pic { position:relative; inset:auto; display:block; width:100%; height:auto; background:none; cursor:pointer; }
-  .rgrid.stk .tile img, .rgrid.stk .tile.cut .pic img { width:100%; height:auto; object-fit:contain; padding:0; display:block; filter:drop-shadow(0 5px 6px rgba(0,0,0,.4)); }
-  .rgrid.stk .tile.cutwait img { aspect-ratio:1; object-fit:cover; border-radius:16px; opacity:.55; filter:none; }
-  .rgrid.stk .tile.cutfail img { border:6px solid #fff; border-radius:10px; box-shadow:0 5px 12px rgba(0,0,0,.4); filter:none; background:#fff; }
-  .rgrid.stk .tile .cap { position:static; display:block; background:none; margin:2px 0 0; padding:0 4px; text-align:center; color:var(--fg); text-shadow:none;
-                          font:700 29px/1 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; transform:rotate(-1.5deg); letter-spacing:.2px;
-                          white-space:normal; overflow:visible; text-overflow:clip; -webkit-line-clamp:unset; display:block; word-break:break-word; }
-  .rgrid.stk .tile .cap:hover { text-decoration:none; color:var(--accent); }
-  /* sticker layout shows just the sticker and its name: the small badges (photo count, rarity, NEW, faves) are hidden */
-  .rgrid.stk .tile .badge, .rgrid.stk .tile .raretag, .rgrid.stk .tile .newtag, .rgrid.stk .tile .othertag { display:none; }
+  #gal { background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
+  /* one strict grid: every Polaroid is a cell; a group's label sits in the cell of its first Polaroid, above it */
+  .pgrid { --cols:2; display:grid; grid-template-columns:repeat(var(--cols), minmax(0, 1fr)); gap:20px 14px; padding:12px 8px 4px; align-items:end; }
+  @media (min-width:560px) { .pgrid { --cols:3; gap:26px 18px; } }
+  @media (min-width:800px) { .pgrid { --cols:4; gap:30px 22px; } }
+  @media (min-width:1100px) { .pgrid { --cols:5; } }
+  @media (min-width:1400px) { .pgrid { --cols:6; } }
+  .cell { min-width:0; display:flex; flex-direction:column; justify-content:flex-end; scroll-margin-top:calc(var(--bar-h, 0px) + 60px); }
+  .cell .tags { display:flex; flex-flow:row wrap; align-items:flex-end; gap:6px 6px; margin:0 0 10px 2px; max-width:100%; }
+  .pgrid .tile { position:relative; aspect-ratio:auto; background:#fbfaf4; border-radius:3px; overflow:visible; padding:9px 9px 0;
+                 box-shadow:0 4px 12px rgba(0,0,0,.38), 0 1px 2px rgba(0,0,0,.28); transform:rotate(var(--rot, 0deg)); transition:transform .15s; }
+  .pgrid .tile:hover { transform:rotate(0deg) scale(1.03); z-index:4; }
+  .pgrid .tile .pic { position:relative; inset:auto; display:block; width:100%; height:auto; aspect-ratio:1; background:#d9d9d2; overflow:hidden; cursor:pointer; }
+  .pgrid .tile img { width:100%; height:100%; object-fit:cover; display:block; }
+  .pgrid .tile .cap { position:static; display:flex; align-items:center; justify-content:center; background:none; text-shadow:none; color:#252a33; padding:0 5px; height:58px; line-height:1.02; text-align:center;
+                      font:700 26px/1.02 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; white-space:normal; overflow:hidden; transform:rotate(-1deg); }
+  .pgrid .tile .cap span { display:block; max-width:100%; word-break:break-word; }
+  .pgrid .tile .cap:hover { text-decoration:none; color:#1f5a2a; }
+  /* coloured typewriter stickers; the common name large, the scientific name small underneath */
+  .tag { --tc:#ffe27a; --tr:0deg; display:inline-block; max-width:100%; text-align:left; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
+         font:400 12px/1.15 'Special Elite','American Typewriter','Courier New',monospace; color:#2b2b2b; padding:6px 22px 6px 9px; border:0; border-radius:2px; position:relative;
+         background:linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0) 40%), var(--tc); box-shadow:0 2px 4px rgba(0,0,0,.35); transform:rotate(var(--tr)); }
+  .tag b { display:block; font-weight:400; font-size:17px; line-height:1.1; overflow-wrap:anywhere; }
+  .tag small { display:block; margin-top:2px; font-size:11px; opacity:.72; overflow-wrap:anywhere; }
+  .tag small.sci { font-style:italic; }
+  .tag::after { content:'▾'; position:absolute; right:7px; top:6px; font-size:11px; opacity:.45; }
+  .tag.col::after { content:'▸'; }
+  .tag.sm { padding:3px 18px 3px 7px; }
+  .tag.sm b { display:inline; font-size:14px; } .tag.sm small { display:inline; margin:0 0 0 6px; font-size:10px; }
+  .tag.sm::after { top:3px; right:5px; }
+  .tag:active { filter:brightness(.94); }
+  .tag.flash { animation:flash 1.8s ease-out; }
+  /* collapsed group: a small pile of overlapping Polaroids */
+  .stack { position:relative; display:block; width:72%; aspect-ratio:1 / 1.08; padding:0; border:0; background:none; cursor:pointer; }
+  .stack .mini { position:absolute; width:62%; aspect-ratio:1 / 1.1; background:#fbfaf4; padding:4px 4px 0; border-radius:2px; box-shadow:0 2px 6px rgba(0,0,0,.4);
+                 left:calc(var(--k) * 17%); bottom:calc(var(--k) * 7%); transform:rotate(calc(var(--k) * 6deg - 6deg)); z-index:calc(5 - var(--k)); }
+  .stack .mini img { width:100%; height:calc(100% - 14px); object-fit:cover; display:block; background:#d9d9d2; }
+  .stack .sn { position:absolute; right:0; bottom:0; z-index:9; min-width:24px; padding:2px 7px; border-radius:12px; background:rgba(0,0,0,.72); color:#fff; font-size:12px; text-align:center; }
+  /* sticky header: the labels of the group you are in; zero height so showing it never shifts the grid */
+  @media (max-width:480px) { #iconbar .ib.tb { width:36px; } }
+  #pathbar { position:sticky; top:var(--bar-h, 0px); height:0; z-index:55; transition:top .2s; }
+  #pathbar[hidden] { display:none; }
+  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; flex-wrap:wrap; gap:6px; padding:6px 8px 8px; background:linear-gradient(var(--card) 70%, transparent); }
+  #pathbar .tag { max-width:100%; }
 </style>
 </head>
 <body>
@@ -446,35 +465,29 @@
 
   <div id="results" hidden>
     <div class="tabs" role="tablist">
-      <button id="tabRecent" role="tab"><i data-i="clock"></i><span>Recent</span></button>
-      <button id="tabTree" role="tab"><i data-i="list-tree"></i><span>Taxonomy</span></button>
-      <button id="tabPlace" role="tab"><i data-i="map"></i><span>Place</span></button>
+      <button id="tabRecent" role="tab"><i data-i="images"></i><span>Photos</span></button>
       <button id="tabExplore" role="tab"><i data-i="compass"></i><span>Nearby</span></button>
       <button id="tabWeb" role="tab" aria-haspopup="dialog"><i data-i="network"></i><span>Web</span></button>
       <button id="tabWorld" role="tab" aria-haspopup="dialog"><i data-i="globe"></i><span>World</span></button>
     </div>
     <div id="iconbar">
       <div id="fbtns" class="ibgroup">
+        <button class="ib tb" id="bsort" aria-label="Sort" title="Sort: by date, taxonomy or place"><i data-i="arrow-up-down"></i></button>
         <button class="ib tb" id="bsearch" aria-label="Jump to" title="Jump to a group or species"><i data-i="search"></i></button>
         <button class="ib tb" id="bdate" aria-label="Date" title="Date"><i data-i="calendar"></i></button>
         <button class="ib tb" id="areabtn" aria-label="Map area" title="Map area" aria-expanded="false"><i data-i="map-pin"></i></button>
         <button class="ib tb" id="bclass" aria-label="Groups" title="Groups (birds, plants…)"><i data-i="paw-print"></i></button>
         <button class="ib tb" id="brare" aria-label="Rarity" title="Rare species" hidden><i data-i="gem"></i></button>
         <button class="ib tb" id="bcmp" aria-label="Compare" title="Compare with another user" hidden><i data-i="git-compare"></i></button>
-        <button class="ib tb" id="bcut" aria-label="Cut-outs" title="Cut out the animals" hidden><i data-i="scissors"></i></button>
         <button class="ib tb" id="bfav" aria-label="Favourites" title="Favourite photos"><i data-i="star"></i></button>
       </div>
       <span class="sp1"></span>
       <div class="ibgroup">
-        <span id="treeTools" class="ibgroup">
+        <span id="galTools" class="ibgroup">
+          <button class="ib tb" id="runique" aria-label="Unique species" title="One photo per species, using your starred (or newest) observation"><i data-i="layers"></i></button>
           <button class="ib tb" id="expcol" aria-label="Collapse all" title="Collapse all"><i data-i="chevrons-down-up"></i></button>
-          <button class="ib tb" id="shuffle" aria-label="Shuffle" title="Randomise the order of groups and species. Tap again for a new order."><i data-i="shuffle"></i></button>
+          <button class="ib tb" id="shuffle" aria-label="Shuffle" title="Randomise the order. Tap again for a new order."><i data-i="shuffle"></i></button>
           <button class="ib tb" id="unshuffle" aria-label="Default order" title="Back to the default order" hidden><i data-i="rotate-ccw"></i></button>
-        </span>
-        <span id="recentTools" class="ibgroup" hidden>
-          <button class="ib tb" id="runique" aria-label="Unique species" title="One entry per species, using your starred (or newest) observation"><i data-i="layers"></i></button>
-          <button class="ib tb" id="rshuffle" aria-label="Shuffle" title="Random order. Tap again for a new order."><i data-i="shuffle"></i></button>
-          <button class="ib tb" id="rdefault" aria-label="Newest first" title="Back to newest first" hidden><i data-i="rotate-ccw"></i></button>
         </span>
       </div>
     </div>
@@ -519,17 +532,9 @@
         <p class="status" id="rarenote" style="margin:8px 0 0"></p>
         <button class="secondary" id="rarecheck" hidden style="margin-top:8px">Check rarity</button>
       </div>
-      <div class="card fpanel" id="pcut" hidden>
-        <p class="status" style="margin:0 0 6px">Recent photos: cut out the animal (these read the photo's pixels, through the photo proxy if needed, on this device), or show the normal photos as tilted Polaroids.</p>
-        <div id="cutchips" class="clsrow" role="group" aria-label="Cut-out style"></div>
-        <div id="cutmodelbox" hidden style="margin-top:8px">
-          <p class="status" style="margin:0 0 4px">AI model (downloaded once, then kept by the browser):</p>
-          <div id="cutmodels" class="clsrow" role="group" aria-label="AI model"></div>
-          <input id="cutcustom" spellcheck="false" placeholder="Hugging Face model id, e.g. org/name" hidden style="width:100%;margin-top:6px;padding:7px;font:12px monospace;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">
-        </div>
-        <label class="status" style="display:block;margin-top:8px"><input type="checkbox" id="cutenh"> Brighten dark photos (raises brightness, contrast and saturation in proportion to how dark the animal is)</label>
-        <p class="status" id="cutnote" style="margin:8px 0 0"></p>
-        <button class="secondary" id="cutclear" style="margin-top:8px">Clear saved cut-outs</button>
+      <div class="card fpanel" id="psort" hidden>
+        <div id="sortchips" class="clsrow" role="group" aria-label="Sort the photos"></div>
+        <p class="status" style="margin:6px 0 0">Group the photos by when they were taken, by the tree of life, or by where they were seen.</p>
       </div>
       <div class="card fpanel" id="pfav" hidden>
         <div id="ffav" class="clsrow" role="group" aria-label="Favourite photo status"></div>
@@ -549,8 +554,8 @@
     <div id="locTools" class="row" style="margin:0 0 10px" hidden>
       <span id="locnote" class="status"></span>
     </div>
-    <div class="card" id="tree"></div>
-    <div class="card" id="recent" hidden></div>
+    <div id="pathbar" hidden><div class="pbin"></div></div>
+    <div class="card" id="gal"></div>
     <div class="card" id="explore" hidden>
       <div id="expmapwrap">
         <div id="expmap"></div>
@@ -637,7 +642,7 @@ const KEY = 'inat_token';
 const SHOWN_RANKS = new Set(['kingdom','phylum','class','order','family','genus']);
 const $ = id => document.getElementById(id);
 // Lucide icons (https://lucide.dev, ISC licence), inlined so there is no network dependency.
-const ICONS = {"clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","palette":"<path d=\"M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\"/> <circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","scissors":"<circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M8.12 8.12 12 12\"/> <path d=\"M20 4 8.12 15.88\"/> <circle cx=\"6\" cy=\"18\" r=\"3\"/> <path d=\"M14.8 14.8 20 20\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
+const ICONS = {"images":"<path d=\"M18 22H4a2 2 0 0 1-2-2V6\"/> <path d=\"m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18\"/> <circle cx=\"12\" cy=\"8\" r=\"2\"/> <rect width=\"16\" height=\"16\" x=\"6\" y=\"2\" rx=\"2\"/>","arrow-up-down":"<path d=\"m21 16-4 4-4-4\"/> <path d=\"M17 20V4\"/> <path d=\"m3 8 4-4 4 4\"/> <path d=\"M7 4v16\"/>","clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","palette":"<path d=\"M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\"/> <circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","scissors":"<circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M8.12 8.12 12 12\"/> <path d=\"M20 4 8.12 15.88\"/> <circle cx=\"6\" cy=\"18\" r=\"3\"/> <path d=\"M14.8 14.8 20 20\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
 ICONS.heart = '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>';
 ICONS['share-2'] = "<circle cx=\"18\" cy=\"5\" r=\"3\"/> <circle cx=\"6\" cy=\"12\" r=\"3\"/> <circle cx=\"18\" cy=\"19\" r=\"3\"/> <line x1=\"8.59\" x2=\"15.42\" y1=\"13.51\" y2=\"17.49\"/> <line x1=\"15.41\" x2=\"8.59\" y1=\"6.51\" y2=\"10.49\"/>";
 ICONS['git-compare'] = "<circle cx=\"18\" cy=\"18\" r=\"3\"/> <circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M13 6h3a2 2 0 0 1 2 2v7\"/> <path d=\"M11 18H8a2 2 0 0 1-2-2V9\"/>";
@@ -1401,148 +1406,252 @@ function shuffleKey(id, seed = shuffleSeed) {
   x ^= x >>> 16; x = Math.imul(x, 0x85ebca6b); x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35); x ^= x >>> 16; // murmur3 finaliser
   return x >>> 0;
 }
-function render(root, names, meta = TAXON_META(names)) {
-  const frag = document.createDocumentFragment();
+// ---------- gallery: Recent, Taxonomy and Place are three sorts of one grid of Polaroids ----------
+// Every photo sits in a strict grid. A group (year/month/day, taxonomic rank or place) is not a row in between: its coloured typewriter label
+// sits above the first Polaroid of the group. A collapsed group becomes one small overlapping stack of Polaroids.
+const GAL = ['recent', 'tree', 'place'];
+const isGal = v => GAL.includes(v);
+const GAL_PAGE = 150;
+const TAG_COLORS = ['#ffe27a', '#f7a8bd', '#9fd2f2', '#b3df9c', '#f9bd80', '#cdb3ea'];
+const collapsed = { recent: new Set(), tree: new Set(), place: new Set() }; // keys of the collapsed groups, per sort
+const gal = { sort: 'recent', items: [], groups: [], byKey: new Map(), cells: [], limit: GAL_PAGE, shownTo: 0, drawnSort: '' };
+const ordinal = n => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+const ucfirst = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+const mkGroup = (key, rank, depth, main, sub) => ({ key: String(key), rank, depth, main, sub, first: -1, last: -1, parent: null });
 
-  function speciesOf(o) {
-    if (names[o.tid]?.rank === 'species') return o.tid;
-    return o.anc.find(id => names[id]?.rank === 'species') || null;
+// ---- ordering of species within a group (rarity sort / shuffle / A–Z) and of the groups themselves ----
+function speciesRows(obs) {
+  const byTaxon = new Map();
+  for (const o of obs) {
+    let r = byTaxon.get(o.tid);
+    if (!r) byTaxon.set(o.tid, r = { tid: o.tid, name: o.name, common: o.common, obs: [] });
+    r.obs.push(o);
   }
-  function speciesRows(obs) {
-    const byTaxon = new Map();
-    for (const o of obs) {
-      let r = byTaxon.get(o.tid);
-      if (!r) byTaxon.set(o.tid, r = { tid: o.tid, name: o.name, common: o.common, obs: [] });
-      r.obs.push(o);
-    }
-    const rows = [...byTaxon.values()];
-    if (raritySort) { const rc = rarityCmp(); return rows.sort((a, b) => rc(rarityOf(a.obs[0]), rarityOf(b.obs[0])) || a.name.localeCompare(b.name)); }
-    return shuffleSeed == null ? rows.sort((a, b) => a.name.localeCompare(b.name)) : rows.sort((a, b) => shuffleKey(a.tid) - shuffleKey(b.tid));
-  }
-  const preferred = row => thumbObs(row.obs);
-  function mkBtn(cls, text, label, onclick) {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = cls; b.textContent = text;
-    b.setAttribute('aria-label', label); b.title = label;
-    b.onclick = e => { e.stopPropagation(); onclick(); };
-    return b;
-  }
-  const mkExt = obsLink;
+  const rows = [...byTaxon.values()];
+  if (raritySort) { const rc = rarityCmp(); return rows.sort((a, b) => rc(rarityOf(a.obs[0]), rarityOf(b.obs[0])) || a.name.localeCompare(b.name)); }
+  return shuffleSeed == null ? rows.sort((a, b) => a.name.localeCompare(b.name)) : rows.sort((a, b) => shuffleKey(a.tid) - shuffleKey(b.tid));
+}
+const sortedChildren = node => [...node.children.values()].sort(shuffleSeed == null ? (a, b) => b.count - a.count : (a, b) => shuffleKey(a.id) - shuffleKey(b.id));
 
-  const sortedChildren = node => [...node.children.values()].sort(shuffleSeed == null ? (a, b) => b.count - a.count : (a, b) => shuffleKey(a.id) - shuffleKey(b.id));
-  function collect(node, acc = new Set()) {
-    node.species.forEach(o => { const s = speciesOf(o); if (s) acc.add(s); });
-    node.children.forEach(ch => collect(ch, acc));
-    return acc;
-  }
-  function groupEl(node, rank, depth) {
-    const t = meta.get(node.id);
-    const det = document.createElement('details');
-    det.className = 'g'; det.open = true;
-    det.dataset.rank = rank;
-    det.style.setProperty('--d', depth);
-    const sum = document.createElement('summary');
-    const r = document.createElement('span'); r.className = 'rank'; r.textContent = rank;
-    const nm = document.createElement('span'); nm.className = 'nm';
-    if (t?.common) nm.append(t.common + ' ');
-    const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = t?.name || `#${node.id}`;
-    nm.append(sci);
-    const c = document.createElement('span'); c.className = 'count';
-    c.textContent = `${collect(node).size} species · ${node.count} obs`;
-    sum.append(r, nm, c);
-    det.append(sum);
-    fill(node, det, depth + 1);
-
-    // When collapsed, show a strip of thumbnails sampled evenly across the group's species.
-    const pv = document.createElement('div');
-    pv.className = 'pv'; pv.hidden = true;
-    pv.onclick = () => { det.open = true; };
-    det.addEventListener('toggle', () => {
-      if (det.open) { pv.hidden = true; pv.replaceChildren(); return; }
-      pv.hidden = false;
-      fillPreview(node, pv);
-    });
-    const both = document.createDocumentFragment();
-    both.append(det, pv);
-    return both;
-  }
-  function rowsInOrder(node, acc = []) {
-    acc.push(...speciesRows(node.species));
-    for (const ch of sortedChildren(node)) rowsInOrder(ch, acc);
-    return acc;
-  }
-  function fillPreview(node, pv) {
-    const rows = rowsInOrder(node).filter(r => photosOf(preferred(r)).length);
-    const max = Math.max(4, Math.min(12, Math.floor((pv.clientWidth || 300) / 60)));
-    const n = Math.min(max, rows.length);
-    const frag = document.createDocumentFragment();
-    for (let i = 0; i < n; i++) {
-      const row = rows[Math.floor(i * rows.length / n)];
-      const url = photosOf(preferred(row))[0];
-      const im = document.createElement('img');
-      im.alt = row.common || row.name; im.title = row.common || row.name; im.loading = 'lazy';
-      im.src = sized(url, 'medium');
-      im.onerror = () => { if (im.src !== url) im.src = url; };
-      frag.append(im);
-    }
-    if (rows.length > n) {
-      const m = document.createElement('span'); m.className = 'more-n'; m.textContent = `+${rows.length - n}`;
-      frag.append(m);
-    }
-    pv.replaceChildren(frag);
-  }
-  // Species cards go in one grid (several per row on wide screens); child groups follow, full width.
+// Taxonomy / Place: one Polaroid per species (its favourite photo), groups in tree order.
+function treeItems(root, meta) {
+  const items = [];
   function gather(node, rows, groups) {
     rows.push(...speciesRows(node.species));
     for (const ch of sortedChildren(node)) {
       const rank = meta.get(ch.id)?.rank;
-      if (meta.shown(rank)) groups.push([ch, rank]);
-      else gather(ch, rows, groups);
+      if (meta.shown(rank)) groups.push([ch, rank]); else gather(ch, rows, groups);
     }
   }
-  // Gallery layout: one photo tile per species (its favourite photo); species of a genus sit side by side under the genus heading.
-  function speciesTile(row) {
-    const cur = preferred(row), ph = photosOf(cur);
-    const t = document.createElement('div'); markBrow(t, row.tid, cur && cur.id);
-    t.className = 'tile';
-    t.title = `${row.common || row.name} · ${row.obs.length} obs`;
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'Open species');
-    if (ph.length) {
-      const im = document.createElement('img');
-      im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
-      im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
-      b.append(im);
-    }
-    const n = document.createElement('span'); n.className = 'badge'; n.textContent = `${row.obs.length} obs`; b.append(n);
-    { const rb = rarityBadge(rarityOf(row.obs[0])); if (rb) b.append(rb); }
-    const fs = favStats().get(row.tid);
-    if (fs && fs.newN > 0) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.innerHTML = `${ic('refresh-cw', 10)} ${fs.newN} new`; b.append(nt); }
-    b.onclick = () => openSpecies(row.tid, cur);
-    const cap = document.createElement('a');
-    cap.className = 'cap'; cap.textContent = row.common || row.name;
-    cap.href = `https://www.inaturalist.org/taxa/${row.tid}`; cap.target = '_blank'; cap.rel = 'noopener';
-    speciesLink(cap, row.tid);
-    t.append(b, cap);
-    return t;
-  }
-  function fill(node, parentEl, depth) {
+  function walk(node, path) {
     const rows = [], groups = [];
     gather(node, rows, groups);
-    if (rows.length) {
-      const grid = document.createElement('div');
-      grid.className = 'rgrid';
-      for (const row of rows) grid.append(speciesTile(row));
-      parentEl.append(grid);
+    for (const row of rows) {
+      const cur = thumbObs(row.obs);
+      if (!cur || !photosOf(cur).length) continue;
+      items.push({ o: { ...cur, _n: row.obs.length }, path });
     }
-    for (const [ch, rank] of groups) parentEl.append(groupEl(ch, rank, depth));
+    for (const [ch, rank] of groups) {
+      const t = meta.get(ch.id);
+      walk(ch, [...path, mkGroup(ch.id, rank, path.length, ucfirst(t?.common || t?.name || `#${ch.id}`), t?.common ? (t.name || '') : '')]);
+    }
   }
-  fill(root, frag, 0);
-  $('tree').replaceChildren(frag);
-  if (typeof scheduleExpCol === 'function') scheduleExpCol();
-  jumpIndex = null; // rebuilt on next use
-  return collect(root).size;
+  walk(root, []);
+  return items;
 }
+
+// Recent: observations (or one per species) newest first, grouped [year][month][day]; flat when shuffled or rarity-sorted.
+function recentItems(obs) {
+  let list = recentUnique ? uniqueSpecies(obs) : [...obs];
+  list = list.filter(o => photosOf(o).length); // the gallery is photos only
+  const rc = rarityCmp(), shuffled = recentSeed != null;
+  list = raritySort ? list.sort((a, b) => rc(rarityOf(a), rarityOf(b)) || recentDate(b).localeCompare(recentDate(a)))
+       : shuffled ? list.sort((a, b) => shuffleKey(a.id, recentSeed) - shuffleKey(b.id, recentSeed))
+                  : list.sort((a, b) => recentDate(b).localeCompare(recentDate(a)) || b.id - a.id);
+  const grouped = !shuffled && !raritySort, memo = new Map();
+  const G = (key, rank, depth, main, sub) => { let g = memo.get(key); if (!g) memo.set(key, g = mkGroup(key, rank, depth, main, sub)); return g; };
+  return list.map(o => {
+    if (!grouped) return { o, path: [] };
+    const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(recentDate(o));
+    if (!m) return { o, path: [G('u', 'year', 0, 'Unknown date', '')] };
+    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    return { o, path: [
+      G(m[1], 'year', 0, m[1], ''),
+      G(`${m[1]}-${m[2]}`, 'month', 1, d.toLocaleDateString(undefined, { month: 'long' }), ''),
+      G(m[0], 'day', 2, ordinal(+m[3]), d.toLocaleDateString(undefined, { weekday: 'long' })),
+    ] };
+  });
+}
+
+// ---- the Polaroid itself ----
+// Titles: the handwriting wraps onto more lines and shrinks until the whole name fits the strip.
+function fitCaption(cap) {
+  const span = cap.firstElementChild;
+  if (!span || !cap.clientHeight) return; // not laid out yet (hidden tab): the observer below calls this again when it is
+  let size = 26;
+  cap.style.fontSize = size + 'px';
+  while (span.scrollHeight > cap.clientHeight + 1 && size > 12) { size -= 1; cap.style.fontSize = size + 'px'; }
+}
+const capObserver = new ResizeObserver(es => { for (const e of es) fitCaption(e.target); });
+if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('.pgrid .tile .cap').forEach(fitCaption));
+function polTile(o) {
+  const ph = photosOf(o);
+  const t = document.createElement('div');
+  t.className = 'tile'; markBrow(t, o.tid, o.id);
+  t.style.setProperty('--rot', ((Math.imul(o.id, 2654435761) >>> 0) % 1300 / 100 - 6.5).toFixed(2) + 'deg'); // a random tilt of up to 6.5 degrees, fixed per observation
+  t.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'View photos');
+  { const rb = rarityBadge(rarityOf(o)); if (rb) b.append(rb); }
+  const im = document.createElement('img');
+  im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
+  im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
+  b.append(im);
+  if (o._n == null && ph.length > 1) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `1/${ph.length}`; b.append(n); }
+  else if (o._n != null) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `${o._n} obs`; b.append(n); }
+  { const fs = favStats().get(o.tid); if (o._n != null ? (fs && fs.newN > 0) : isNewObs(o)) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.textContent = 'NEW'; b.append(nt); } }
+  if (favMode === 'others' && o.ff > 0) { const ot = document.createElement('span'); ot.className = 'othertag'; ot.innerHTML = ic('heart', 12, true) + ' ' + o.ff; ot.title = `Favourited by ${o.ff} other ${o.ff > 1 ? 'people' : 'person'}`; t.append(ot); }
+  b.onclick = () => openSpecies(o.tid, o);
+  const cap = document.createElement('a'); // the name opens the species page on iNaturalist
+  cap.className = 'cap'; cap.href = `https://www.inaturalist.org/taxa/${o.tid}`; cap.target = '_blank'; cap.rel = 'noopener';
+  speciesLink(cap, o.tid);
+  const sp = document.createElement('span'); sp.textContent = o.common || o.name; cap.append(sp); capObserver.observe(cap);
+  t.append(b, cap);
+  return t;
+}
+
+// ---- group labels: coloured typewriter stickers ----
+function tagEl(g, compact) {
+  const isCol = collapsed[gal.sort].has(g.key);
+  const b = document.createElement('button'); b.type = 'button';
+  b.className = 'tag' + (compact ? ' sm' : '') + (isCol ? ' col' : '');
+  b.dataset.key = g.key; b.dataset.rank = g.rank;
+  b.style.setProperty('--tc', TAG_COLORS[g.depth % TAG_COLORS.length]);
+  b.style.setProperty('--tr', ((shuffleKey(g.key, 'tag') % 5 - 2) * 0.7).toFixed(1) + 'deg');
+  b.title = `${g.rank}: ${g.main}${g.sub ? ' (' + g.sub + ')' : ''} · tap to ${isCol ? 'expand' : 'collapse'}, hold to ${isCol ? 'expand' : 'collapse'} every ${g.rank}`;
+  const m = document.createElement('b'); m.textContent = g.main; b.append(m);
+  if (g.sub) { const s = document.createElement('small'); s.textContent = g.sub; if (gal.sort === 'tree') s.className = 'sci'; b.append(s); }
+  return b;
+}
+// A collapsed group: up to three of its photos as a small overlapping pile.
+function stackEl(g) {
+  const s = document.createElement('button'); s.type = 'button'; s.className = 'stack';
+  s.title = `${g.main}: tap to show its photos`; s.setAttribute('aria-label', s.title);
+  const n = g.last - g.first + 1, picks = [...new Set([g.first, g.first + Math.floor((n - 1) / 2), g.last])].reverse(); // last is drawn first (underneath)
+  picks.forEach((idx, j) => {
+    const ph = photosOf(gal.items[idx].o), mini = document.createElement('span');
+    mini.className = 'mini'; mini.style.setProperty('--k', picks.length - 1 - j);
+    const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
+    im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
+    mini.append(im); s.append(mini);
+  });
+  const c = document.createElement('span'); c.className = 'sn'; c.textContent = n; s.append(c);
+  s.onclick = () => toggleGroup(g.key, false);
+  return s;
+}
+
+function renderGallery(obs) {
+  const el = $('gal');
+  gal.sort = view;
+  gal.items = view === 'recent' ? recentItems(obs)
+    : view === 'place' ? treeItems(buildTree(obs, placeChain), PLACE_META)
+    : treeItems(buildTree(obs), TAXON_META(state.names));
+  gal.groups = []; gal.byKey = new Map();
+  gal.items.forEach((it, i) => {
+    it.starts = [];
+    it.path.forEach((g, j) => {
+      if (g.first < 0) { g.first = i; g.parent = it.path[j - 1] || null; it.starts.push(g); gal.groups.push(g); gal.byKey.set(g.key, g); }
+      g.last = i;
+    });
+  });
+  if (gal.drawnSort !== view) gal.limit = GAL_PAGE;
+  gal.drawnSort = view;
+  jumpIndex = null; // rebuilt on next use
+  if (!gal.items.length) { gal.cells = []; el.replaceChildren(); $('pathbar').hidden = true; syncExpCol(); return; }
+  drawGallery();
+}
+function drawGallery() {
+  const el = $('gal'), items = gal.items, col = collapsed[gal.sort];
+  const grid = document.createElement('div'); grid.className = 'pgrid';
+  gal.cells = []; let n = 0, i = 0;
+  for (; i < items.length; i++) {
+    const it = items[i];
+    const k = it.path.findIndex(g => col.has(g.key)); // outermost collapsed group this photo is in
+    if (k >= 0 && it.path[k].first !== i) continue; // inside a collapsed group: only its first photo stands in for the stack
+    if (n >= gal.limit) break;
+    const cell = document.createElement('div'); cell.className = 'cell'; cell.dataset.i = i;
+    const tags = it.starts.filter(g => k < 0 || it.path.indexOf(g) <= k);
+    if (tags.length) { const box = document.createElement('div'); box.className = 'tags'; tags.forEach(g => box.append(tagEl(g, false))); cell.append(box); }
+    cell.append(k < 0 ? polTile(it.o) : stackEl(it.path[k]));
+    grid.append(cell); n++;
+    gal.cells.push({ el: cell, path: k < 0 ? it.path : it.path.slice(0, k + 1) });
+  }
+  gal.shownTo = i;
+  el.replaceChildren(grid);
+  if (i < items.length) {
+    const more = document.createElement('button'); more.className = 'secondary'; more.style.margin = '12px 0 0';
+    const left = items.length - i;
+    more.textContent = `Show more (${left} left)`;
+    more.onclick = () => { gal.limit += GAL_PAGE; drawGallery(); };
+    el.append(more);
+  }
+  syncExpCol();
+  $('pathbar').dataset.sig = '';
+  schedulePath();
+}
+
+// ---- collapsing ----
+const barHeight = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar-h')) || 0;
+// Redraw after a collapse/expand keeping the group's label where it was (or, from the sticky header, bringing the group's first cell under it).
+function redrawKeep(key, fromBar) {
+  const sel = k => `.tag[data-key="${CSS.escape(k)}"]`;
+  let top = null;
+  if (!fromBar) { const t = $('gal').querySelector(sel(key)); if (t) top = t.getBoundingClientRect().top; }
+  drawGallery();
+  const g = gal.byKey.get(key), cell = g && $('gal').querySelector(`.cell[data-i="${g.first}"]`);
+  if (!cell) return;
+  if (top != null) { const t = cell.querySelector(sel(key)) || cell; scrollBy(0, t.getBoundingClientRect().top - top); }
+  else scrollBy(0, cell.getBoundingClientRect().top - barHeight() - ($('pathbar').firstElementChild.offsetHeight || 40) - 6);
+  schedulePath();
+}
+function toggleGroup(key, fromBar) {
+  const col = collapsed[gal.sort];
+  if (col.has(key)) col.delete(key); else col.add(key);
+  redrawKeep(key, fromBar);
+}
+function toggleRank(key, fromBar) { // hold: collapse every group of this rank (or expand them all if this one was collapsed)
+  const col = collapsed[gal.sort], g = gal.byKey.get(key);
+  if (!g) return;
+  const same = gal.groups.filter(x => x.rank === g.rank), collapse = !col.has(key);
+  same.forEach(x => { if (collapse) col.add(x.key); else col.delete(x.key); });
+  log(`hold: ${collapse ? 'collapsed' : 'expanded'} ${same.length} ${g.rank} groups`);
+  toast(`${collapse ? 'Collapsed' : 'Expanded'} all ${same.length} ${PLURAL[g.rank] || g.rank}`);
+  if (navigator.vibrate) navigator.vibrate(15);
+  redrawKeep(key, fromBar);
+}
+
+// ---- the sticky header: while scrolling, the labels of the group you are in sit side by side (wrapping onto more lines) ----
+let pathFrame = 0;
+const schedulePath = () => { if (!pathFrame) pathFrame = requestAnimationFrame(updatePath); };
+function updatePath() {
+  pathFrame = 0;
+  const pb = $('pathbar'), cells = gal.cells;
+  if (!isGal(view) || !cells.length) { pb.hidden = true; return; }
+  const ref = barHeight() + 2;
+  let lo = 0, hi = cells.length - 1, best = -1; // the last cell whose top has scrolled up under the bar
+  while (lo <= hi) { const mid = (lo + hi) >> 1; if (cells[mid].el.getBoundingClientRect().top <= ref) { best = mid; lo = mid + 1; } else hi = mid - 1; }
+  const path = best < 0 ? [] : cells[best].path;
+  if (!path.length) { pb.hidden = true; return; }
+  const col = collapsed[gal.sort], sig = gal.sort + '|' + path.map(g => g.key + (col.has(g.key) ? '-' : '+')).join(',');
+  if (pb.dataset.sig !== sig) {
+    pb.dataset.sig = sig;
+    const inner = pb.firstElementChild;
+    inner.replaceChildren(...path.map(g => tagEl(g, true)));
+  }
+  pb.hidden = false;
+}
+addEventListener('scroll', schedulePath, { passive: true });
+addEventListener('resize', schedulePath);
 
 // ---------- location grouping ----------
 const UNKNOWN_LOC = -1;
@@ -1601,9 +1710,10 @@ async function ensurePlaces() {
 }
 
 // ---------- recent view ----------
-const VIEW_KEY = 'inat_view_v2'; // v2: Recent is now the default tab
-let view = 'recent';
+const VIEW_KEY = 'inat_view_v2'; // the saved sort of the Photos tab (or Nearby)
+let view = 'recent', lastGal = 'recent';
 try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent', 'explore'].includes(v) ? v : 'recent'; } catch {}
+if (isGal(view)) lastGal = view;
 
 const UNIQUE_KEY = 'inat_recent_unique';
 let recentSeed = null, recentUnique = false;
@@ -1625,101 +1735,6 @@ function uniqueSpecies(obs) {
   });
 }
 const recentDate = o => o._last ?? o.date ?? '';
-
-// Polaroid titles: the handwriting wraps onto more lines and shrinks until the whole name fits the strip.
-function fitCaption(cap) {
-  const span = cap.firstElementChild;
-  if (!span || !cap.clientHeight) return; // not laid out yet (hidden tab): the observer below calls this again when it is
-  let size = 26;
-  cap.style.fontSize = size + 'px';
-  while (span.scrollHeight > cap.clientHeight + 1 && size > 12) { size -= 1; cap.style.fontSize = size + 'px'; }
-}
-const capObserver = new ResizeObserver(es => { for (const e of es) fitCaption(e.target); });
-if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('.rgrid.pol .tile .cap').forEach(fitCaption));
-function renderRecent(obs) {
-  const el = $('recent');
-  const shuffled = recentSeed != null;
-  let list = recentUnique ? uniqueSpecies(obs) : [...obs];
-  list = list.filter(o => photosOf(o).length); // the gallery is photos only
-  const rc = rarityCmp();
-  list = raritySort ? list.sort((a, b) => rc(rarityOf(a), rarityOf(b)) || recentDate(b).localeCompare(recentDate(a)))
-       : shuffled ? list.sort((a, b) => shuffleKey(a.id, recentSeed) - shuffleKey(b.id, recentSeed))
-                  : list.sort((a, b) => recentDate(b).localeCompare(recentDate(a)) || b.id - a.id);
-  const PAGE = 60;
-  const sticker = cutouts.sticker(), pol = cutouts.polaroid(); // cut-outs on: sticker layout in a masonry; Polaroid: normal photos in tilted frames
-  document.body.classList.toggle('stkview', sticker || pol);
-  const gridEl = document.createElement('div'); gridEl.className = 'rgrid' + (sticker ? ' stk' : pol ? ' pol' : '');
-  el.classList.toggle('stkmode', sticker || pol);
-  const ncols = innerWidth < 560 ? 2 : innerWidth < 900 ? 3 : 4;
-  let mason = null;
-  const newMason = () => { const m = document.createElement('div'); m.className = 'mason'; m.cols = Array.from({ length: ncols }, () => { const c = document.createElement('div'); c.className = 'mcol'; m.append(c); return c; }); gridEl.append(m); return m; };
-  const place = t => { // into the shortest column so far
-    if (!mason) mason = newMason();
-    let best = mason.cols[0], bh = Infinity;
-    for (const c of mason.cols) { const h = c.offsetHeight || c.children.length * 260; if (h < bh) { bh = h; best = c; } }
-    best.append(t);
-  };
-  let shown = 0, lastKey = null;
-  el.replaceChildren();
-  const moreBtn = document.createElement('button');
-  moreBtn.className = 'secondary'; moreBtn.style.marginTop = '10px';
-
-  function tile(o) {
-    const ph = photosOf(o);
-    const t = document.createElement('div');
-    t.className = 'tile'; markBrow(t, o.tid, o.id);
-    if (sticker) t.style.setProperty('--r', String((o.id % 7) - 3)); // each sticker sits a little differently
-    if (pol) t.style.setProperty('--rot', ((Math.imul(o.id, 2654435761) >>> 0) % 1300 / 100 - 6.5).toFixed(2) + 'deg'); // a random tilt of up to 6.5 degrees, fixed per observation
-    t.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'View photos');
-    { const rb = rarityBadge(rarityOf(o)); if (rb) b.append(rb); }
-    const im = document.createElement('img');
-    im.alt = ''; im.loading = 'lazy';
-    // with cut-outs on, the original photo is not shown (or even fetched) unless the cut-out cannot be made
-    im.src = cutouts.active() ? cutouts.BLANK : sized(ph[0], 'medium');
-    im.onerror = () => { if (im.src.startsWith('data:')) return; if (im.src !== ph[0]) im.src = ph[0]; };
-    b.append(im);
-    cutouts.attach(t, im, sized(ph[0], 'medium'));
-    if (ph.length > 1) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `1/${ph.length}`; b.append(n); }
-    { const fs = favStats().get(o.tid); if (o._n != null ? (fs && fs.newN > 0) : isNewObs(o)) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.textContent = 'NEW'; b.append(nt); } }
-    if (favMode === 'others' && o.ff > 0) { const ot = document.createElement('span'); ot.className = 'othertag'; ot.innerHTML = ic('heart', 12, true) + ' ' + o.ff; ot.title = `Favourited by ${o.ff} other ${o.ff > 1 ? 'people' : 'person'}`; t.append(ot); }
-    b.onclick = () => openSpecies(o.tid, o);
-    // the name opens the species detail
-    const cap = document.createElement('a');
-    cap.className = 'cap'; cap.textContent = o.common || o.name;
-    cap.href = `https://www.inaturalist.org/taxa/${o.tid}`; cap.target = '_blank'; cap.rel = 'noopener';
-    speciesLink(cap, o.tid);
-    if (pol) { const sp = document.createElement('span'); sp.textContent = cap.textContent; cap.replaceChildren(sp); capObserver.observe(cap); }
-    t.append(b, cap);
-    return t;
-  }
-  function more() {
-    const frag = document.createDocumentFragment();
-    for (const o of list.slice(shown, shown + PAGE)) {
-      const grouped = !shuffled && !raritySort; // date headings only make sense in date order
-      const key = grouped ? recentDate(o) : '';
-      if (grouped && key !== lastKey) {
-        const h = document.createElement('div'); h.className = 'dh';
-        h.textContent = key ? new Date(key + 'T00:00:00').toLocaleDateString(undefined,
-          { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
-          : 'Date unknown (use "Re-download observations" to fill in dates)';
-        if (sticker) { gridEl.append(h); mason = newMason(); } else frag.append(h);
-        lastKey = key;
-      }
-      if (sticker) place(tile(o)); else frag.append(tile(o));
-    }
-    shown = Math.min(list.length, shown + PAGE);
-    gridEl.append(frag);
-    if (shown < list.length) {
-      moreBtn.textContent = `Show more (${list.length - shown} left)`;
-      if (!moreBtn.isConnected) el.append(moreBtn);
-    } else moreBtn.remove();
-  }
-  el.append(gridEl);
-  moreBtn.onclick = more;
-  more();
-}
 
 // ---------- filters: text search + map area ----------
 const AREA_KEY = 'inat_area';
@@ -1837,17 +1852,6 @@ const rarityActive = () => rareMax > 0 || rareConcern;
 let cmpMode = ''; // '' | 'missing' (species the other person hasn't seen) | 'common' (seen by both)
 const DEFAULT_PHOTO_PROXY = 'https://inat-photos.richardgg.workers.dev/'; // a Cloudflare Worker that forwards iNaturalist photos with permission to read their pixels
 const getPhotoProxy = () => { try { return (localStorage.getItem('inat_photo_proxy') || '').trim() || DEFAULT_PHOTO_PROXY; } catch { return DEFAULT_PHOTO_PROXY; } };
-const CUT_MODES = [['', 'Off'], ['focus', 'Focus crop'], ['quick', 'Cut-out · quick'], ['ai', 'Cut-out · AI model'], ['sam', 'Cut-out · Segment Anything (centre)'], ['polaroid', 'Polaroid (normal photos)']];
-// background-removal models (Hugging Face ids, run in the browser); the last entry takes any id typed in
-const CUT_MODELS = [['briaai/RMBG-1.4', 'RMBG-1.4'], ['Xenova/modnet', 'MODNet'], ['onnx-community/BiRefNet_lite-ONNX', 'BiRefNet lite'], ['onnx-community/ISNet-ONNX', 'IS-Net'], ['custom', 'Other…']];
-let cutModel = 'briaai/RMBG-1.4', cutCustom = ''; // RMBG-1.4 turned out the most reliable on real photos
-try {
-  if (localStorage.getItem('inat_cut_model_v') !== '2') { localStorage.setItem('inat_cut_model_v', '2'); localStorage.removeItem('inat_cut_model'); } // one-time move to the new default
-  cutModel = localStorage.getItem('inat_cut_model') || cutModel; cutCustom = localStorage.getItem('inat_cut_custom') || '';
-} catch {}
-if (!CUT_MODELS.some(m => m[0] === cutModel)) cutModel = 'briaai/RMBG-1.4';
-let cutEnh = true; try { cutEnh = localStorage.getItem('inat_cut_enh') !== '0'; } catch {} // brighten dark photos
-let cutMode = ''; try { cutMode = localStorage.getItem('inat_cut') || ''; } catch {} if (!CUT_MODES.some(m => m[0] === cutMode)) cutMode = '';
 let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite) | 'others' (faved by other users) | 'theirs' / 'mine' (someone else's account: their favourites / ones I faved)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
                     47158: 'Insecta', 47119: 'Arachnida', 47115: 'Mollusca', 47126: 'Plantae', 47170: 'Fungi' };
@@ -1933,10 +1937,9 @@ function drawChips() {
   if (!nearby && rareMax) add('gem', `Under ${rareMax.toLocaleString()} observations worldwide`, () => { rareMax = 0; drawRarityChips(); scheduleShow(); }, 'Clear rarity filter');
   if (!nearby && rareConcern) add('shield-alert', 'Conservation concern', () => { rareConcern = false; drawRarityChips(); scheduleShow(); }, 'Clear conservation filter');
   if (!nearby && raritySort) add(raritySort === 'threat' ? 'shield-alert' : 'gem', raritySort === 'threat' ? 'Most threatened first' : 'Rarest first', () => { raritySort = ''; drawRarityChips(); scheduleShow(); }, 'Clear rarity sort');
-  if (cutMode && view === 'recent') add('scissors', cutouts.label(), () => cutouts.setMode(''), 'Turn off cut-outs');
   if (!nearby && cmpMode) add('git-compare', cmpLabel(cmpMode), () => { cmpMode = ''; drawCmpChips(); scheduleShow(); }, 'Clear comparison');
   const has = (id, on) => $(id).classList.toggle('has', !!on);
-  has('bcut', cutMode); has('brare', rarityActive() || raritySort); has('bcmp', cmpMode); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
+  has('brare', rarityActive() || raritySort); has('bcmp', cmpMode); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
 }
 // Largest circle that fits inside the map's current view (with a little margin).
 function viewportCircle() {
@@ -1997,7 +2000,7 @@ async function openAreaPanel(open) {
   drawAreaMarkers();
 }
 // Icon bar: each filter icon opens its own small panel (one at a time); the map-area panel is one of them too.
-const PANELS = { bsearch: 'psearch', bdate: 'pdate', bclass: 'pclass', brare: 'prare', bcmp: 'pcmp', bfav: 'pfav', bcut: 'pcut' };
+const PANELS = { bsearch: 'psearch', bdate: 'pdate', bclass: 'pclass', brare: 'prare', bcmp: 'pcmp', bfav: 'pfav', bsort: 'psort' };
 function closePanels(except) {
   for (const [btn, pan] of Object.entries(PANELS)) if (pan !== except) { $(pan).hidden = true; $(btn).classList.remove('open'); }
   if (except !== 'areapanel' && !$('areapanel').hidden) { openAreaPanel(false); $('areabtn').classList.remove('open'); }
@@ -2009,7 +2012,7 @@ for (const [btn, pan] of Object.entries(PANELS)) {
     $(pan).hidden = !opening; $(btn).classList.toggle('open', opening);
     if (opening && btn === 'bsearch') $('jump').focus();
     if (opening && btn === 'bcmp') drawCmpChips();
-    if (opening && btn === 'bcut') cutouts.drawPanel();
+    if (opening && btn === 'bsort') drawSortChips();
     if (opening && btn === 'brare') { refreshRarityUI(); if (rarityMissing().length) loadRarityData(); }
   };
 }
@@ -2101,7 +2104,7 @@ let browse = null, browseFrom = null;
 const markBrow = (el, tid, oid) => { el.dataset.brow = tid; if (oid != null) el.dataset.oid = oid; };
 document.addEventListener('click', e => { browseFrom = e.target.closest ? e.target.closest('[data-brow]') : null; setTimeout(() => { browseFrom = null; }, 0); }, true);
 function buildBrowse(from) {
-  const box = from.closest('#recent, #explore, #results');
+  const box = from.closest('#gal, #explore, #results');
   if (!box) return null;
   const items = [...box.querySelectorAll('[data-brow]')].filter(n => n.offsetParent || n === from)
     .map(n => ({ tid: +n.dataset.brow, oid: n.dataset.oid || '', node: n }));
@@ -2990,7 +2993,7 @@ function drawRarityChips() {
   for (const [mode, icon, text] of [['rare', 'gem', 'Rarest first'], ['threat', 'shield-alert', 'Most threatened first']]) {
     mk(icon, text, raritySort === mode, () => {
       raritySort = raritySort === mode ? '' : mode; // the two sorts exclude each other
-      if (raritySort) { recentSeed = null; shuffleSeed = null; $('unshuffle').hidden = true; syncRecentTools(); } // sorting and shuffling exclude each other
+      if (raritySort) { recentSeed = null; shuffleSeed = null; syncRecentTools(); } // sorting and shuffling exclude each other
       drawRarityChips(); scheduleShow();
     });
   }
@@ -3186,7 +3189,7 @@ function buildShareUrl() {
   const u = isOther() ? viewLogin : (state.user?.login || meLogin);
   if (!u) return '';
   const p = new URLSearchParams({ u });
-  if (['recent', 'tree', 'place'].includes(view)) p.set('tab', view);
+  if (isGal(view)) p.set('tab', view);
   const dv = $('datesel').value;
   if (dv !== 'all') { p.set('date', dv); if (dv === 'custom') { if ($('dfrom').value) p.set('from', $('dfrom').value); if ($('dto').value) p.set('to', $('dto').value); } }
   if (filterClasses.size) p.set('cls', [...filterClasses].join(','));
@@ -3231,31 +3234,40 @@ const scrollPos = {}; // scroll offset remembered per tab
 function setView(v) {
   if (v !== view) scrollPos[view] = scrollY;
   view = v;
+  if (isGal(v)) lastGal = v;
   try { localStorage.setItem(VIEW_KEY, v); } catch {}
-  $('tabTree').classList.toggle('active', v === 'tree');
-  $('tabPlace').classList.toggle('active', v === 'place');
-  $('tabRecent').classList.toggle('active', v === 'recent');
+  const g = isGal(v);
+  $('tabRecent').classList.toggle('active', g);
   $('tabExplore').classList.toggle('active', v === 'explore');
-  $('tree').hidden = v === 'recent' || v === 'explore';
-  $('recent').hidden = v !== 'recent';
+  $('gal').hidden = !g;
+  $('pathbar').hidden = true;
   $('explore').hidden = v !== 'explore';
-  $('treeTools').hidden = v === 'recent' || v === 'explore';
-  $('jumpwrap').hidden = v === 'recent' || v === 'explore';
-  $('bsearch').hidden = v === 'recent' || v === 'explore';
-  $('bcut').hidden = v !== 'recent';
-  document.body.classList.toggle('stkview', v === 'recent' && (cutouts.sticker() || cutouts.polaroid()));
-  if (v !== 'recent' && !$('pcut').hidden) { $('pcut').hidden = true; $('bcut').classList.remove('open'); }
-  if (v === 'recent' || v === 'explore') { $('psearch').hidden = true; $('bsearch').classList.remove('open'); }
-  $('recentTools').hidden = v !== 'recent';
+  $('galTools').hidden = !g;
+  $('bsort').hidden = !g;
+  $('jumpwrap').hidden = !g;
+  $('bsearch').hidden = !g;
+  if (!g) { $('psearch').hidden = true; $('bsearch').classList.remove('open'); $('psort').hidden = true; $('bsort').classList.remove('open'); }
+  document.body.classList.toggle('stkview', g); // dark mode: a felt-green desk behind the Polaroids
+  syncRecentTools();
   document.body.classList.toggle('vexplore', v === 'explore'); // Nearby keeps only the date and group filter buttons
   if (v === 'explore') closePanels();
   $('locTools').hidden = v !== 'place';
   if (v === 'explore') { initExpMap(); drawChips(); renderExplore(); if (explore.selected && !explore.items.length && !explore.loading) loadExplore(); }
   if (state.obs.length) show();
-  // each tab keeps its own scroll position (re-applied once more next frame in case layout settles late)
+  // each sort keeps its own scroll position (re-applied once more next frame in case layout settles late)
   const y = scrollPos[v] || 0;
   scrollTo({ top: y });
   requestAnimationFrame(() => scrollTo({ top: y }));
+}
+const SORTS = [['recent', 'By date', 'calendar'], ['tree', 'Taxonomy', 'list-tree'], ['place', 'By place', 'map']];
+function drawSortChips() {
+  const box = $('sortchips'); box.replaceChildren();
+  for (const [k, label] of SORTS) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (view === k ? ' on' : ''); b.textContent = label;
+    b.setAttribute('aria-pressed', String(view === k));
+    b.onclick = () => { closePanels(); if (view !== k) setView(k); };
+    box.append(b);
+  }
 }
 // Tapping a tab switches to it; tapping the already-active tab scrolls it back to the top.
 // Web and World are full-screen but leave the tab bar visible (and usable): tapping another tab closes them.
@@ -3271,9 +3283,7 @@ function tabTap(v) {
   if (v === view) scrollTo({ top: 0, behavior: 'smooth' });
   else setView(v);
 }
-$('tabTree').onclick = () => tabTap('tree');
-$('tabPlace').onclick = () => tabTap('place');
-$('tabRecent').onclick = () => tabTap('recent');
+$('tabRecent').onclick = () => tabTap(isGal(view) ? view : lastGal);
 $('tabExplore').onclick = () => tabTap('explore');
 
 let favHintToasted = false;
@@ -3298,21 +3308,21 @@ function show(keepStatus) {
   const filtered = obs.length !== state.obs.length;
   let species;
   if (!$('areapanel').hidden && markerSig !== markerKey()) drawAreaMarkers();
-  if (view === 'recent') {
-    renderRecent(obs);
+  if (isGal(view)) {
+    renderGallery(obs);
     species = new Set(obs.map(o => o.tid)).size;
-  } else if (view === 'place') {
-    species = render(buildTree(obs, placeChain), state.names, PLACE_META);
+  }
+  if (view === 'place') {
     const without = obs.filter(o => !(o.pids && o.pids.length)).length;
     $('locnote').textContent = without
       ? `${without} observation${without > 1 ? 's' : ''} without place data (private, or cached before location support — use "Re-download observations")`
       : '';
     if (!keepStatus) ensurePlaces();
-  } else species = render(buildTree(obs), state.names);
+  }
   if (!obs.length) {
     const empty = document.createElement('p');
     empty.className = 'status'; empty.textContent = 'No observations match the current search / date / group / area.';
-    (view === 'recent' ? $('recent') : $('tree')).replaceChildren(empty);
+    $('gal').replaceChildren(empty); $('pathbar').hidden = true;
   }
   $('results').hidden = false;
   $('summary').textContent = `${state.user.login}: ${species} species · ${obs.length}${filtered ? ` of ${state.obs.length}` : ''} identified observations${state.complete === false ? ` · newest ${state.obs.length}${state.total ? ' of ' + state.total.toLocaleString() : ''}` : ''}`;
@@ -3441,49 +3451,44 @@ $('clearcache').onclick = async () => {
 };
 $('copylog').onclick = () => navigator.clipboard?.writeText($('log').innerText).then(() => status('Log copied.'));
 // Hold a group heading: collapse every group of the same rank (or expand them all if it was already collapsed).
-const PLURAL = { kingdom: 'kingdoms', phylum: 'phyla', class: 'classes', order: 'orders', family: 'families', genus: 'genera',
+const PLURAL = { year: 'years', month: 'months', day: 'days', kingdom: 'kingdoms', phylum: 'phyla', class: 'classes', order: 'orders', family: 'families', genus: 'genera',
   continent: 'continents', country: 'countries', county: 'counties', city: 'cities', area: 'areas' };
 let toastTimer;
 function toast(msg) {
   $('toast').textContent = msg; $('toast').classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('show'), 1800);
 }
+// Tap a label to collapse or expand its group; hold it to do the same for every group of that rank.
 (() => {
-  const tree = $('tree');
   let timer, startX, startY, held = false;
   const cancel = () => clearTimeout(timer);
-  tree.addEventListener('pointerdown', e => {
-    const sum = e.target.closest('summary');
-    held = false; cancel();
-    if (!sum || e.button > 0) return;
-    startX = e.clientX; startY = e.clientY;
-    timer = setTimeout(() => {
-      const det = sum.parentElement, rank = det.dataset.rank;
-      held = true;
-      const same = [...tree.querySelectorAll(`details.g[data-rank="${rank}"]`)];
-      const collapse = det.open;
-      same.forEach(d => { d.open = !collapse; });
-      log(`hold: ${collapse ? 'collapsed' : 'expanded'} ${same.length} ${rank} groups`);
-      toast(`${collapse ? 'Collapsed' : 'Expanded'} all ${same.length} ${PLURAL[rank] || rank}`);
-      if (navigator.vibrate) navigator.vibrate(15);
-      requestAnimationFrame(() => det.scrollIntoView({ block: 'nearest' }));
-    }, 500);
-  });
-  tree.addEventListener('pointermove', e => {
-    if (timer && Math.hypot(e.clientX - startX, e.clientY - startY) > 10) cancel();
-  });
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => tree.addEventListener(t, cancel));
+  for (const host of [$('gal'), $('pathbar')]) {
+    const fromBar = host.id === 'pathbar';
+    host.addEventListener('pointerdown', e => {
+      const tag = e.target.closest('.tag');
+      held = false; cancel();
+      if (!tag || e.button > 0) return;
+      startX = e.clientX; startY = e.clientY;
+      timer = setTimeout(() => { held = true; toggleRank(tag.dataset.key, fromBar); }, 500);
+    });
+    host.addEventListener('pointermove', e => { if (timer && Math.hypot(e.clientX - startX, e.clientY - startY) > 10) cancel(); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => host.addEventListener(t, cancel));
+    // swallow the click that follows a hold so the label doesn't toggle again
+    host.addEventListener('click', e => {
+      const tag = e.target.closest('.tag');
+      if (!tag) return;
+      e.preventDefault(); e.stopPropagation();
+      if (held) { held = false; return; }
+      toggleGroup(tag.dataset.key, fromBar);
+    }, true);
+    host.addEventListener('contextmenu', e => { if (e.target.closest('.tag')) e.preventDefault(); });
+  }
   window.addEventListener('scroll', cancel, { passive: true });
-  // swallow the click that follows a hold so the heading doesn't toggle again
-  tree.addEventListener('click', e => {
-    if (held && e.target.closest('summary')) { e.preventDefault(); e.stopPropagation(); }
-    held = false;
-  }, true);
-  tree.addEventListener('contextmenu', e => { if (e.target.closest('summary')) e.preventDefault(); });
 })();
 
 function syncRecentTools() {
-  $('rdefault').hidden = recentSeed == null;
+  $('unshuffle').hidden = shuffleSeed == null && recentSeed == null;
+  $('runique').hidden = view !== 'recent';
   $('runique').classList.toggle('active', recentUnique);
   $('runique').setAttribute('aria-pressed', String(recentUnique));
 }
@@ -3492,11 +3497,10 @@ $('runique').onclick = () => {
   try { localStorage.setItem(UNIQUE_KEY, recentUnique ? '1' : '0'); } catch {}
   syncRecentTools(); show(true);
 };
-$('rshuffle').onclick = () => { recentSeed = Math.floor(Math.random() * 2 ** 31); stopRaritySort(); syncRecentTools(); show(true); };
-$('rdefault').onclick = () => { recentSeed = null; syncRecentTools(); show(true); };
+// one seed shuffles every sort of the gallery
+$('shuffle').onclick = () => { shuffleSeed = recentSeed = Math.floor(Math.random() * 2 ** 31); stopRaritySort(); syncRecentTools(); show(true); };
+$('unshuffle').onclick = () => { shuffleSeed = recentSeed = null; syncRecentTools(); show(true); };
 syncRecentTools();
-$('shuffle').onclick = () => { shuffleSeed = Math.floor(Math.random() * 2 ** 31); $('unshuffle').hidden = false; stopRaritySort(); show(true); };
-$('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = true; show(true); };
 // ---------- the icon bar sticks to the top: it tucks away when scrolling down and returns on any scroll up ----------
 (() => {
   const bar = $('iconbar');
@@ -3528,7 +3532,7 @@ $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = tru
 
 // ---------- swipe left/right to change tab ----------
 (() => {
-  const order = ['recent', 'tree', 'place', 'explore'];
+  const order = ['gal', 'explore'];
   const results = $('results');
   let sx = 0, sy = 0, st = 0, ok = false;
   // don't hijack horizontal gestures that belong to something else (carousels, maps, chip rows, inputs, overlays)
@@ -3551,38 +3555,30 @@ $('unshuffle').onclick = () => { shuffleSeed = null; $('unshuffle').hidden = tru
     ok = false;
     const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
     if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6 || Date.now() - st > 700) return;
-    const next = order.indexOf(view) + (dx < 0 ? 1 : -1);
+    const next = order.indexOf(isGal(view) ? 'gal' : view) + (dx < 0 ? 1 : -1);
     if (next < 0 || next >= order.length) return;
     results.classList.remove('swipe-next', 'swipe-prev');
     void results.offsetWidth;
     results.classList.add(dx < 0 ? 'swipe-next' : 'swipe-prev');
     setTimeout(() => results.classList.remove('swipe-next', 'swipe-prev'), 300);
-    setView(order[next]);
-    log(`swipe → ${order[next]}`);
+    const target = order[next] === 'gal' ? lastGal : order[next];
+    setView(target);
+    log(`swipe → ${target}`);
   }, { passive: true });
 })();
 
 // ---------- jump-to search (Taxonomy / Place): autocomplete over group and species names, then scroll to the item ----------
 let jumpIndex = null;
 function buildJumpIndex() {
-  const items = [];
-  for (const d of $('tree').querySelectorAll('details.g')) {
-    const nm = d.querySelector(':scope > summary .nm'), rank = d.dataset.rank || '';
-    if (nm) items.push({ el: d, group: true, label: nm.textContent.trim(), sub: rank, hay: fold(nm.textContent), rank });
-  }
-  for (const s of $('tree').querySelectorAll('.sp')) {
-    const a = s.querySelector('a.t');
-    if (!a) continue;
-    const parent = s.closest('details.g'), p = parent && parent.querySelector(':scope > summary .nm');
-    items.push({ el: s, group: false, label: a.textContent.trim(), sub: p ? `in ${p.textContent.trim()}` : '', hay: fold(a.textContent) });
-  }
-  for (const t of $('tree').querySelectorAll('.tile')) {
-    const a = t.querySelector('a.cap');
-    if (!a) continue;
-    const parent = t.closest('details.g'), p = parent && parent.querySelector(':scope > summary .nm');
-    items.push({ el: t, group: false, label: a.textContent.trim(), sub: p ? `in ${p.textContent.trim()}` : '', hay: fold(a.textContent) });
-  }
-  return items;
+  const out = [], seen = new Set();
+  for (const g of gal.groups) out.push({ group: true, g, label: g.main + (g.sub ? ` (${g.sub})` : ''), sub: g.rank, hay: fold(g.main + ' ' + g.sub), rank: g.rank });
+  gal.items.forEach((it, i) => {
+    const name = it.o.common || it.o.name, k = name + '|' + (it.path.length ? it.path[it.path.length - 1].key : '');
+    if (seen.has(k)) return; seen.add(k); // one suggestion per species and group
+    const p = it.path[it.path.length - 1];
+    out.push({ group: false, i, label: name, sub: p ? `in ${p.main}` : '', hay: fold(`${it.o.common || ''} ${it.o.name || ''}`) });
+  });
+  return out;
 }
 const RANK_ORDER = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'continent', 'country', 'state', 'county', 'city', 'area'];
 function jumpMatches(q) {
@@ -3611,12 +3607,17 @@ function drawJump() {
 function jumpTo(it) {
   $('jumpsug').hidden = true;
   closePanels('');
-  // open every ancestor group (and the target itself if it is a group) so the item is visible
-  if (it.group) it.el.open = true;
-  for (let d = it.el.parentElement && it.el.parentElement.closest('details.g'); d; d = d.parentElement && d.parentElement.closest('details.g')) d.open = true;
+  const col = collapsed[gal.sort];
+  // open the target's groups, and draw further pages if it is beyond the ones shown
+  const idx = it.group ? it.g.first : it.i, path = it.group ? [...(function up(g) { return g.parent ? [...up(g.parent), g.parent] : []; })(it.g), it.g] : gal.items[it.i].path;
+  path.forEach(g => col.delete(g.key));
+  drawGallery();
+  for (let guard = 0; gal.shownTo <= idx && gal.shownTo < gal.items.length && guard < 200; guard++) { gal.limit += GAL_PAGE; drawGallery(); }
+  const cell = $('gal').querySelector(`.cell[data-i="${idx}"]`);
+  if (!cell) return;
   setTimeout(() => {
-    it.el.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    const target = it.group ? it.el.querySelector(':scope > summary') : it.el;
+    cell.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    const target = (it.group && cell.querySelector(`.tag[data-key="${CSS.escape(it.g.key)}"]`)) || cell.querySelector('.tile') || cell;
     target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
     setTimeout(() => target.classList.remove('flash'), 2000);
   }, 60);
@@ -3630,436 +3631,23 @@ $('jump').addEventListener('keydown', e => {
 });
 document.addEventListener('click', e => { if (!e.target.closest('#jumpwrap')) $('jumpsug').hidden = true; });
 
-// One button: collapses everything while anything is open, otherwise expands everything.
-let expColFrame;
+// One button: collapses every group, or (when they are all collapsed) expands every group.
 function syncExpCol() {
-  const open = [...document.querySelectorAll('#tree details.g')].some(d => d.open);
-  setIcon($('expcol'), open ? 'chevrons-down-up' : 'chevrons-up-down');
-  $('expcol').title = open ? 'Collapse all' : 'Expand all';
+  const col = collapsed[gal.sort], all = gal.groups.length > 0 && gal.groups.every(g => col.has(g.key));
+  $('expcol').hidden = !gal.groups.length;
+  setIcon($('expcol'), all ? 'chevrons-up-down' : 'chevrons-down-up');
+  $('expcol').title = all ? 'Expand all' : 'Collapse all';
   $('expcol').setAttribute('aria-label', $('expcol').title);
 }
-const scheduleExpCol = () => { cancelAnimationFrame(expColFrame); expColFrame = requestAnimationFrame(syncExpCol); };
 $('expcol').onclick = () => {
-  const ds = [...document.querySelectorAll('#tree details.g')];
-  const open = ds.some(d => d.open);
-  ds.forEach(d => { d.open = !open; });
-  syncExpCol();
+  const col = collapsed[gal.sort], all = gal.groups.length > 0 && gal.groups.every(g => col.has(g.key));
+  if (all) col.clear(); else gal.groups.forEach(g => col.add(g.key));
+  drawGallery();
+  if (!all) scrollTo({ top: Math.max(0, $('gal').getBoundingClientRect().top + scrollY - barHeight() - 60) });
 };
-$('tree').addEventListener('toggle', scheduleExpCol, true); // toggle doesn't bubble; catch it in the capture phase
 
 
 
-// ---------- Recent: cut out the animals (several approaches; "Off" is the default) ----------
-// Each approach needs the photo's pixels, so photos are read the same ways as for the colours (direct, the other iNaturalist host, the photo
-// proxy). A finished cut-out is saved in this browser by photo address, so each photo is processed once.
-//   focus: crop square around the main subject      quick: subject cut out by colour contrast with the photo's edges
-//   ai:    a background-removal model run in the browser (downloads once; not tested against every browser)
-const cutouts = (() => {
-  const AI_MODEL = 'Xenova/modnet';
-  const ALT = { 'static.inaturalist.org': 'inaturalist-open-data.s3.amazonaws.com', 'inaturalist-open-data.s3.amazonaws.com': 'static.inaturalist.org' };
-  const host = u => { try { return new URL(u).hostname; } catch { return '?'; } };
-  const blocked = new Set();
-  const memory = new Map(), objUrls = new Map(), itemOf = new Map();
-  const queue = [];
-  let running = 0, done = 0, failed = 0, fromSaved = 0, madeNow = 0;
-  const baseOf = () => cutMode === 'ai' ? `ai:${modelId()}` : cutMode; // what a saved cut-out depends on
-  const keyOf = () => baseOf() + (cutEnh ? '+e' : '');                 // ...and what is shown (brightened or not)
-  const ctl = { setMode: null, attach: null, drawPanel: null };
-
-  // ---- reading the pixels ----
-  const loadImage = (src, cors) => new Promise(res => {
-    const im = new Image();
-    if (cors) im.crossOrigin = 'anonymous';
-    im.onload = () => res(im); im.onerror = () => res(null);
-    im.src = src;
-  });
-  async function readable(url) {
-    const alt = ALT[host(url)] ? url.replace(host(url), ALT[host(url)]) : null;
-    const px = getPhotoProxy(), proxied = px ? `${px}${px.includes('?') ? '&' : '?'}url=${encodeURIComponent(url)}` : null;
-    for (const src of [url, alt, proxied]) {
-      if (!src || blocked.has(host(src))) continue;
-      const im = await loadImage(src, true);
-      if (im) return im;
-      blocked.add(host(src)); log(`cut-outs: ${host(src)} did not allow reading ${src.slice(0, 100)}`, 'w');
-    }
-    return null;
-  }
-
-  // ---- finding the subject without a model ----
-  function otsu(hist, total) {
-    let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i];
-    let wB = 0, sumB = 0, best = 0, thr = 128;
-    for (let t = 0; t < 256; t++) {
-      wB += hist[t]; if (!wB) continue;
-      const wF = total - wB; if (!wF) break;
-      sumB += t * hist[t];
-      const mB = sumB / wB, mF = (sum - sumB) / wF, v = wB * wF * (mB - mF) * (mB - mF);
-      if (v > best) { best = v; thr = t; }
-    }
-    return thr;
-  }
-  const redmean = (r1, g1, b1, r2, g2, b2) => { const rm = (r1 + r2) / 2, dr = r1 - r2, dg = g1 - g2, db = b1 - b2; return Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db); };
-  function morph(src, w, h, grow) { // 3x3 dilate (grow) or erode
-    const out = new Uint8Array(w * h);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      let hit = grow ? 0 : 1;
-      for (let dy = -1; dy <= 1 && (grow ? !hit : hit); dy++) for (let dx = -1; dx <= 1; dx++) {
-        const xx = x + dx, yy = y + dy, v = xx < 0 || yy < 0 || xx >= w || yy >= h ? 0 : src[yy * w + xx];
-        if (grow ? v : !v) { hit = grow ? 1 : 0; break; }
-      }
-      out[y * w + x] = hit;
-    }
-    return out;
-  }
-  // returns { mask (0-255, w*h), w, h, box {x0,y0,x1,y1 as 0..1} } or null when no clear subject is found
-  let nopes = 0;
-  const nope = why => { if (nopes++ < 3) log(`cut-outs: no clear subject found (${why})`, 'w'); return null; };
-  function segment(img) {
-    const iw = img.naturalWidth, ih = img.naturalHeight, sc = 96 / Math.max(iw, ih);
-    const w = Math.max(16, Math.round(iw * sc)), h = Math.max(16, Math.round(ih * sc));
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
-    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, w, h);
-    return segmentData(g.getImageData(0, 0, w, h).data, w, h);
-  }
-  function segmentData(d, w, h, dbg = {}) {
-    const n = w * h;
-    // what the edges of the photo look like: up to three colour groups (sky, water, ground...)
-    const band = Math.max(2, Math.round(0.07 * Math.min(w, h))), edge = [];
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (x < band || y < band || x >= w - band || y >= h - band) edge.push((y * w + x) * 4);
-    const lum = i => d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
-    const sorted = edge.slice().sort((a, b) => lum(a) - lum(b));
-    let cent = [0.17, 0.5, 0.83].map(q => { const i = sorted[Math.floor(q * (sorted.length - 1))]; return [d[i], d[i + 1], d[i + 2]]; });
-    let groups = [];
-    for (let it = 0; it < 6; it++) {
-      groups = cent.map(() => ({ s: [0, 0, 0], n: 0, v: 0 }));
-      for (const i of edge) {
-        let bk = 0, bd = Infinity;
-        cent.forEach((m, k) => { const dd = redmean(d[i], d[i + 1], d[i + 2], m[0], m[1], m[2]); if (dd < bd) { bd = dd; bk = k; } });
-        const gr = groups[bk]; gr.s[0] += d[i]; gr.s[1] += d[i + 1]; gr.s[2] += d[i + 2]; gr.n++; gr.v += bd * bd;
-      }
-      cent = groups.map((gr, k) => gr.n ? gr.s.map(v => v / gr.n) : cent[k]);
-    }
-    const use = groups.map((gr, k) => ({ m: cent[k], sig: gr.n ? Math.sqrt(gr.v / gr.n) : 0, share: gr.n / edge.length })).filter(x => x.share >= 0.1);
-    if (!use.length) return nope('no edge colours');
-    // how unlike the edge colours each pixel is, a little favouring the middle
-    const score = new Float32Array(n), hist = new Uint32Array(256);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const i = (y * w + x) * 4;
-      let best = Infinity;
-      for (const u of use) { const dd = redmean(d[i], d[i + 1], d[i + 2], u.m[0], u.m[1], u.m[2]) / (u.sig * 1.5 + 12); if (dd < best) best = dd; }
-      const dx = x / w - 0.5, dy = y / h - 0.5, cw = 0.5 + 0.5 * Math.exp(-(dx * dx + dy * dy) / 0.5);
-      const sv = Math.min(best, 6) / 6 * cw; score[y * w + x] = sv; hist[Math.min(255, Math.round(sv * 255))]++;
-    }
-    const thr = otsu(hist, n) * 0.9 / 255;
-    let mask = new Uint8Array(n); for (let i = 0; i < n; i++) mask[i] = score[i] >= thr ? 1 : 0;
-    dbg.thr = thr; dbg.afterThreshold = mask.reduce((a, b) => a + b, 0); dbg.groups = use.length;
-    mask = morph(morph(mask, w, h, false), w, h, true);                                   // open: drop speckle
-    for (let k = 0; k < 2; k++) mask = morph(mask, w, h, true);                           // close: join pieces
-    for (let k = 0; k < 2; k++) mask = morph(mask, w, h, false);
-    // fill holes: background is whatever the border can reach
-    const bg = new Uint8Array(n), stack = [];
-    const push = (x, y) => { const i = y * w + x; if (!mask[i] && !bg[i]) { bg[i] = 1; stack.push(i); } };
-    for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); } for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
-    while (stack.length) { const i = stack.pop(), x = i % w, y = (i / w) | 0; if (x > 0) push(x - 1, y); if (x < w - 1) push(x + 1, y); if (y > 0) push(x, y - 1); if (y < h - 1) push(x, y + 1); }
-    for (let i = 0; i < n; i++) mask[i] = bg[i] ? 0 : 1;
-    // keep the piece that sits in the middle (and any sizeable piece touching it)
-    const lab = new Int32Array(n).fill(-1), comps = [];
-    for (let i0 = 0; i0 < n; i0++) {
-      if (!mask[i0] || lab[i0] >= 0) continue;
-      const id = comps.length, comp = { id, area: 0, mid: 0, x0: w, y0: h, x1: 0, y1: 0 }; comps.push(comp);
-      const st = [i0]; lab[i0] = id;
-      while (st.length) {
-        const i = st.pop(), x = i % w, y = (i / w) | 0;
-        comp.area++; if (x > w * 0.25 && x < w * 0.75 && y > h * 0.25 && y < h * 0.75) comp.mid++;
-        comp.x0 = Math.min(comp.x0, x); comp.x1 = Math.max(comp.x1, x); comp.y0 = Math.min(comp.y0, y); comp.y1 = Math.max(comp.y1, y);
-        for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) if (j >= 0 && mask[j] && lab[j] < 0) { lab[j] = id; st.push(j); }
-      }
-    }
-    if (!comps.length) return nope('nothing left after clean-up');
-    const main = comps.reduce((a, b) => (b.mid + b.area * 0.05 > a.mid + a.area * 0.05 ? b : a));
-    const keep = new Set([main.id]);
-    for (const k of comps) if (k !== main && k.area >= main.area * 0.2 && k.x0 <= main.x1 + w * 0.1 && k.x1 >= main.x0 - w * 0.1 && k.y0 <= main.y1 + h * 0.1 && k.y1 >= main.y0 - h * 0.1) keep.add(k.id);
-    let cnt = 0, x0 = w, y0 = h, x1 = 0, y1 = 0;
-    const m = new Float32Array(n);
-    for (let i = 0; i < n; i++) if (lab[i] >= 0 && keep.has(lab[i])) { m[i] = 1; cnt++; const x = i % w, y = (i / w) | 0; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-    if (cnt < n * 0.02 || cnt > n * 0.92) return nope(`subject covers ${Math.round(cnt / n * 100)}% of the photo`); // nothing clearly stands out (or it is everything)
-    // soft edge
-    let a = m;
-    for (let pass = 0; pass < 2; pass++) {
-      const b = new Float32Array(n);
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-        let sum = 0, k = 0;
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < w && yy < h) { sum += a[yy * w + xx]; k++; } }
-        b[y * w + x] = sum / k;
-      }
-      a = b;
-    }
-    const mask8 = new Uint8ClampedArray(n); for (let i = 0; i < n; i++) mask8[i] = Math.round(a[i] * 255);
-    return { mask: mask8, w, h, box: { x0: x0 / w, y0: y0 / h, x1: (x1 + 1) / w, y1: (y1 + 1) / h } };
-  }
-  const toBlob = (canvas, type, q) => new Promise(res => canvas.toBlob(res, type, q));
-  async function focusCrop(img, seg) {
-    const iw = img.naturalWidth, ih = img.naturalHeight, b = seg.box;
-    const cx = (b.x0 + b.x1) / 2 * iw, cy = (b.y0 + b.y1) / 2 * ih, subject = Math.max((b.x1 - b.x0) * iw, (b.y1 - b.y0) * ih);
-    const side = Math.min(Math.min(iw, ih), Math.max(subject * 1.4, Math.min(iw, ih) * 0.35));
-    const x = Math.min(Math.max(cx - side / 2, 0), iw - side), y = Math.min(Math.max(cy - side / 2, 0), ih - side);
-    const c = document.createElement('canvas'); c.width = c.height = Math.round(Math.min(side, 500));
-    c.getContext('2d').drawImage(img, x, y, side, side, 0, 0, c.width, c.height);
-    return toBlob(c, 'image/jpeg', 0.88);
-  }
-  async function quickCut(img, seg) {
-    const iw = img.naturalWidth, ih = img.naturalHeight, out = document.createElement('canvas'); out.width = iw; out.height = ih;
-    const g = out.getContext('2d'); g.drawImage(img, 0, 0);
-    const mc = document.createElement('canvas'); mc.width = seg.w; mc.height = seg.h;
-    const md = new ImageData(seg.w, seg.h); for (let i = 0; i < seg.mask.length; i++) md.data[i * 4 + 3] = seg.mask[i];
-    mc.getContext('2d').putImageData(md, 0, 0);
-    g.globalCompositeOperation = 'destination-in'; g.imageSmoothingQuality = 'high'; g.drawImage(mc, 0, 0, iw, ih);
-    return cropToBox(out, seg.box);
-  }
-  async function cropToBox(canvas, box) { // trim to the subject (a little room round it) and encode with transparency
-    const iw = canvas.width, ih = canvas.height, px = (box.x1 - box.x0) * iw * 0.06, py = (box.y1 - box.y0) * ih * 0.06;
-    const x0 = Math.max(0, box.x0 * iw - px), y0 = Math.max(0, box.y0 * ih - py), x1 = Math.min(iw, box.x1 * iw + px), y1 = Math.min(ih, box.y1 * ih + py);
-    const c = document.createElement('canvas'); c.width = Math.max(8, Math.round(x1 - x0)); c.height = Math.max(8, Math.round(y1 - y0));
-    c.getContext('2d').drawImage(canvas, x0, y0, x1 - x0, y1 - y0, 0, 0, c.width, c.height);
-    return toBlob(c, 'image/webp', 0.9);
-  }
-
-  // ---- the model approaches (transformers.js from jsDelivr; models from Hugging Face) ----
-  const modelId = () => cutModel === 'custom' ? cutCustom.trim() : cutModel;
-  const modelName = () => cutModel === 'custom' ? (cutCustom.trim() || 'custom model') : CUT_MODELS.find(m => m[0] === cutModel)[1];
-  let tfModule = null;
-  const loadTf = () => tfModule || (tfModule = (async () => {
-    const base = new URL(VENDOR + 'transformers/', location.href).href;
-    let m;
-    try { m = await import(base + 'transformers.min.js'); } catch (e) { throw new Error(`${VENDOR}transformers/transformers.min.js could not be loaded (${e && e.message || e})`); }
-    m.env.backends.onnx.wasm.wasmPaths = base; // the engine files sit beside it
-    m.env.allowLocalModels = false;
-    log('AI library loaded from vendor/ (pinned 3.8.1)');
-    return m;
-  })());
-  const pipes = new Map(), broken = new Set();
-  const fail = (what, e) => { broken.add(what); log(`cut-outs: ${what} could not be loaded: ${e && e.message || e}`, 'e'); toast(`The ${what} model could not be loaded here`); };
-  function getPipe(id) {
-    if (!pipes.has(id)) {
-      toast(`Downloading the cut-out model (${id}), once…`);
-      const p = (async () => {
-        const mod = await loadTf();
-        if (navigator.gpu) { try { return await mod.pipeline('background-removal', id, { device: 'webgpu' }); } catch (e) { log(`cut-outs: WebGPU failed for ${id}, trying the CPU (${e && e.message || e})`, 'w'); } }
-        return mod.pipeline('background-removal', id);
-      })();
-      p.catch(e => fail(id, e));
-      pipes.set(id, p);
-    }
-    return pipes.get(id);
-  }
-  const imageUrl = async img => { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0); return URL.createObjectURL(await toBlob(c, 'image/png')); };
-  function alphaBox(canvas) {
-    const d = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
-    let x0 = canvas.width, y0 = canvas.height, x1 = 0, y1 = 0;
-    for (let y = 0; y < canvas.height; y++) for (let x = 0; x < canvas.width; x++) if (d[(y * canvas.width + x) * 4 + 3] > 40) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-    return x1 > x0 && y1 > y0 ? { x0: x0 / canvas.width, y0: y0 / canvas.height, x1: (x1 + 1) / canvas.width, y1: (y1 + 1) / canvas.height } : null;
-  }
-  async function aiCut(img, id) {
-    if (!id || broken.has(id)) return null;
-    let pipe; try { pipe = await getPipe(id); } catch { return null; }
-    const url = await imageUrl(img);
-    try {
-      let out = await pipe(url); if (Array.isArray(out)) out = out[0];
-      const oc = out.toCanvas ? out.toCanvas() : null; if (!oc) return null;
-      const box = alphaBox(oc);
-      return box ? cropToBox(oc, box) : null;
-    } catch (e) { log(`cut-outs: ${id} failed on a photo: ${e && e.message || e}`, 'w'); return null; }
-    finally { URL.revokeObjectURL(url); }
-  }
-  // Segment Anything (SlimSAM): "what is at the centre of the photo?" Of its three guesses the one it is surest of is used.
-  const SAM_ID = 'Xenova/slimsam-77-uniform';
-  let samP = null;
-  function getSam() {
-    if (!samP) {
-      toast('Downloading Segment Anything (SlimSAM), once…');
-      samP = (async () => { const m = await loadTf(); return { m, model: await m.SamModel.from_pretrained(SAM_ID), processor: await m.AutoProcessor.from_pretrained(SAM_ID) }; })();
-      samP.catch(e => fail('Segment Anything', e));
-    }
-    return samP;
-  }
-  async function samCut(img) {
-    if (broken.has('Segment Anything')) return null;
-    let sam; try { sam = await getSam(); } catch { return null; }
-    const url = await imageUrl(img);
-    try {
-      const raw = await sam.m.RawImage.read(url);
-      const inputs = await sam.processor(raw, { input_points: [[[raw.width / 2, raw.height / 2]]] });
-      const outputs = await sam.model(inputs);
-      const masks = await sam.processor.post_process_masks(outputs.pred_masks, inputs.original_sizes, inputs.reshaped_input_sizes);
-      const mk = masks[0], dims = mk.dims, k = dims[dims.length - 3], H = dims[dims.length - 2], W = dims[dims.length - 1], sc = outputs.iou_scores.data;
-      let best = 0; for (let i = 1; i < k; i++) if (sc[i] > sc[best]) best = i;
-      const data = mk.data, off = best * H * W;
-      const mc = document.createElement('canvas'); mc.width = W; mc.height = H;
-      const md = new ImageData(W, H); let on = 0;
-      for (let i = 0; i < H * W; i++) if (data[off + i]) { md.data[i * 4 + 3] = 255; on++; }
-      if (on < H * W * 0.01 || on > H * W * 0.95) return null; // nothing sensible at the centre
-      mc.getContext('2d').putImageData(md, 0, 0);
-      const out = document.createElement('canvas'); out.width = img.naturalWidth; out.height = img.naturalHeight;
-      const g = out.getContext('2d'); g.drawImage(img, 0, 0);
-      g.globalCompositeOperation = 'destination-in'; g.imageSmoothingQuality = 'high'; g.drawImage(mc, 0, 0, out.width, out.height);
-      const box = alphaBox(out);
-      return box ? cropToBox(out, box) : null;
-    } catch (e) { log(`cut-outs: Segment Anything failed on a photo: ${e && e.message || e}`, 'w'); return null; }
-    finally { URL.revokeObjectURL(url); }
-  }
-  async function compute(mode, img, model) {
-    if (mode === 'ai') return aiCut(img, model);
-    if (mode === 'sam') return samCut(img);
-    await new Promise(r => setTimeout(r)); // let the page breathe between photos
-    const seg = segment(img);
-    if (!seg) return null;
-    return mode === 'focus' ? focusCrop(img, seg) : quickCut(img, seg);
-  }
-
-  // ---- dark photos: brightness, contrast and saturation are raised in proportion to how dark the subject is ----
-  const DARK_BELOW = 0.42;
-  async function enhance(blob) {
-    const bmp = await createImageBitmap(blob), c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
-    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(bmp, 0, 0);
-    const img = g.getImageData(0, 0, c.width, c.height), d = img.data;
-    let sum = 0, n = 0;
-    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 128) { sum += (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / 255; n++; }
-    if (!n) return null;
-    const mean = sum / n;
-    if (mean >= DARK_BELOW) return null; // bright enough: leave it alone
-    const k = Math.min(1, (DARK_BELOW - mean) / 0.28);                         // 0 (just under the limit) .. 1 (very dark)
-    const target = Math.min(0.5, mean + 0.6 * (0.5 - mean)), gamma = Math.max(0.5, Math.min(1, Math.log(target) / Math.log(Math.max(mean, 0.02))));
-    const contrast = 1 + 0.18 * k, sat = 1 + 0.35 * k, lut = new Uint8ClampedArray(256);
-    for (let v = 0; v < 256; v++) lut[v] = Math.round(255 * Math.min(1, Math.max(0, (Math.pow(v / 255, gamma) - 0.5) * contrast + 0.5)));
-    for (let i = 0; i < d.length; i += 4) {
-      if (!d[i + 3]) continue;
-      const r = lut[d[i]], gg = lut[d[i + 1]], b = lut[d[i + 2]], l = 0.299 * r + 0.587 * gg + 0.114 * b;
-      d[i] = Math.min(255, Math.max(0, l + (r - l) * sat)); d[i + 1] = Math.min(255, Math.max(0, l + (gg - l) * sat)); d[i + 2] = Math.min(255, Math.max(0, l + (b - l) * sat));
-    }
-    g.putImageData(img, 0, 0);
-    log(`cut-outs: brightened a dark photo (average ${mean.toFixed(2)} → about ${target.toFixed(2)})`);
-    return toBlob(c, blob.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp', 0.92);
-  }
-  ctl.enhance = enhance;
-  // ---- sticker: a thick white outline round the cut-out (the shadow outside it is CSS on the image) ----
-  async function makeSticker(blob) {
-    const bmp = await createImageBitmap(blob), w = bmp.width, h = bmp.height, p = Math.max(3, Math.round(Math.max(w, h) * 0.02)); // outline width: 2% of the size
-    const sil = document.createElement('canvas'); sil.width = w; sil.height = h;
-    const sg = sil.getContext('2d'); sg.drawImage(bmp, 0, 0); sg.globalCompositeOperation = 'source-in'; sg.fillStyle = '#fff'; sg.fillRect(0, 0, w, h);
-    const c = document.createElement('canvas'); c.width = w + 2 * p; c.height = h + 2 * p;
-    const g = c.getContext('2d');
-    for (const [r, n] of [[p, 32], [p * 0.66, 20], [p * 0.33, 12]]) for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; g.drawImage(sil, p + Math.cos(a) * r, p + Math.sin(a) * r); }
-    g.drawImage(bmp, p, p);
-    return toBlob(c, 'image/webp', 0.92);
-  }
-  // ---- tiles: processed when they scroll into view, a couple at a time ----
-  const io = new IntersectionObserver(entries => {
-    for (const e of entries) if (e.isIntersecting) { io.unobserve(e.target); const it = itemOf.get(e.target); if (it) { queue.push(it); pump(); } }
-  }, { rootMargin: '400px' });
-  function note() { const n = $('cutnote'); if (n) n.textContent = ctl.active() ? `${done} shown (${fromSaved} from saved copies, ${madeNow} made now)${failed ? `, ${failed} without a clear subject` : ''}. Cut-outs are made as photos scroll into view.` : ''; }
-  const getSaved = async k => memory.get(k) || await idb.get(k);
-  // the saved result to show for a tile, if there is one (nothing is computed here)
-  async function lookup(it) {
-    const plain = `cut:${it.base}:${it.url}`;
-    if (ctl.sticker()) { const sk = `stk2${it.enh ? 'e' : ''}:${it.base}:${it.url}`, sb = await getSaved(sk); if (sb instanceof Blob) return { blob: sb, key: sk }; return null; }
-    if (it.enh) {
-      const ek = `enh1:${it.base}:${it.url}`, eb = await getSaved(ek);
-      if (eb instanceof Blob) return { blob: eb, key: ek };
-      if (!(eb && eb.same)) return null;
-    }
-    const pb = await getSaved(plain);
-    return pb instanceof Blob ? { blob: pb, key: plain } : null;
-  }
-  function showResult(it, key, blob, saved) {
-    if (!it.tile.isConnected || it.key !== keyOf()) return;
-    let u = objUrls.get(key); if (!u) { u = URL.createObjectURL(blob); objUrls.set(key, u); }
-    it.im.src = u; it.tile.classList.remove('cutwait'); if (it.mode !== 'focus') it.tile.classList.add('cut');
-    it.shown = true; done++; if (saved) fromSaved++; else madeNow++; note();
-  }
-  function giveUp(it) { // no usable cut-out: show the photo itself
-    failed++; it.tile.classList.remove('cutwait'); it.tile.classList.add('cutfail'); it.im.src = it.url; note();
-  }
-  async function run(it) {
-    if (it.shown) return;
-    const mode = it.mode; let key = `cut:${it.base}:${it.url}`;
-    let blob = await getSaved(key), saved = !!blob;
-    if (!blob) {
-      const img = await readable(it.url);
-      blob = img ? await compute(mode, img, it.model) : null; // the model the tile was queued with, even if another has been picked since
-      if (!blob) return giveUp(it);
-      memory.set(key, blob); idb.set(key, blob);
-    }
-    if (it.enh) { // dark photos are brightened (saved as a separate copy; {same: true} means it did not need it)
-      const ekey = `enh1:${it.base}:${it.url}`;
-      let eb = await getSaved(ekey);
-      if (!eb) { const r = await enhance(blob).catch(() => null); eb = r || { same: true }; memory.set(ekey, eb); idb.set(ekey, eb); saved = false; }
-      if (eb instanceof Blob) { blob = eb; key = ekey; }
-    }
-    if (ctl.sticker()) { // the sticker version (outline added) is saved too, so it is made once
-      const skey = `stk2${it.enh ? 'e' : ''}:${it.base}:${it.url}`; // stk2: the thinner outline (stk1 copies are older and thicker)
-      let sb = await getSaved(skey);
-      if (!sb) { sb = await makeSticker(blob).catch(() => null); if (sb) { memory.set(skey, sb); idb.set(skey, sb); saved = false; } }
-      if (sb) { blob = sb; key = skey; }
-    }
-    showResult(it, key, blob, saved);
-  }
-  function pump() {
-    const max = cutMode === 'ai' || cutMode === 'sam' ? 1 : 2;
-    while (running < max && queue.length) {
-      const it = queue.shift();
-      if (it.key !== keyOf() || !it.tile.isConnected) continue;
-      running++; run(it).catch(e => log(`cut-outs: ${e && e.message || e}`, 'w')).finally(() => { running--; pump(); });
-    }
-  }
-  ctl.attach = (tile, im, url) => {
-    if (!ctl.active()) return;
-    tile.classList.add('cutwait');
-    const it = { tile, im, url, mode: cutMode, model: modelId(), base: baseOf(), enh: cutEnh, key: keyOf(), shown: false };
-    itemOf.set(tile, it);
-    // a saved cut-out is shown straight away (read as soon as the tile exists); only the others wait for their turn to be made
-    lookup(it).then(r => { if (r) showResult(it, r.key, r.blob, true); else if (it.key === keyOf()) io.observe(tile); }).catch(() => io.observe(tile));
-  };
-  ctl.setMode = m => {
-    cutMode = m; try { localStorage.setItem('inat_cut', m); } catch {}
-    queue.length = 0; done = 0; failed = 0; fromSaved = 0; madeNow = 0;
-    ctl.drawPanel(); drawChips(); show(true);
-  };
-  ctl.BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
-  ctl.active = () => !!cutMode && cutMode !== 'polaroid';   // a mode that makes cut-outs (Polaroid just restyles the normal photos)
-  ctl.polaroid = () => cutMode === 'polaroid';
-  ctl.sticker = () => cutMode === 'quick' || cutMode === 'ai' || cutMode === 'sam';
-  ctl.label = () => cutMode === 'ai' ? `Cut-out · AI · ${modelName()}` : CUT_MODES.find(m => m[0] === cutMode)[1];
-  ctl.drawPanel = () => {
-    const box = $('cutchips'); box.replaceChildren();
-    for (const [k, label] of CUT_MODES) {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (cutMode === k ? ' on' : ''); b.textContent = label;
-      b.setAttribute('aria-pressed', String(cutMode === k)); b.onclick = () => ctl.setMode(k);
-      box.append(b);
-    }
-    $('cutmodelbox').hidden = cutMode !== 'ai';
-    const mb = $('cutmodels'); mb.replaceChildren();
-    for (const [id, label] of CUT_MODELS) {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (cutModel === id ? ' on' : ''); b.textContent = label;
-      b.setAttribute('aria-pressed', String(cutModel === id));
-      b.onclick = () => { cutModel = id; try { localStorage.setItem('inat_cut_model', id); } catch {} queue.length = 0; done = 0; failed = 0; fromSaved = 0; madeNow = 0; ctl.drawPanel(); drawChips(); show(true); };
-      mb.append(b);
-    }
-    const ci = $('cutcustom'); ci.hidden = cutModel !== 'custom'; ci.value = cutCustom;
-    $('cutenh').checked = cutEnh; $('cutenh').parentElement.hidden = !ctl.active();
-    note();
-  };
-  $('cutenh').onchange = () => { cutEnh = $('cutenh').checked; try { localStorage.setItem('inat_cut_enh', cutEnh ? '1' : '0'); } catch {} queue.length = 0; done = 0; failed = 0; fromSaved = 0; madeNow = 0; show(true); };
-  $('cutcustom').onchange = () => { cutCustom = $('cutcustom').value.trim(); try { localStorage.setItem('inat_cut_custom', cutCustom); } catch {} queue.length = 0; drawChips(); show(true); }; // (the panel is not redrawn here, or a tap that caused this change would be lost)
-  $('cutclear').onclick = async () => {
-    const keys = (await idb.keys()).filter(k => typeof k === 'string' && (k.startsWith('cut:') || k.startsWith('stk') || k.startsWith('enh1:')));
-    for (const k of keys) await idb.del(k);
-    memory.clear(); for (const u of objUrls.values()) URL.revokeObjectURL(u); objUrls.clear();
-    toast(`${keys.length} saved cut-outs cleared`); show(true);
-  };
-  ctl.segment = segment; ctl.segmentData = segmentData; ctl.readable = readable;
-  ctl.debug = () => ({ mode: cutMode, done, failed, running, queued: queue.length, blocked: [...blocked] });
-  return ctl;
-})();
 
 // ---------- Web: a full-screen honeycomb of the species, related ones side by side ----------
 // Every species is one hexagonal cell filled with its photo. Kin are placed together, so each group (genus, family, order, class...) is a
@@ -4909,7 +4497,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build polaroid-41 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-1 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
