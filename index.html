@@ -371,10 +371,11 @@
   .pgrid .tile .cap span { display:block; max-width:100%; word-break:break-word; }
   .pgrid .tile .cap:hover { text-decoration:none; color:#1f5a2a; }
   /* coloured typewriter stickers; the common name large, the scientific name small underneath */
-  .tag { --tc:#ffe27a; --tr:0deg; margin:0; display:inline-block; max-width:100%; text-align:left; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
-         font:400 12px/1.15 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; color:#eef5e2; padding:6px 9px; border:0; border-radius:10px 30px 0 0 / 10px 100% 0 0; position:relative;
-         background:linear-gradient(180deg, rgba(255,255,255,.4), rgba(255,255,255,0) 35%, rgba(0,0,0,0) 62%, rgba(0,0,0,.26)), var(--tc);
-         box-shadow:-5px 0 6px -3px rgba(0,0,0,.4); } /* a folder tab: rounded front, a long curve down the back; each tab overlaps the one before it */
+  :root { --board:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='120'><filter id='c'><feTurbulence type='fractalNoise' baseFrequency='.9 .06' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .2  0 0 0 0 .08  0 0 0 .9 -.28'/></filter><rect width='100%25' height='100%25' filter='url(%23c)'/></svg>"); }
+  .tag { --tc:#c8a26a; --tr:0deg; margin:0; display:inline-block; max-width:100%; text-align:left; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
+         font:400 12px/1.15 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; color:#3a2a14; padding:6px 9px; border:0; border-radius:10px 30px 0 0 / 10px 100% 0 0; position:relative;
+         background:linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 30%, rgba(0,0,0,0) 62%, rgba(60,35,10,.3)), var(--board), var(--tc);
+         box-shadow:-5px 0 6px -3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(90,55,20,.28); } /* a folder tab: rounded front, a long curve down the back; each tab overlaps the one before it */
   .tag b { display:block; font-weight:400; font-size:17px; line-height:1.1; overflow-wrap:anywhere; }
   .tag small { display:block; margin-top:2px; font-size:11px; opacity:.72; overflow-wrap:anywhere; }
   .tag small.sci { font-style:italic; }
@@ -395,7 +396,7 @@
   #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; flex-wrap:wrap; gap:0; padding:12px 8px 10px 30px; }
   /* the strip under the tabs: desk-coloured paper edge to edge, so photos scroll away under it, with the folder's edge along its bottom */
   #pathbar .pbin::before { content:''; position:absolute; z-index:-1; left:50%; width:100vw; margin-left:-50vw; top:0; bottom:0; background:var(--paper), var(--desk, var(--bg)); }
-  #pathbar .pbin::after { content:''; position:absolute; left:50%; width:100vw; margin-left:-50vw; bottom:0; height:10px; background:linear-gradient(rgba(255,255,255,.25), rgba(0,0,0,.12)), var(--tc, #9fd6b8); box-shadow:0 3px 6px rgba(0,0,0,.4); }
+  #pathbar .pbin::after { content:''; position:absolute; left:50%; width:100vw; margin-left:-50vw; bottom:0; height:10px; background:linear-gradient(rgba(255,255,255,.25), rgba(60,35,10,.2)), var(--board), var(--tc, #c8a26a); box-shadow:0 3px 6px rgba(0,0,0,.4); }
   #pathbar .tag { max-width:100%; }
 </style>
 </head>
@@ -1411,7 +1412,7 @@ function shuffleKey(id, seed = shuffleSeed) {
 const GAL = ['recent', 'tree', 'place'];
 const isGal = v => GAL.includes(v);
 const GAL_PAGE = 150;
-const TAG_COLORS = ['#3b7d3c', '#2f6e4a', '#276344', '#3a7a5c', '#2d6a55', '#4a8a4a']; // dark shades of green, one per level
+const TAG_COLORS = ['#c8a26a', '#b8925c', '#d0ac76', '#ad8553', '#c19a64', '#d6b480']; // kraft cardboard, a slightly different board per level
 const collapsed = { recent: new Set(), tree: new Set(), place: new Set() }; // keys of the collapsed groups, per sort
 const gal = { sort: 'recent', items: [], groups: [], byKey: new Map(), cells: [], limit: GAL_PAGE, shownTo: 0, drawnSort: '' };
 const ordinal = n => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
@@ -4509,7 +4510,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-25 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-26 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
