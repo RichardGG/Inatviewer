@@ -291,6 +291,10 @@
   .tile { position:relative; border-radius:6px; overflow:hidden; background:var(--line); aspect-ratio:1; }
   .tile .pic { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; border-radius:0; background:none; cursor:zoom-in; }
   .tile img { width:100%; height:100%; object-fit:cover; display:block; }
+  .tile.cut { background:radial-gradient(circle at 50% 42%, #f6f8f3 0%, #d3ddcf 100%); }
+  .tile.cut .pic img { object-fit:contain; padding:6%; filter:drop-shadow(0 3px 5px rgba(0,0,0,.35)); }
+  .tile.cutwait .pic img { opacity:.78; }
+  @media (prefers-color-scheme: dark) { .tile.cut { background:radial-gradient(circle at 50% 42%, #33443d 0%, #18211e 100%); } }
   .tile .cap { position:absolute; left:0; right:0; bottom:0; padding:14px 6px 4px; color:#fff; font-size:11px; text-align:left;
                background:linear-gradient(transparent, rgba(0,0,0,.65)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; text-decoration:none; z-index:1; }
   .tile .cap:hover { text-decoration:underline; }
@@ -371,8 +375,8 @@
       <input id="clientid" spellcheck="false" style="width:100%;padding:8px;font:12px monospace;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">
       <label for="photoproxy" style="display:block;margin-top:10px"><strong>Photo proxy address</strong> (optional)</label>
       <p class="status" style="margin:4px 0 8px">
-        Only used to read photo colours when iNaturalist's photo servers refuse. The address of your Cloudflare Worker, for example
-        <code>https://inat-photos.yourname.workers.dev/</code>.
+        Used to read photo pixels (colours, cut-outs) when iNaturalist's photo servers refuse. Clear the box to use the default
+        (<code>https://inat-photos.richardgg.workers.dev/</code>).
       </p>
       <input id="photoproxy" spellcheck="false" placeholder="https://…workers.dev/" style="width:100%;padding:8px;font:12px monospace;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">
     </details>
@@ -417,6 +421,7 @@
         <button class="ib tb" id="bclass" aria-label="Groups" title="Groups (birds, plants…)"><i data-i="paw-print"></i></button>
         <button class="ib tb" id="brare" aria-label="Rarity" title="Rare species" hidden><i data-i="gem"></i></button>
         <button class="ib tb" id="bcmp" aria-label="Compare" title="Compare with another user" hidden><i data-i="git-compare"></i></button>
+        <button class="ib tb" id="bcut" aria-label="Cut-outs" title="Cut out the animals" hidden><i data-i="scissors"></i></button>
         <button class="ib tb" id="bfav" aria-label="Favourites" title="Favourite photos"><i data-i="star"></i></button>
       </div>
       <span class="sp1"></span>
@@ -473,6 +478,12 @@
         <div id="rareopts" class="clsrow" role="group" style="margin-top:8px"></div>
         <p class="status" id="rarenote" style="margin:8px 0 0"></p>
         <button class="secondary" id="rarecheck" hidden style="margin-top:8px">Check rarity</button>
+      </div>
+      <div class="card fpanel" id="pcut" hidden>
+        <p class="status" style="margin:0 0 6px">Recent photos: show only the animal. These read the photo's pixels (through the photo proxy if needed), on this device.</p>
+        <div id="cutchips" class="clsrow" role="group" aria-label="Cut-out style"></div>
+        <p class="status" id="cutnote" style="margin:8px 0 0"></p>
+        <button class="secondary" id="cutclear" style="margin-top:8px">Clear saved cut-outs</button>
       </div>
       <div class="card fpanel" id="pfav" hidden>
         <div id="ffav" class="clsrow" role="group" aria-label="Favourite photo status"></div>
@@ -580,7 +591,7 @@ const KEY = 'inat_token';
 const SHOWN_RANKS = new Set(['kingdom','phylum','class','order','family','genus']);
 const $ = id => document.getElementById(id);
 // Lucide icons (https://lucide.dev, ISC licence), inlined so there is no network dependency.
-const ICONS = {"clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","palette":"<path d=\"M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\"/> <circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
+const ICONS = {"clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","palette":"<path d=\"M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\"/> <circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","scissors":"<circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M8.12 8.12 12 12\"/> <path d=\"M20 4 8.12 15.88\"/> <circle cx=\"6\" cy=\"18\" r=\"3\"/> <path d=\"M14.8 14.8 20 20\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
 ICONS.heart = '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>';
 ICONS['share-2'] = "<circle cx=\"18\" cy=\"5\" r=\"3\"/> <circle cx=\"6\" cy=\"12\" r=\"3\"/> <circle cx=\"18\" cy=\"19\" r=\"3\"/> <line x1=\"8.59\" x2=\"15.42\" y1=\"13.51\" y2=\"17.49\"/> <line x1=\"15.41\" x2=\"8.59\" y1=\"6.51\" y2=\"10.49\"/>";
 ICONS['git-compare'] = "<circle cx=\"18\" cy=\"18\" r=\"3\"/> <circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M13 6h3a2 2 0 0 1 2 2v7\"/> <path d=\"M11 18H8a2 2 0 0 1-2-2V9\"/>";
@@ -1597,6 +1608,7 @@ function renderRecent(obs) {
     im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
     im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
     b.append(im);
+    cutouts.attach(t, im, sized(ph[0], 'medium'));
     if (ph.length > 1) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `1/${ph.length}`; b.append(n); }
     { const fs = favStats().get(o.tid); if (o._n != null ? (fs && fs.newN > 0) : isNewObs(o)) { const nt = document.createElement('span'); nt.className = 'newtag'; nt.textContent = 'NEW'; b.append(nt); } }
     if (favMode === 'others' && o.ff > 0) { const ot = document.createElement('span'); ot.className = 'othertag'; ot.innerHTML = ic('heart', 12, true) + ' ' + o.ff; ot.title = `Favourited by ${o.ff} other ${o.ff > 1 ? 'people' : 'person'}`; t.append(ot); }
@@ -1751,6 +1763,10 @@ function rarityMatches(o) {
 }
 const rarityActive = () => rareMax > 0 || rareConcern;
 let cmpMode = ''; // '' | 'missing' (species the other person hasn't seen) | 'common' (seen by both)
+const DEFAULT_PHOTO_PROXY = 'https://inat-photos.richardgg.workers.dev/'; // a Cloudflare Worker that forwards iNaturalist photos with permission to read their pixels
+const getPhotoProxy = () => { try { return (localStorage.getItem('inat_photo_proxy') || '').trim() || DEFAULT_PHOTO_PROXY; } catch { return DEFAULT_PHOTO_PROXY; } };
+const CUT_MODES = [['', 'Off'], ['focus', 'Focus crop'], ['quick', 'Cut-out · quick'], ['ai', 'Cut-out · AI (experimental)']];
+let cutMode = ''; try { cutMode = localStorage.getItem('inat_cut') || ''; } catch {} if (!CUT_MODES.some(m => m[0] === cutMode)) cutMode = '';
 let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite) | 'others' (faved by other users) | 'theirs' / 'mine' (someone else's account: their favourites / ones I faved)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
                     47158: 'Insecta', 47119: 'Arachnida', 47115: 'Mollusca', 47126: 'Plantae', 47170: 'Fungi' };
@@ -1832,9 +1848,10 @@ function drawChips() {
   if (!nearby && rareMax) add('gem', `Under ${rareMax.toLocaleString()} observations worldwide`, () => { rareMax = 0; drawRarityChips(); scheduleShow(); }, 'Clear rarity filter');
   if (!nearby && rareConcern) add('shield-alert', 'Conservation concern', () => { rareConcern = false; drawRarityChips(); scheduleShow(); }, 'Clear conservation filter');
   if (!nearby && raritySort) add(raritySort === 'threat' ? 'shield-alert' : 'gem', raritySort === 'threat' ? 'Most threatened first' : 'Rarest first', () => { raritySort = ''; drawRarityChips(); scheduleShow(); }, 'Clear rarity sort');
+  if (cutMode && view === 'recent') add('scissors', CUT_MODES.find(m => m[0] === cutMode)[1], () => cutouts.setMode(''), 'Turn off cut-outs');
   if (!nearby && cmpMode) add('git-compare', cmpLabel(cmpMode), () => { cmpMode = ''; drawCmpChips(); scheduleShow(); }, 'Clear comparison');
   const has = (id, on) => $(id).classList.toggle('has', !!on);
-  has('brare', rarityActive() || raritySort); has('bcmp', cmpMode); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
+  has('bcut', cutMode); has('brare', rarityActive() || raritySort); has('bcmp', cmpMode); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
 }
 // Largest circle that fits inside the map's current view (with a little margin).
 function viewportCircle() {
@@ -1895,7 +1912,7 @@ async function openAreaPanel(open) {
   drawAreaMarkers();
 }
 // Icon bar: each filter icon opens its own small panel (one at a time); the map-area panel is one of them too.
-const PANELS = { bsearch: 'psearch', bdate: 'pdate', bclass: 'pclass', brare: 'prare', bcmp: 'pcmp', bfav: 'pfav' };
+const PANELS = { bsearch: 'psearch', bdate: 'pdate', bclass: 'pclass', brare: 'prare', bcmp: 'pcmp', bfav: 'pfav', bcut: 'pcut' };
 function closePanels(except) {
   for (const [btn, pan] of Object.entries(PANELS)) if (pan !== except) { $(pan).hidden = true; $(btn).classList.remove('open'); }
   if (except !== 'areapanel' && !$('areapanel').hidden) { openAreaPanel(false); $('areabtn').classList.remove('open'); }
@@ -1907,6 +1924,7 @@ for (const [btn, pan] of Object.entries(PANELS)) {
     $(pan).hidden = !opening; $(btn).classList.toggle('open', opening);
     if (opening && btn === 'bsearch') $('jump').focus();
     if (opening && btn === 'bcmp') drawCmpChips();
+    if (opening && btn === 'bcut') cutouts.drawPanel();
     if (opening && btn === 'brare') { refreshRarityUI(); if (rarityMissing().length) loadRarityData(); }
   };
 }
@@ -3139,6 +3157,8 @@ function setView(v) {
   $('treeTools').hidden = v === 'recent' || v === 'explore';
   $('jumpwrap').hidden = v === 'recent' || v === 'explore';
   $('bsearch').hidden = v === 'recent' || v === 'explore';
+  $('bcut').hidden = v !== 'recent';
+  if (v !== 'recent' && !$('pcut').hidden) { $('pcut').hidden = true; $('bcut').classList.remove('open'); }
   if (v === 'recent' || v === 'explore') { $('psearch').hidden = true; $('bsearch').classList.remove('open'); }
   $('recentTools').hidden = v !== 'recent';
   document.body.classList.toggle('vexplore', v === 'explore'); // Nearby keeps only the date and group filter buttons
@@ -3316,7 +3336,7 @@ $('forget').onclick = () => {
 $('oauth').onclick = oauthLogin;
 $('redirecturi').textContent = redirectUri();
 $('clientid').value = clientId();
-try { $('photoproxy').value = localStorage.getItem('inat_photo_proxy') || ''; } catch {}
+$('photoproxy').value = getPhotoProxy();
 $('photoproxy').onchange = () => { try { localStorage.setItem('inat_photo_proxy', $('photoproxy').value.trim()); } catch {} toast('Photo proxy saved'); };
 $('clearcache').onclick = async () => {
   await idb.clear(); state = { user: null, obs: [], complete: true, total: null, names: {}, places: {}, updated: null }; people = []; partners = []; cmpData = new Map(); mine = { obs: [] }; renderPeople();
@@ -3531,6 +3551,272 @@ $('expcol').onclick = () => {
 $('tree').addEventListener('toggle', scheduleExpCol, true); // toggle doesn't bubble; catch it in the capture phase
 
 
+
+// ---------- Recent: cut out the animals (several approaches; "Off" is the default) ----------
+// Each approach needs the photo's pixels, so photos are read the same ways as for the colours (direct, the other iNaturalist host, the photo
+// proxy). A finished cut-out is saved in this browser by photo address, so each photo is processed once.
+//   focus: crop square around the main subject      quick: subject cut out by colour contrast with the photo's edges
+//   ai:    a background-removal model run in the browser (downloads once; not tested against every browser)
+const cutouts = (() => {
+  const AI_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3';
+  const AI_MODEL = 'Xenova/modnet';
+  const ALT = { 'static.inaturalist.org': 'inaturalist-open-data.s3.amazonaws.com', 'inaturalist-open-data.s3.amazonaws.com': 'static.inaturalist.org' };
+  const host = u => { try { return new URL(u).hostname; } catch { return '?'; } };
+  const blocked = new Set();
+  const memory = new Map(), objUrls = new Map(), itemOf = new Map();
+  const queue = [];
+  let running = 0, done = 0, failed = 0, aiPipe = null, aiBroken = false;
+  const ctl = { setMode: null, attach: null, drawPanel: null };
+
+  // ---- reading the pixels ----
+  const loadImage = (src, cors) => new Promise(res => {
+    const im = new Image();
+    if (cors) im.crossOrigin = 'anonymous';
+    im.onload = () => res(im); im.onerror = () => res(null);
+    im.src = src;
+  });
+  async function readable(url) {
+    const alt = ALT[host(url)] ? url.replace(host(url), ALT[host(url)]) : null;
+    const px = getPhotoProxy(), proxied = px ? `${px}${px.includes('?') ? '&' : '?'}url=${encodeURIComponent(url)}` : null;
+    for (const src of [url, alt, proxied]) {
+      if (!src || blocked.has(host(src))) continue;
+      const im = await loadImage(src, true);
+      if (im) return im;
+      blocked.add(host(src)); log(`cut-outs: ${host(src)} did not allow reading ${src.slice(0, 100)}`, 'w');
+    }
+    return null;
+  }
+
+  // ---- finding the subject without a model ----
+  function otsu(hist, total) {
+    let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i];
+    let wB = 0, sumB = 0, best = 0, thr = 128;
+    for (let t = 0; t < 256; t++) {
+      wB += hist[t]; if (!wB) continue;
+      const wF = total - wB; if (!wF) break;
+      sumB += t * hist[t];
+      const mB = sumB / wB, mF = (sum - sumB) / wF, v = wB * wF * (mB - mF) * (mB - mF);
+      if (v > best) { best = v; thr = t; }
+    }
+    return thr;
+  }
+  const redmean = (r1, g1, b1, r2, g2, b2) => { const rm = (r1 + r2) / 2, dr = r1 - r2, dg = g1 - g2, db = b1 - b2; return Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db); };
+  function morph(src, w, h, grow) { // 3x3 dilate (grow) or erode
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let hit = grow ? 0 : 1;
+      for (let dy = -1; dy <= 1 && (grow ? !hit : hit); dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy, v = xx < 0 || yy < 0 || xx >= w || yy >= h ? 0 : src[yy * w + xx];
+        if (grow ? v : !v) { hit = grow ? 1 : 0; break; }
+      }
+      out[y * w + x] = hit;
+    }
+    return out;
+  }
+  // returns { mask (0-255, w*h), w, h, box {x0,y0,x1,y1 as 0..1} } or null when no clear subject is found
+  let nopes = 0;
+  const nope = why => { if (nopes++ < 3) log(`cut-outs: no clear subject found (${why})`, 'w'); return null; };
+  function segment(img) {
+    const iw = img.naturalWidth, ih = img.naturalHeight, sc = 96 / Math.max(iw, ih);
+    const w = Math.max(16, Math.round(iw * sc)), h = Math.max(16, Math.round(ih * sc));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, w, h);
+    return segmentData(g.getImageData(0, 0, w, h).data, w, h);
+  }
+  function segmentData(d, w, h, dbg = {}) {
+    const n = w * h;
+    // what the edges of the photo look like: up to three colour groups (sky, water, ground...)
+    const band = Math.max(2, Math.round(0.07 * Math.min(w, h))), edge = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (x < band || y < band || x >= w - band || y >= h - band) edge.push((y * w + x) * 4);
+    const lum = i => d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+    const sorted = edge.slice().sort((a, b) => lum(a) - lum(b));
+    let cent = [0.17, 0.5, 0.83].map(q => { const i = sorted[Math.floor(q * (sorted.length - 1))]; return [d[i], d[i + 1], d[i + 2]]; });
+    let groups = [];
+    for (let it = 0; it < 6; it++) {
+      groups = cent.map(() => ({ s: [0, 0, 0], n: 0, v: 0 }));
+      for (const i of edge) {
+        let bk = 0, bd = Infinity;
+        cent.forEach((m, k) => { const dd = redmean(d[i], d[i + 1], d[i + 2], m[0], m[1], m[2]); if (dd < bd) { bd = dd; bk = k; } });
+        const gr = groups[bk]; gr.s[0] += d[i]; gr.s[1] += d[i + 1]; gr.s[2] += d[i + 2]; gr.n++; gr.v += bd * bd;
+      }
+      cent = groups.map((gr, k) => gr.n ? gr.s.map(v => v / gr.n) : cent[k]);
+    }
+    const use = groups.map((gr, k) => ({ m: cent[k], sig: gr.n ? Math.sqrt(gr.v / gr.n) : 0, share: gr.n / edge.length })).filter(x => x.share >= 0.1);
+    if (!use.length) return nope('no edge colours');
+    // how unlike the edge colours each pixel is, a little favouring the middle
+    const score = new Float32Array(n), hist = new Uint32Array(256);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      let best = Infinity;
+      for (const u of use) { const dd = redmean(d[i], d[i + 1], d[i + 2], u.m[0], u.m[1], u.m[2]) / (u.sig * 1.5 + 12); if (dd < best) best = dd; }
+      const dx = x / w - 0.5, dy = y / h - 0.5, cw = 0.5 + 0.5 * Math.exp(-(dx * dx + dy * dy) / 0.5);
+      const sv = Math.min(best, 6) / 6 * cw; score[y * w + x] = sv; hist[Math.min(255, Math.round(sv * 255))]++;
+    }
+    const thr = otsu(hist, n) * 0.9 / 255;
+    let mask = new Uint8Array(n); for (let i = 0; i < n; i++) mask[i] = score[i] >= thr ? 1 : 0;
+    dbg.thr = thr; dbg.afterThreshold = mask.reduce((a, b) => a + b, 0); dbg.groups = use.length;
+    mask = morph(morph(mask, w, h, false), w, h, true);                                   // open: drop speckle
+    for (let k = 0; k < 2; k++) mask = morph(mask, w, h, true);                           // close: join pieces
+    for (let k = 0; k < 2; k++) mask = morph(mask, w, h, false);
+    // fill holes: background is whatever the border can reach
+    const bg = new Uint8Array(n), stack = [];
+    const push = (x, y) => { const i = y * w + x; if (!mask[i] && !bg[i]) { bg[i] = 1; stack.push(i); } };
+    for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); } for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+    while (stack.length) { const i = stack.pop(), x = i % w, y = (i / w) | 0; if (x > 0) push(x - 1, y); if (x < w - 1) push(x + 1, y); if (y > 0) push(x, y - 1); if (y < h - 1) push(x, y + 1); }
+    for (let i = 0; i < n; i++) mask[i] = bg[i] ? 0 : 1;
+    // keep the piece that sits in the middle (and any sizeable piece touching it)
+    const lab = new Int32Array(n).fill(-1), comps = [];
+    for (let i0 = 0; i0 < n; i0++) {
+      if (!mask[i0] || lab[i0] >= 0) continue;
+      const id = comps.length, comp = { id, area: 0, mid: 0, x0: w, y0: h, x1: 0, y1: 0 }; comps.push(comp);
+      const st = [i0]; lab[i0] = id;
+      while (st.length) {
+        const i = st.pop(), x = i % w, y = (i / w) | 0;
+        comp.area++; if (x > w * 0.25 && x < w * 0.75 && y > h * 0.25 && y < h * 0.75) comp.mid++;
+        comp.x0 = Math.min(comp.x0, x); comp.x1 = Math.max(comp.x1, x); comp.y0 = Math.min(comp.y0, y); comp.y1 = Math.max(comp.y1, y);
+        for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) if (j >= 0 && mask[j] && lab[j] < 0) { lab[j] = id; st.push(j); }
+      }
+    }
+    if (!comps.length) return nope('nothing left after clean-up');
+    const main = comps.reduce((a, b) => (b.mid + b.area * 0.05 > a.mid + a.area * 0.05 ? b : a));
+    const keep = new Set([main.id]);
+    for (const k of comps) if (k !== main && k.area >= main.area * 0.2 && k.x0 <= main.x1 + w * 0.1 && k.x1 >= main.x0 - w * 0.1 && k.y0 <= main.y1 + h * 0.1 && k.y1 >= main.y0 - h * 0.1) keep.add(k.id);
+    let cnt = 0, x0 = w, y0 = h, x1 = 0, y1 = 0;
+    const m = new Float32Array(n);
+    for (let i = 0; i < n; i++) if (lab[i] >= 0 && keep.has(lab[i])) { m[i] = 1; cnt++; const x = i % w, y = (i / w) | 0; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    if (cnt < n * 0.02 || cnt > n * 0.92) return nope(`subject covers ${Math.round(cnt / n * 100)}% of the photo`); // nothing clearly stands out (or it is everything)
+    // soft edge
+    let a = m;
+    for (let pass = 0; pass < 2; pass++) {
+      const b = new Float32Array(n);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        let sum = 0, k = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < w && yy < h) { sum += a[yy * w + xx]; k++; } }
+        b[y * w + x] = sum / k;
+      }
+      a = b;
+    }
+    const mask8 = new Uint8ClampedArray(n); for (let i = 0; i < n; i++) mask8[i] = Math.round(a[i] * 255);
+    return { mask: mask8, w, h, box: { x0: x0 / w, y0: y0 / h, x1: (x1 + 1) / w, y1: (y1 + 1) / h } };
+  }
+  const toBlob = (canvas, type, q) => new Promise(res => canvas.toBlob(res, type, q));
+  async function focusCrop(img, seg) {
+    const iw = img.naturalWidth, ih = img.naturalHeight, b = seg.box;
+    const cx = (b.x0 + b.x1) / 2 * iw, cy = (b.y0 + b.y1) / 2 * ih, subject = Math.max((b.x1 - b.x0) * iw, (b.y1 - b.y0) * ih);
+    const side = Math.min(Math.min(iw, ih), Math.max(subject * 1.4, Math.min(iw, ih) * 0.35));
+    const x = Math.min(Math.max(cx - side / 2, 0), iw - side), y = Math.min(Math.max(cy - side / 2, 0), ih - side);
+    const c = document.createElement('canvas'); c.width = c.height = Math.round(Math.min(side, 500));
+    c.getContext('2d').drawImage(img, x, y, side, side, 0, 0, c.width, c.height);
+    return toBlob(c, 'image/jpeg', 0.88);
+  }
+  async function quickCut(img, seg) {
+    const iw = img.naturalWidth, ih = img.naturalHeight, out = document.createElement('canvas'); out.width = iw; out.height = ih;
+    const g = out.getContext('2d'); g.drawImage(img, 0, 0);
+    const mc = document.createElement('canvas'); mc.width = seg.w; mc.height = seg.h;
+    const md = new ImageData(seg.w, seg.h); for (let i = 0; i < seg.mask.length; i++) md.data[i * 4 + 3] = seg.mask[i];
+    mc.getContext('2d').putImageData(md, 0, 0);
+    g.globalCompositeOperation = 'destination-in'; g.imageSmoothingQuality = 'high'; g.drawImage(mc, 0, 0, iw, ih);
+    return cropToBox(out, seg.box);
+  }
+  async function cropToBox(canvas, box) { // trim to the subject (a little room round it) and encode with transparency
+    const iw = canvas.width, ih = canvas.height, px = (box.x1 - box.x0) * iw * 0.06, py = (box.y1 - box.y0) * ih * 0.06;
+    const x0 = Math.max(0, box.x0 * iw - px), y0 = Math.max(0, box.y0 * ih - py), x1 = Math.min(iw, box.x1 * iw + px), y1 = Math.min(ih, box.y1 * ih + py);
+    const c = document.createElement('canvas'); c.width = Math.max(8, Math.round(x1 - x0)); c.height = Math.max(8, Math.round(y1 - y0));
+    c.getContext('2d').drawImage(canvas, x0, y0, x1 - x0, y1 - y0, 0, 0, c.width, c.height);
+    return toBlob(c, 'image/webp', 0.9);
+  }
+
+  // ---- the model approach ----
+  async function aiCut(img) {
+    if (aiBroken) return null;
+    if (!aiPipe) {
+      toast('Downloading the cut-out model (about 25 MB, once)…');
+      aiPipe = (async () => {
+        const mod = await import(AI_URL);
+        mod.env.allowLocalModels = false;
+        return mod.pipeline('background-removal', AI_MODEL, { device: navigator.gpu ? 'webgpu' : 'wasm' });
+      })();
+      aiPipe.catch(e => { aiBroken = true; log(`cut-outs: the AI model could not be loaded: ${e && e.message || e}`, 'e'); toast('The AI cut-out model could not be loaded here'); });
+    }
+    let pipe; try { pipe = await aiPipe; } catch { return null; }
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0);
+    const url = URL.createObjectURL(await toBlob(c, 'image/png'));
+    try {
+      let out = await pipe(url); if (Array.isArray(out)) out = out[0];
+      const oc = out.toCanvas ? out.toCanvas() : null; if (!oc) return null;
+      const d = oc.getContext('2d').getImageData(0, 0, oc.width, oc.height).data; let x0 = oc.width, y0 = oc.height, x1 = 0, y1 = 0;
+      for (let y = 0; y < oc.height; y++) for (let x = 0; x < oc.width; x++) if (d[(y * oc.width + x) * 4 + 3] > 40) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+      if (x1 <= x0 || y1 <= y0) return null;
+      return cropToBox(oc, { x0: x0 / oc.width, y0: y0 / oc.height, x1: (x1 + 1) / oc.width, y1: (y1 + 1) / oc.height });
+    } catch (e) { log(`cut-outs: the AI model failed on a photo: ${e && e.message || e}`, 'w'); return null; }
+    finally { URL.revokeObjectURL(url); }
+  }
+  async function compute(mode, img) {
+    if (mode === 'ai') return aiCut(img);
+    await new Promise(r => setTimeout(r)); // let the page breathe between photos
+    const seg = segment(img);
+    if (!seg) return null;
+    return mode === 'focus' ? focusCrop(img, seg) : quickCut(img, seg);
+  }
+
+  // ---- tiles: processed when they scroll into view, a couple at a time ----
+  const io = new IntersectionObserver(entries => {
+    for (const e of entries) if (e.isIntersecting) { io.unobserve(e.target); const it = itemOf.get(e.target); if (it) { queue.push(it); pump(); } }
+  }, { rootMargin: '400px' });
+  function note() { const n = $('cutnote'); if (n) n.textContent = cutMode ? `${done} done${failed ? `, ${failed} without a clear subject` : ''} so far. Cut-outs are made as photos scroll into view.` : ''; }
+  async function run(it) {
+    const mode = it.mode, key = `cut:${mode}:${it.url}`;
+    let blob = memory.get(key) || await idb.get(key);
+    if (!blob) {
+      const img = await readable(it.url);
+      blob = img ? await compute(mode, img) : null;
+      if (!blob) { failed++; it.tile.classList.remove('cutwait'); it.tile.classList.add('cutfail'); note(); return; }
+      memory.set(key, blob); idb.set(key, blob);
+    }
+    if (!it.tile.isConnected || mode !== cutMode) return;
+    let u = objUrls.get(key); if (!u) { u = URL.createObjectURL(blob); objUrls.set(key, u); }
+    it.im.src = u; it.tile.classList.remove('cutwait'); if (mode !== 'focus') it.tile.classList.add('cut');
+    done++; note();
+  }
+  function pump() {
+    const max = cutMode === 'ai' ? 1 : 2;
+    while (running < max && queue.length) {
+      const it = queue.shift();
+      if (it.mode !== cutMode || !it.tile.isConnected) continue;
+      running++; run(it).catch(e => log(`cut-outs: ${e && e.message || e}`, 'w')).finally(() => { running--; pump(); });
+    }
+  }
+  ctl.attach = (tile, im, url) => {
+    if (!cutMode) return;
+    tile.classList.add('cutwait');
+    itemOf.set(tile, { tile, im, url, mode: cutMode });
+    io.observe(tile);
+  };
+  ctl.setMode = m => {
+    cutMode = m; try { localStorage.setItem('inat_cut', m); } catch {}
+    queue.length = 0; done = 0; failed = 0;
+    ctl.drawPanel(); drawChips(); show(true);
+  };
+  ctl.drawPanel = () => {
+    const box = $('cutchips'); box.replaceChildren();
+    for (const [k, label] of CUT_MODES) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (cutMode === k ? ' on' : ''); b.textContent = label;
+      b.setAttribute('aria-pressed', String(cutMode === k)); b.onclick = () => ctl.setMode(k);
+      box.append(b);
+    }
+    note();
+  };
+  $('cutclear').onclick = async () => {
+    const keys = (await idb.keys()).filter(k => typeof k === 'string' && k.startsWith('cut:'));
+    for (const k of keys) await idb.del(k);
+    memory.clear(); for (const u of objUrls.values()) URL.revokeObjectURL(u); objUrls.clear();
+    toast(`${keys.length} saved cut-outs cleared`); show(true);
+  };
+  ctl.segment = segment; ctl.segmentData = segmentData; ctl.readable = readable;
+  ctl.debug = () => ({ mode: cutMode, done, failed, running, queued: queue.length, blocked: [...blocked] });
+  return ctl;
+})();
+
 // ---------- Web: a full-screen honeycomb of the species, related ones side by side ----------
 // Every species is one hexagonal cell filled with its photo. Kin are placed together, so each group (genus, family, order, class...) is a
 // patch of the honeycomb with an irregular outline; thin dark borders show where one group ends and the next begins, thicker for more
@@ -3683,7 +3969,7 @@ const web = (() => {
   const stat = (u, ok) => { const h = hostOf(u), st = hostStats[h] || (hostStats[h] = { ok: 0, refused: 0 }); st[ok ? 'ok' : 'refused']++; };
   // Photo colours are remembered by photo address, so a photo is only ever read once (and never again through the proxy).
   let colCache = null, colDirty = 0;
-  const photoProxy = () => { try { return (localStorage.getItem('inat_photo_proxy') || '').trim(); } catch { return ''; } };
+  const photoProxy = getPhotoProxy;
   const proxied = u => { const base = photoProxy(); return base ? `${base}${base.includes('?') ? '&' : '?'}url=${encodeURIComponent(u)}` : null; };
   const blocked = new Set(); // hosts that refused a cross-origin read during this visit: don't ask them again
   function saveColours() { if (colDirty) { colDirty = 0; idb.set('photocol', colCache); } }
@@ -4380,7 +4666,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build world-27 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build cut-28 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

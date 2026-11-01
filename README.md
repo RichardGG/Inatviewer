@@ -38,3 +38,10 @@ per country. The animal group chips narrow it to birds, mammals and so on. Count
 Reading photo colours needs the page to be allowed to read the photo pixels. If iNaturalist's photo servers refuse, create a free
 Cloudflare Worker that forwards only iNaturalist photo addresses (see the code in the project notes / chat), paste its address under
 ⚙ → "Or use an API token / OAuth settings" → "Photo proxy address". Colours are remembered per photo, so a photo goes through the proxy once.
+
+## Cut-outs (Recent tab)
+
+The scissors button in the Recent tab's icon bar offers: Off (default), Focus crop (square crop around the main subject), Cut-out · quick
+(subject found by colour contrast with the photo's edges, no model) and Cut-out · AI (a background-removal model loaded from jsDelivr /
+Hugging Face on first use, ~25 MB). Photos are read through the photo proxy when iNaturalist's servers refuse; results are saved per
+photo in IndexedDB (`cut:` keys) and can be cleared from the same panel.
