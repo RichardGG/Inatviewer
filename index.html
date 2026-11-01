@@ -1623,6 +1623,8 @@ function redrawKeep(key, fromBar) {
   drawGallery();
   const g = gal.byKey.get(key);
   if (!g) return;
+  // expanding can push the group beyond the photos drawn so far: draw further pages until its first cell exists
+  for (let guard = 0; gal.shownTo <= g.first && gal.shownTo < gal.items.length && guard < 200; guard++) { gal.limit += GAL_PAGE; drawGallery(); }
   const want = top != null ? top : barHeight() + ($('pathbar').firstElementChild.offsetHeight || 40) + 6;
   // put the group's label back where it was; repeated for a few frames in case the layout settles late (photos, fonts)
   const fix = () => {
@@ -1633,7 +1635,11 @@ function redrawKeep(key, fromBar) {
     if (Math.abs(d) > 1) scrollBy(0, d);
   };
   fix();
-  let n = 0; const again = () => { fix(); if (++n < 4) requestAnimationFrame(again); else schedulePath(); };
+  // keep it there while photos and fonts settle (about a second), unless the user takes over by scrolling
+  const t0 = performance.now(); let stop = false;
+  const halt = () => { stop = true; };
+  for (const ev of ['wheel', 'touchstart', 'keydown']) addEventListener(ev, halt, { once: true, passive: true });
+  const again = () => { if (stop) return; fix(); if (performance.now() - t0 < 1000) requestAnimationFrame(again); else schedulePath(); };
   requestAnimationFrame(again);
 }
 function toggleGroup(key, fromBar) {
@@ -4505,7 +4511,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-17 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-18 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
