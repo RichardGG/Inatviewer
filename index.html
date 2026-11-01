@@ -348,10 +348,10 @@
   @font-face { font-family:'Courier Prime'; font-style:normal; font-weight:400; font-display:swap; src:url('vendor/fonts/courier-prime-latin-400-normal.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   @font-face { font-family:'Courier Prime'; font-style:italic; font-weight:400; font-display:swap; src:url('vendor/fonts/courier-prime-latin-400-italic.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   /* the desk the Polaroids lie on */
-  body.stkview { --desk:#e6e0d2; background:var(--desk); }
+  body.stkview { --desk:#e6e0d2; --paper:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .25  0 0 0 0 .2  0 0 0 0 .1  0 0 0 .4 -.1'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"), url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='.012 .03' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .25  0 0 0 0 .15  0 0 0 .32 -.1'/></filter><rect width='100%25' height='100%25' filter='url(%23m)'/></svg>"); background:var(--paper), var(--desk); }
   body.stkview #iconbar { background:#f4f0e6; }
   @media (prefers-color-scheme: dark) {
-    body.stkview { --desk:#2a4636; background:var(--desk); }
+    body.stkview { --desk:#2a4636; background:var(--paper), var(--desk); }
     body.stkview #iconbar { background:#21392b; }
   }
   #gal { background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
@@ -394,7 +394,10 @@
   @media (max-width:480px) { #iconbar .ib.tb { width:36px; } }
   #pathbar { position:sticky; top:var(--bar-h, 0px); height:0; z-index:55; transition:top .2s; }
   #pathbar[hidden] { display:none; }
-  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; flex-wrap:wrap; gap:0; padding:12px 8px 0 30px; background:var(--desk, var(--bg)); } /* solid desk colour: photos scroll away under the tabs, not behind them */
+  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; flex-wrap:wrap; gap:0; padding:12px 8px 10px 30px; }
+  /* the strip under the tabs: desk-coloured paper edge to edge, so photos scroll away under it, with the folder's edge along its bottom */
+  #pathbar .pbin::before { content:''; position:absolute; z-index:-1; left:50%; width:100vw; margin-left:-50vw; top:0; bottom:0; background:var(--paper), var(--desk, var(--bg)); }
+  #pathbar .pbin::after { content:''; position:absolute; left:50%; width:100vw; margin-left:-50vw; bottom:0; height:10px; background:linear-gradient(rgba(255,255,255,.25), rgba(0,0,0,.12)), var(--tc, #9fd6b8); box-shadow:0 3px 6px rgba(0,0,0,.4); }
   #pathbar .tag { max-width:100%; }
 </style>
 </head>
@@ -1671,6 +1674,7 @@ function updatePath() {
     pb.dataset.sig = sig;
     const inner = pb.firstElementChild;
     inner.replaceChildren(...path.map(g => tagEl(g, true)));
+    inner.style.setProperty('--tc', TAG_COLORS[path[path.length - 1].depth % TAG_COLORS.length]);
   }
   pb.hidden = false;
 }
@@ -4507,7 +4511,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-22 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-23 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
