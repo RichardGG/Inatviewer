@@ -42,6 +42,6 @@ Cloudflare Worker that forwards only iNaturalist photo addresses (see the code i
 ## Cut-outs (Recent tab)
 
 The scissors button in the Recent tab's icon bar offers: Off (default), Focus crop (square crop around the main subject), Cut-out · quick
-(subject found by colour contrast with the photo's edges, no model) and Cut-out · AI (a background-removal model loaded from jsDelivr /
-Hugging Face on first use, ~25 MB). Photos are read through the photo proxy when iNaturalist's servers refuse; results are saved per
+(subject found by colour contrast with the photo's edges, no model) and Cut-out · AI model (a background-removal model chosen in the panel: MODNet, RMBG-1.4, BiRefNet lite, IS-Net or any
+Hugging Face id; loaded from jsDelivr / Hugging Face on first use) and Cut-out · Segment Anything (SlimSAM prompted with the centre of the photo). Photos are read through the photo proxy when iNaturalist's servers refuse; results are saved per
 photo in IndexedDB (`cut:` keys) and can be cleared from the same panel.

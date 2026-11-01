@@ -482,6 +482,11 @@
       <div class="card fpanel" id="pcut" hidden>
         <p class="status" style="margin:0 0 6px">Recent photos: show only the animal. These read the photo's pixels (through the photo proxy if needed), on this device.</p>
         <div id="cutchips" class="clsrow" role="group" aria-label="Cut-out style"></div>
+        <div id="cutmodelbox" hidden style="margin-top:8px">
+          <p class="status" style="margin:0 0 4px">AI model (downloaded once, then kept by the browser):</p>
+          <div id="cutmodels" class="clsrow" role="group" aria-label="AI model"></div>
+          <input id="cutcustom" spellcheck="false" placeholder="Hugging Face model id, e.g. org/name" hidden style="width:100%;margin-top:6px;padding:7px;font:12px monospace;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">
+        </div>
         <p class="status" id="cutnote" style="margin:8px 0 0"></p>
         <button class="secondary" id="cutclear" style="margin-top:8px">Clear saved cut-outs</button>
       </div>
@@ -1765,7 +1770,12 @@ const rarityActive = () => rareMax > 0 || rareConcern;
 let cmpMode = ''; // '' | 'missing' (species the other person hasn't seen) | 'common' (seen by both)
 const DEFAULT_PHOTO_PROXY = 'https://inat-photos.richardgg.workers.dev/'; // a Cloudflare Worker that forwards iNaturalist photos with permission to read their pixels
 const getPhotoProxy = () => { try { return (localStorage.getItem('inat_photo_proxy') || '').trim() || DEFAULT_PHOTO_PROXY; } catch { return DEFAULT_PHOTO_PROXY; } };
-const CUT_MODES = [['', 'Off'], ['focus', 'Focus crop'], ['quick', 'Cut-out · quick'], ['ai', 'Cut-out · AI (experimental)']];
+const CUT_MODES = [['', 'Off'], ['focus', 'Focus crop'], ['quick', 'Cut-out · quick'], ['ai', 'Cut-out · AI model'], ['sam', 'Cut-out · Segment Anything (centre)']];
+// background-removal models (Hugging Face ids, run in the browser); the last entry takes any id typed in
+const CUT_MODELS = [['Xenova/modnet', 'MODNet'], ['briaai/RMBG-1.4', 'RMBG-1.4'], ['onnx-community/BiRefNet_lite-ONNX', 'BiRefNet lite'], ['onnx-community/ISNet-ONNX', 'IS-Net'], ['custom', 'Other…']];
+let cutModel = 'Xenova/modnet', cutCustom = '';
+try { cutModel = localStorage.getItem('inat_cut_model') || cutModel; cutCustom = localStorage.getItem('inat_cut_custom') || ''; } catch {}
+if (!CUT_MODELS.some(m => m[0] === cutModel)) cutModel = 'Xenova/modnet';
 let cutMode = ''; try { cutMode = localStorage.getItem('inat_cut') || ''; } catch {} if (!CUT_MODES.some(m => m[0] === cutMode)) cutMode = '';
 let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite) | 'others' (faved by other users) | 'theirs' / 'mine' (someone else's account: their favourites / ones I faved)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
@@ -1848,7 +1858,7 @@ function drawChips() {
   if (!nearby && rareMax) add('gem', `Under ${rareMax.toLocaleString()} observations worldwide`, () => { rareMax = 0; drawRarityChips(); scheduleShow(); }, 'Clear rarity filter');
   if (!nearby && rareConcern) add('shield-alert', 'Conservation concern', () => { rareConcern = false; drawRarityChips(); scheduleShow(); }, 'Clear conservation filter');
   if (!nearby && raritySort) add(raritySort === 'threat' ? 'shield-alert' : 'gem', raritySort === 'threat' ? 'Most threatened first' : 'Rarest first', () => { raritySort = ''; drawRarityChips(); scheduleShow(); }, 'Clear rarity sort');
-  if (cutMode && view === 'recent') add('scissors', CUT_MODES.find(m => m[0] === cutMode)[1], () => cutouts.setMode(''), 'Turn off cut-outs');
+  if (cutMode && view === 'recent') add('scissors', cutouts.label(), () => cutouts.setMode(''), 'Turn off cut-outs');
   if (!nearby && cmpMode) add('git-compare', cmpLabel(cmpMode), () => { cmpMode = ''; drawCmpChips(); scheduleShow(); }, 'Clear comparison');
   const has = (id, on) => $(id).classList.toggle('has', !!on);
   has('bcut', cutMode); has('brare', rarityActive() || raritySort); has('bcmp', cmpMode); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
@@ -3565,7 +3575,8 @@ const cutouts = (() => {
   const blocked = new Set();
   const memory = new Map(), objUrls = new Map(), itemOf = new Map();
   const queue = [];
-  let running = 0, done = 0, failed = 0, aiPipe = null, aiBroken = false;
+  let running = 0, done = 0, failed = 0;
+  const keyOf = () => cutMode === 'ai' ? `ai:${modelId()}` : cutMode; // what a saved cut-out depends on
   const ctl = { setMode: null, attach: null, drawPanel: null };
 
   // ---- reading the pixels ----
@@ -3726,33 +3737,85 @@ const cutouts = (() => {
     return toBlob(c, 'image/webp', 0.9);
   }
 
-  // ---- the model approach ----
-  async function aiCut(img) {
-    if (aiBroken) return null;
-    if (!aiPipe) {
-      toast('Downloading the cut-out model (about 25 MB, once)…');
-      aiPipe = (async () => {
-        const mod = await import(AI_URL);
-        mod.env.allowLocalModels = false;
-        return mod.pipeline('background-removal', AI_MODEL, { device: navigator.gpu ? 'webgpu' : 'wasm' });
+  // ---- the model approaches (transformers.js from jsDelivr; models from Hugging Face) ----
+  const modelId = () => cutModel === 'custom' ? cutCustom.trim() : cutModel;
+  const modelName = () => cutModel === 'custom' ? (cutCustom.trim() || 'custom model') : CUT_MODELS.find(m => m[0] === cutModel)[1];
+  let tfModule = null;
+  const loadTf = () => tfModule || (tfModule = import(AI_URL).then(m => { m.env.allowLocalModels = false; return m; }));
+  const pipes = new Map(), broken = new Set();
+  const fail = (what, e) => { broken.add(what); log(`cut-outs: ${what} could not be loaded: ${e && e.message || e}`, 'e'); toast(`The ${what} model could not be loaded here`); };
+  function getPipe(id) {
+    if (!pipes.has(id)) {
+      toast(`Downloading the cut-out model (${id}), once…`);
+      const p = (async () => {
+        const mod = await loadTf();
+        if (navigator.gpu) { try { return await mod.pipeline('background-removal', id, { device: 'webgpu' }); } catch (e) { log(`cut-outs: WebGPU failed for ${id}, trying the CPU (${e && e.message || e})`, 'w'); } }
+        return mod.pipeline('background-removal', id);
       })();
-      aiPipe.catch(e => { aiBroken = true; log(`cut-outs: the AI model could not be loaded: ${e && e.message || e}`, 'e'); toast('The AI cut-out model could not be loaded here'); });
+      p.catch(e => fail(id, e));
+      pipes.set(id, p);
     }
-    let pipe; try { pipe = await aiPipe; } catch { return null; }
-    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0);
-    const url = URL.createObjectURL(await toBlob(c, 'image/png'));
+    return pipes.get(id);
+  }
+  const imageUrl = async img => { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0); return URL.createObjectURL(await toBlob(c, 'image/png')); };
+  function alphaBox(canvas) {
+    const d = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    let x0 = canvas.width, y0 = canvas.height, x1 = 0, y1 = 0;
+    for (let y = 0; y < canvas.height; y++) for (let x = 0; x < canvas.width; x++) if (d[(y * canvas.width + x) * 4 + 3] > 40) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    return x1 > x0 && y1 > y0 ? { x0: x0 / canvas.width, y0: y0 / canvas.height, x1: (x1 + 1) / canvas.width, y1: (y1 + 1) / canvas.height } : null;
+  }
+  async function aiCut(img) {
+    const id = modelId();
+    if (!id || broken.has(id)) return null;
+    let pipe; try { pipe = await getPipe(id); } catch { return null; }
+    const url = await imageUrl(img);
     try {
       let out = await pipe(url); if (Array.isArray(out)) out = out[0];
       const oc = out.toCanvas ? out.toCanvas() : null; if (!oc) return null;
-      const d = oc.getContext('2d').getImageData(0, 0, oc.width, oc.height).data; let x0 = oc.width, y0 = oc.height, x1 = 0, y1 = 0;
-      for (let y = 0; y < oc.height; y++) for (let x = 0; x < oc.width; x++) if (d[(y * oc.width + x) * 4 + 3] > 40) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-      if (x1 <= x0 || y1 <= y0) return null;
-      return cropToBox(oc, { x0: x0 / oc.width, y0: y0 / oc.height, x1: (x1 + 1) / oc.width, y1: (y1 + 1) / oc.height });
-    } catch (e) { log(`cut-outs: the AI model failed on a photo: ${e && e.message || e}`, 'w'); return null; }
+      const box = alphaBox(oc);
+      return box ? cropToBox(oc, box) : null;
+    } catch (e) { log(`cut-outs: ${id} failed on a photo: ${e && e.message || e}`, 'w'); return null; }
+    finally { URL.revokeObjectURL(url); }
+  }
+  // Segment Anything (SlimSAM): "what is at the centre of the photo?" Of its three guesses the one it is surest of is used.
+  const SAM_ID = 'Xenova/slimsam-77-uniform';
+  let samP = null;
+  function getSam() {
+    if (!samP) {
+      toast('Downloading Segment Anything (SlimSAM), once…');
+      samP = (async () => { const m = await loadTf(); return { m, model: await m.SamModel.from_pretrained(SAM_ID), processor: await m.AutoProcessor.from_pretrained(SAM_ID) }; })();
+      samP.catch(e => fail('Segment Anything', e));
+    }
+    return samP;
+  }
+  async function samCut(img) {
+    if (broken.has('Segment Anything')) return null;
+    let sam; try { sam = await getSam(); } catch { return null; }
+    const url = await imageUrl(img);
+    try {
+      const raw = await sam.m.RawImage.read(url);
+      const inputs = await sam.processor(raw, { input_points: [[[raw.width / 2, raw.height / 2]]] });
+      const outputs = await sam.model(inputs);
+      const masks = await sam.processor.post_process_masks(outputs.pred_masks, inputs.original_sizes, inputs.reshaped_input_sizes);
+      const mk = masks[0], dims = mk.dims, k = dims[dims.length - 3], H = dims[dims.length - 2], W = dims[dims.length - 1], sc = outputs.iou_scores.data;
+      let best = 0; for (let i = 1; i < k; i++) if (sc[i] > sc[best]) best = i;
+      const data = mk.data, off = best * H * W;
+      const mc = document.createElement('canvas'); mc.width = W; mc.height = H;
+      const md = new ImageData(W, H); let on = 0;
+      for (let i = 0; i < H * W; i++) if (data[off + i]) { md.data[i * 4 + 3] = 255; on++; }
+      if (on < H * W * 0.01 || on > H * W * 0.95) return null; // nothing sensible at the centre
+      mc.getContext('2d').putImageData(md, 0, 0);
+      const out = document.createElement('canvas'); out.width = img.naturalWidth; out.height = img.naturalHeight;
+      const g = out.getContext('2d'); g.drawImage(img, 0, 0);
+      g.globalCompositeOperation = 'destination-in'; g.imageSmoothingQuality = 'high'; g.drawImage(mc, 0, 0, out.width, out.height);
+      const box = alphaBox(out);
+      return box ? cropToBox(out, box) : null;
+    } catch (e) { log(`cut-outs: Segment Anything failed on a photo: ${e && e.message || e}`, 'w'); return null; }
     finally { URL.revokeObjectURL(url); }
   }
   async function compute(mode, img) {
     if (mode === 'ai') return aiCut(img);
+    if (mode === 'sam') return samCut(img);
     await new Promise(r => setTimeout(r)); // let the page breathe between photos
     const seg = segment(img);
     if (!seg) return null;
@@ -3765,7 +3828,7 @@ const cutouts = (() => {
   }, { rootMargin: '400px' });
   function note() { const n = $('cutnote'); if (n) n.textContent = cutMode ? `${done} done${failed ? `, ${failed} without a clear subject` : ''} so far. Cut-outs are made as photos scroll into view.` : ''; }
   async function run(it) {
-    const mode = it.mode, key = `cut:${mode}:${it.url}`;
+    const mode = it.mode, key = `cut:${it.key}:${it.url}`;
     let blob = memory.get(key) || await idb.get(key);
     if (!blob) {
       const img = await readable(it.url);
@@ -3773,23 +3836,23 @@ const cutouts = (() => {
       if (!blob) { failed++; it.tile.classList.remove('cutwait'); it.tile.classList.add('cutfail'); note(); return; }
       memory.set(key, blob); idb.set(key, blob);
     }
-    if (!it.tile.isConnected || mode !== cutMode) return;
+    if (!it.tile.isConnected || it.key !== keyOf()) return;
     let u = objUrls.get(key); if (!u) { u = URL.createObjectURL(blob); objUrls.set(key, u); }
     it.im.src = u; it.tile.classList.remove('cutwait'); if (mode !== 'focus') it.tile.classList.add('cut');
     done++; note();
   }
   function pump() {
-    const max = cutMode === 'ai' ? 1 : 2;
+    const max = cutMode === 'ai' || cutMode === 'sam' ? 1 : 2;
     while (running < max && queue.length) {
       const it = queue.shift();
-      if (it.mode !== cutMode || !it.tile.isConnected) continue;
+      if (it.key !== keyOf() || !it.tile.isConnected) continue;
       running++; run(it).catch(e => log(`cut-outs: ${e && e.message || e}`, 'w')).finally(() => { running--; pump(); });
     }
   }
   ctl.attach = (tile, im, url) => {
     if (!cutMode) return;
     tile.classList.add('cutwait');
-    itemOf.set(tile, { tile, im, url, mode: cutMode });
+    itemOf.set(tile, { tile, im, url, mode: cutMode, key: keyOf() });
     io.observe(tile);
   };
   ctl.setMode = m => {
@@ -3797,6 +3860,7 @@ const cutouts = (() => {
     queue.length = 0; done = 0; failed = 0;
     ctl.drawPanel(); drawChips(); show(true);
   };
+  ctl.label = () => cutMode === 'ai' ? `Cut-out · AI · ${modelName()}` : CUT_MODES.find(m => m[0] === cutMode)[1];
   ctl.drawPanel = () => {
     const box = $('cutchips'); box.replaceChildren();
     for (const [k, label] of CUT_MODES) {
@@ -3804,8 +3868,18 @@ const cutouts = (() => {
       b.setAttribute('aria-pressed', String(cutMode === k)); b.onclick = () => ctl.setMode(k);
       box.append(b);
     }
+    $('cutmodelbox').hidden = cutMode !== 'ai';
+    const mb = $('cutmodels'); mb.replaceChildren();
+    for (const [id, label] of CUT_MODELS) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (cutModel === id ? ' on' : ''); b.textContent = label;
+      b.setAttribute('aria-pressed', String(cutModel === id));
+      b.onclick = () => { cutModel = id; try { localStorage.setItem('inat_cut_model', id); } catch {} queue.length = 0; done = 0; failed = 0; ctl.drawPanel(); drawChips(); show(true); };
+      mb.append(b);
+    }
+    const ci = $('cutcustom'); ci.hidden = cutModel !== 'custom'; ci.value = cutCustom;
     note();
   };
+  $('cutcustom').onchange = () => { cutCustom = $('cutcustom').value.trim(); try { localStorage.setItem('inat_cut_custom', cutCustom); } catch {} queue.length = 0; drawChips(); show(true); }; // (the panel is not redrawn here, or a tap that caused this change would be lost)
   $('cutclear').onclick = async () => {
     const keys = (await idb.keys()).filter(k => typeof k === 'string' && k.startsWith('cut:'));
     for (const k of keys) await idb.del(k);
@@ -4666,7 +4740,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build cut-28 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build cut-29 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
