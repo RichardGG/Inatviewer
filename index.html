@@ -348,10 +348,10 @@
   @font-face { font-family:'Courier Prime'; font-style:normal; font-weight:400; font-display:swap; src:url('vendor/fonts/courier-prime-latin-400-normal.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   @font-face { font-family:'Courier Prime'; font-style:italic; font-weight:400; font-display:swap; src:url('vendor/fonts/courier-prime-latin-400-italic.woff2') format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
   /* the desk the Polaroids lie on */
-  body.stkview { background:#e6e0d2; }
+  body.stkview { --desk:#e6e0d2; background:var(--desk); }
   body.stkview #iconbar { background:#f4f0e6; }
   @media (prefers-color-scheme: dark) {
-    body.stkview { background:#2a4636; }
+    body.stkview { --desk:#2a4636; background:var(--desk); }
     body.stkview #iconbar { background:#21392b; }
   }
   #gal { background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
@@ -394,7 +394,7 @@
   @media (max-width:480px) { #iconbar .ib.tb { width:36px; } }
   #pathbar { position:sticky; top:var(--bar-h, 0px); height:0; z-index:55; transition:top .2s; }
   #pathbar[hidden] { display:none; }
-  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; flex-wrap:wrap; gap:0; padding:12px 8px 8px 30px; }
+  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; flex-wrap:wrap; gap:0; padding:12px 8px 0 30px; background:var(--desk, var(--bg)); } /* solid desk colour: photos scroll away under the tabs, not behind them */
   #pathbar .tag { max-width:100%; }
 </style>
 </head>
@@ -4507,7 +4507,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-21 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-22 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
