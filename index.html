@@ -1651,8 +1651,10 @@ function renderRecent(obs) {
     b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'View photos');
     { const rb = rarityBadge(rarityOf(o)); if (rb) b.append(rb); }
     const im = document.createElement('img');
-    im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
-    im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
+    im.alt = ''; im.loading = 'lazy';
+    // with cut-outs on, the original photo is not shown (or even fetched) unless the cut-out cannot be made
+    im.src = cutouts.active() ? cutouts.BLANK : sized(ph[0], 'medium');
+    im.onerror = () => { if (im.src.startsWith('data:')) return; if (im.src !== ph[0]) im.src = ph[0]; };
     b.append(im);
     cutouts.attach(t, im, sized(ph[0], 'medium'));
     if (ph.length > 1) { const n = document.createElement('span'); n.className = 'badge'; n.textContent = `1/${ph.length}`; b.append(n); }
@@ -3930,31 +3932,51 @@ const cutouts = (() => {
     for (const e of entries) if (e.isIntersecting) { io.unobserve(e.target); const it = itemOf.get(e.target); if (it) { queue.push(it); pump(); } }
   }, { rootMargin: '400px' });
   function note() { const n = $('cutnote'); if (n) n.textContent = cutMode ? `${done} shown (${fromSaved} from saved copies, ${madeNow} made now)${failed ? `, ${failed} without a clear subject` : ''}. Cut-outs are made as photos scroll into view.` : ''; }
+  const getSaved = async k => memory.get(k) || await idb.get(k);
+  // the saved result to show for a tile, if there is one (nothing is computed here)
+  async function lookup(it) {
+    const plain = `cut:${it.base}:${it.url}`;
+    if (ctl.sticker()) { const sk = `stk2${it.enh ? 'e' : ''}:${it.base}:${it.url}`, sb = await getSaved(sk); if (sb instanceof Blob) return { blob: sb, key: sk }; return null; }
+    if (it.enh) {
+      const ek = `enh1:${it.base}:${it.url}`, eb = await getSaved(ek);
+      if (eb instanceof Blob) return { blob: eb, key: ek };
+      if (!(eb && eb.same)) return null;
+    }
+    const pb = await getSaved(plain);
+    return pb instanceof Blob ? { blob: pb, key: plain } : null;
+  }
+  function showResult(it, key, blob, saved) {
+    if (!it.tile.isConnected || it.key !== keyOf()) return;
+    let u = objUrls.get(key); if (!u) { u = URL.createObjectURL(blob); objUrls.set(key, u); }
+    it.im.src = u; it.tile.classList.remove('cutwait'); if (it.mode !== 'focus') it.tile.classList.add('cut');
+    it.shown = true; done++; if (saved) fromSaved++; else madeNow++; note();
+  }
+  function giveUp(it) { // no usable cut-out: show the photo itself
+    failed++; it.tile.classList.remove('cutwait'); it.tile.classList.add('cutfail'); it.im.src = it.url; note();
+  }
   async function run(it) {
+    if (it.shown) return;
     const mode = it.mode; let key = `cut:${it.base}:${it.url}`;
-    let blob = memory.get(key) || await idb.get(key), saved = !!blob;
+    let blob = await getSaved(key), saved = !!blob;
     if (!blob) {
       const img = await readable(it.url);
       blob = img ? await compute(mode, img, it.model) : null; // the model the tile was queued with, even if another has been picked since
-      if (!blob) { failed++; it.tile.classList.remove('cutwait'); it.tile.classList.add('cutfail'); note(); return; }
+      if (!blob) return giveUp(it);
       memory.set(key, blob); idb.set(key, blob);
     }
     if (it.enh) { // dark photos are brightened (saved as a separate copy; {same: true} means it did not need it)
       const ekey = `enh1:${it.base}:${it.url}`;
-      let eb = memory.get(ekey) || await idb.get(ekey);
-      if (!eb) { const r = await enhance(blob).catch(() => null); eb = r || { same: true }; memory.set(ekey, eb); idb.set(ekey, eb); }
+      let eb = await getSaved(ekey);
+      if (!eb) { const r = await enhance(blob).catch(() => null); eb = r || { same: true }; memory.set(ekey, eb); idb.set(ekey, eb); saved = false; }
       if (eb instanceof Blob) { blob = eb; key = ekey; }
     }
     if (ctl.sticker()) { // the sticker version (outline added) is saved too, so it is made once
       const skey = `stk2${it.enh ? 'e' : ''}:${it.base}:${it.url}`; // stk2: the thinner outline (stk1 copies are older and thicker)
-      let sb = memory.get(skey) || await idb.get(skey);
-      if (!sb) { sb = await makeSticker(blob).catch(() => null); if (sb) { memory.set(skey, sb); idb.set(skey, sb); } }
+      let sb = await getSaved(skey);
+      if (!sb) { sb = await makeSticker(blob).catch(() => null); if (sb) { memory.set(skey, sb); idb.set(skey, sb); saved = false; } }
       if (sb) { blob = sb; key = skey; }
     }
-    if (!it.tile.isConnected || it.key !== keyOf()) return;
-    let u = objUrls.get(key); if (!u) { u = URL.createObjectURL(blob); objUrls.set(key, u); }
-    it.im.src = u; it.tile.classList.remove('cutwait'); if (mode !== 'focus') it.tile.classList.add('cut');
-    done++; if (saved) fromSaved++; else madeNow++; note();
+    showResult(it, key, blob, saved);
   }
   function pump() {
     const max = cutMode === 'ai' || cutMode === 'sam' ? 1 : 2;
@@ -3967,14 +3989,18 @@ const cutouts = (() => {
   ctl.attach = (tile, im, url) => {
     if (!cutMode) return;
     tile.classList.add('cutwait');
-    itemOf.set(tile, { tile, im, url, mode: cutMode, model: modelId(), base: baseOf(), enh: cutEnh, key: keyOf() });
-    io.observe(tile);
+    const it = { tile, im, url, mode: cutMode, model: modelId(), base: baseOf(), enh: cutEnh, key: keyOf(), shown: false };
+    itemOf.set(tile, it);
+    // a saved cut-out is shown straight away (read as soon as the tile exists); only the others wait for their turn to be made
+    lookup(it).then(r => { if (r) showResult(it, r.key, r.blob, true); else if (it.key === keyOf()) io.observe(tile); }).catch(() => io.observe(tile));
   };
   ctl.setMode = m => {
     cutMode = m; try { localStorage.setItem('inat_cut', m); } catch {}
     queue.length = 0; done = 0; failed = 0; fromSaved = 0; madeNow = 0;
     ctl.drawPanel(); drawChips(); show(true);
   };
+  ctl.BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+  ctl.active = () => !!cutMode;
   ctl.sticker = () => cutMode === 'quick' || cutMode === 'ai' || cutMode === 'sam';
   ctl.label = () => cutMode === 'ai' ? `Cut-out · AI · ${modelName()}` : CUT_MODES.find(m => m[0] === cutMode)[1];
   ctl.drawPanel = () => {
@@ -4857,7 +4883,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build sticker-38 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build sticker-39 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
