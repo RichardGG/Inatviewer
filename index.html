@@ -350,6 +350,18 @@
     body.stkview #iconbar { background:#21392b; }
     body.stkview #recent.stkmode .dh { background:#2a4636; color:#bcd6c6; border-bottom-color:rgba(255,255,255,.14); }
   }
+  /* Recent as Polaroids: the normal photo in a white frame with a handwritten title, each tilted a little */
+  .rgrid.pol { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:24px 16px; padding:12px 8px 4px; }
+  @media (min-width: 900px) { .rgrid.pol { grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:34px 24px; } }
+  .rgrid.pol .dh { grid-column:1 / -1; }
+  .rgrid.pol .tile { position:relative; aspect-ratio:auto; background:#fbfaf4; border-radius:3px; overflow:visible; padding:9px 9px 0;
+                     box-shadow:0 4px 12px rgba(0,0,0,.38), 0 1px 2px rgba(0,0,0,.28); transform:rotate(var(--rot, 0deg)); transition:transform .15s; }
+  .rgrid.pol .tile:hover { transform:rotate(0deg) scale(1.03); z-index:4; }
+  .rgrid.pol .tile .pic { position:relative; inset:auto; display:block; width:100%; height:auto; aspect-ratio:1; background:#d9d9d2; overflow:hidden; cursor:pointer; }
+  .rgrid.pol .tile img { width:100%; height:100%; object-fit:cover; display:block; }
+  .rgrid.pol .tile .cap { position:static; display:block; background:none; text-shadow:none; color:#252a33; padding:0 4px; height:54px; line-height:54px; text-align:center;
+                          font:700 24px/54px 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transform:rotate(-1deg); }
+  .rgrid.pol .tile .cap:hover { text-decoration:none; color:#1f5a2a; }
   /* Recent with cut-outs: stickers (white outline, shadow outside) in a masonry, no card box */
   #recent.stkmode { background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
   .rgrid.stk { display:block; }
@@ -507,7 +519,7 @@
         <button class="secondary" id="rarecheck" hidden style="margin-top:8px">Check rarity</button>
       </div>
       <div class="card fpanel" id="pcut" hidden>
-        <p class="status" style="margin:0 0 6px">Recent photos: show only the animal. These read the photo's pixels (through the photo proxy if needed), on this device.</p>
+        <p class="status" style="margin:0 0 6px">Recent photos: cut out the animal (these read the photo's pixels, through the photo proxy if needed, on this device), or show the normal photos as tilted Polaroids.</p>
         <div id="cutchips" class="clsrow" role="group" aria-label="Cut-out style"></div>
         <div id="cutmodelbox" hidden style="margin-top:8px">
           <p class="status" style="margin:0 0 4px">AI model (downloaded once, then kept by the browser):</p>
@@ -1623,10 +1635,10 @@ function renderRecent(obs) {
        : shuffled ? list.sort((a, b) => shuffleKey(a.id, recentSeed) - shuffleKey(b.id, recentSeed))
                   : list.sort((a, b) => recentDate(b).localeCompare(recentDate(a)) || b.id - a.id);
   const PAGE = 60;
-  const sticker = cutouts.sticker(); // cut-outs on: sticker layout, in a masonry of columns
-  document.body.classList.toggle('stkview', sticker);
-  const gridEl = document.createElement('div'); gridEl.className = 'rgrid' + (sticker ? ' stk' : '');
-  el.classList.toggle('stkmode', sticker);
+  const sticker = cutouts.sticker(), pol = cutouts.polaroid(); // cut-outs on: sticker layout in a masonry; Polaroid: normal photos in tilted frames
+  document.body.classList.toggle('stkview', sticker || pol);
+  const gridEl = document.createElement('div'); gridEl.className = 'rgrid' + (sticker ? ' stk' : pol ? ' pol' : '');
+  el.classList.toggle('stkmode', sticker || pol);
   const ncols = innerWidth < 560 ? 2 : innerWidth < 900 ? 3 : 4;
   let mason = null;
   const newMason = () => { const m = document.createElement('div'); m.className = 'mason'; m.cols = Array.from({ length: ncols }, () => { const c = document.createElement('div'); c.className = 'mcol'; m.append(c); return c; }); gridEl.append(m); return m; };
@@ -1646,6 +1658,7 @@ function renderRecent(obs) {
     const t = document.createElement('div');
     t.className = 'tile'; markBrow(t, o.tid, o.id);
     if (sticker) t.style.setProperty('--r', String((o.id % 7) - 3)); // each sticker sits a little differently
+    if (pol) t.style.setProperty('--rot', ((Math.imul(o.id, 2654435761) >>> 0) % 1300 / 100 - 6.5).toFixed(2) + 'deg'); // a random tilt of up to 6.5 degrees, fixed per observation
     t.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'View photos');
@@ -1812,7 +1825,7 @@ const rarityActive = () => rareMax > 0 || rareConcern;
 let cmpMode = ''; // '' | 'missing' (species the other person hasn't seen) | 'common' (seen by both)
 const DEFAULT_PHOTO_PROXY = 'https://inat-photos.richardgg.workers.dev/'; // a Cloudflare Worker that forwards iNaturalist photos with permission to read their pixels
 const getPhotoProxy = () => { try { return (localStorage.getItem('inat_photo_proxy') || '').trim() || DEFAULT_PHOTO_PROXY; } catch { return DEFAULT_PHOTO_PROXY; } };
-const CUT_MODES = [['', 'Off'], ['focus', 'Focus crop'], ['quick', 'Cut-out · quick'], ['ai', 'Cut-out · AI model'], ['sam', 'Cut-out · Segment Anything (centre)']];
+const CUT_MODES = [['', 'Off'], ['focus', 'Focus crop'], ['quick', 'Cut-out · quick'], ['ai', 'Cut-out · AI model'], ['sam', 'Cut-out · Segment Anything (centre)'], ['polaroid', 'Polaroid (normal photos)']];
 // background-removal models (Hugging Face ids, run in the browser); the last entry takes any id typed in
 const CUT_MODELS = [['briaai/RMBG-1.4', 'RMBG-1.4'], ['Xenova/modnet', 'MODNet'], ['onnx-community/BiRefNet_lite-ONNX', 'BiRefNet lite'], ['onnx-community/ISNet-ONNX', 'IS-Net'], ['custom', 'Other…']];
 let cutModel = 'briaai/RMBG-1.4', cutCustom = ''; // RMBG-1.4 turned out the most reliable on real photos
@@ -3218,7 +3231,7 @@ function setView(v) {
   $('jumpwrap').hidden = v === 'recent' || v === 'explore';
   $('bsearch').hidden = v === 'recent' || v === 'explore';
   $('bcut').hidden = v !== 'recent';
-  document.body.classList.toggle('stkview', v === 'recent' && cutouts.sticker());
+  document.body.classList.toggle('stkview', v === 'recent' && (cutouts.sticker() || cutouts.polaroid()));
   if (v !== 'recent' && !$('pcut').hidden) { $('pcut').hidden = true; $('bcut').classList.remove('open'); }
   if (v === 'recent' || v === 'explore') { $('psearch').hidden = true; $('bsearch').classList.remove('open'); }
   $('recentTools').hidden = v !== 'recent';
@@ -3931,7 +3944,7 @@ const cutouts = (() => {
   const io = new IntersectionObserver(entries => {
     for (const e of entries) if (e.isIntersecting) { io.unobserve(e.target); const it = itemOf.get(e.target); if (it) { queue.push(it); pump(); } }
   }, { rootMargin: '400px' });
-  function note() { const n = $('cutnote'); if (n) n.textContent = cutMode ? `${done} shown (${fromSaved} from saved copies, ${madeNow} made now)${failed ? `, ${failed} without a clear subject` : ''}. Cut-outs are made as photos scroll into view.` : ''; }
+  function note() { const n = $('cutnote'); if (n) n.textContent = ctl.active() ? `${done} shown (${fromSaved} from saved copies, ${madeNow} made now)${failed ? `, ${failed} without a clear subject` : ''}. Cut-outs are made as photos scroll into view.` : ''; }
   const getSaved = async k => memory.get(k) || await idb.get(k);
   // the saved result to show for a tile, if there is one (nothing is computed here)
   async function lookup(it) {
@@ -3987,7 +4000,7 @@ const cutouts = (() => {
     }
   }
   ctl.attach = (tile, im, url) => {
-    if (!cutMode) return;
+    if (!ctl.active()) return;
     tile.classList.add('cutwait');
     const it = { tile, im, url, mode: cutMode, model: modelId(), base: baseOf(), enh: cutEnh, key: keyOf(), shown: false };
     itemOf.set(tile, it);
@@ -4000,7 +4013,8 @@ const cutouts = (() => {
     ctl.drawPanel(); drawChips(); show(true);
   };
   ctl.BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
-  ctl.active = () => !!cutMode;
+  ctl.active = () => !!cutMode && cutMode !== 'polaroid';   // a mode that makes cut-outs (Polaroid just restyles the normal photos)
+  ctl.polaroid = () => cutMode === 'polaroid';
   ctl.sticker = () => cutMode === 'quick' || cutMode === 'ai' || cutMode === 'sam';
   ctl.label = () => cutMode === 'ai' ? `Cut-out · AI · ${modelName()}` : CUT_MODES.find(m => m[0] === cutMode)[1];
   ctl.drawPanel = () => {
@@ -4019,7 +4033,7 @@ const cutouts = (() => {
       mb.append(b);
     }
     const ci = $('cutcustom'); ci.hidden = cutModel !== 'custom'; ci.value = cutCustom;
-    $('cutenh').checked = cutEnh;
+    $('cutenh').checked = cutEnh; $('cutenh').parentElement.hidden = !ctl.active();
     note();
   };
   $('cutenh').onchange = () => { cutEnh = $('cutenh').checked; try { localStorage.setItem('inat_cut_enh', cutEnh ? '1' : '0'); } catch {} queue.length = 0; done = 0; failed = 0; fromSaved = 0; madeNow = 0; show(true); };
@@ -4883,7 +4897,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build sticker-39 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build polaroid-40 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

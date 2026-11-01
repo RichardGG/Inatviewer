@@ -54,3 +54,5 @@ photo in IndexedDB (`cut:` keys) and can be cleared from the same panel.
 With any cut-out approach except Focus crop, the Recent tab switches to a sticker layout: each animal is a cut-out with a thick white outline and
 a drop shadow, in a masonry of columns (no card boxes), its name in a handwriting font (Caveat, pinned in `package.json` and copied into
 `vendor/fonts/` at deploy time) with the small badges hidden. RMBG-1.4 is the default AI model.
+
+The Polaroid style (same panel) shows the normal Recent photos in white frames with the handwritten name, each tilted by a random angle (up to about 6.5 degrees, fixed per observation).
