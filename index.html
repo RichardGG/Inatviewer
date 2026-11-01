@@ -356,13 +356,13 @@
   }
   #gal { background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
   /* one strict grid: every Polaroid is a cell; a group's label sits in the cell of its first Polaroid, above it */
-  .pgrid { --cols:2; display:grid; grid-template-columns:repeat(var(--cols), minmax(0, 1fr)); gap:20px 14px; padding:12px 8px 4px; align-items:end; }
-  @media (min-width:560px) { .pgrid { --cols:3; gap:26px 18px; } }
-  @media (min-width:800px) { .pgrid { --cols:4; gap:30px 22px; } }
+  .pgrid { --cols:2; --gx:14px; display:grid; grid-template-columns:repeat(var(--cols), minmax(0, 1fr)); gap:20px 14px; padding:12px 8px 4px; align-items:end; }
+  @media (min-width:560px) { .pgrid { --cols:3; --gx:18px; gap:26px 18px; } }
+  @media (min-width:800px) { .pgrid { --cols:4; --gx:22px; gap:30px 22px; } }
   @media (min-width:1100px) { .pgrid { --cols:5; } }
   @media (min-width:1400px) { .pgrid { --cols:6; } }
   .cell { min-width:0; display:flex; flex-direction:column; justify-content:flex-end; scroll-margin-top:calc(var(--bar-h, 0px) + 60px); }
-  .cell .tags { display:flex; flex-flow:row wrap; align-items:flex-end; gap:6px 6px; margin:0 0 10px 2px; max-width:100%; }
+  .cell .tags { display:flex; flex-flow:row wrap; align-items:flex-end; gap:4px 3px; margin:0 0 6px; width:calc(var(--span, 1) * 100% + (var(--span, 1) - 1) * var(--gx, 14px)); position:relative; z-index:3; }
   .pgrid .tile { position:relative; aspect-ratio:auto; background:#fbfaf4; border-radius:3px; overflow:visible; padding:9px 9px 0;
                  box-shadow:0 4px 12px rgba(0,0,0,.38), 0 1px 2px rgba(0,0,0,.28); transform:rotate(var(--rot, 0deg)); transition:transform .15s; }
   .pgrid .tile:hover { transform:rotate(0deg) scale(1.03); z-index:4; }
@@ -374,14 +374,14 @@
   .pgrid .tile .cap:hover { text-decoration:none; color:#1f5a2a; }
   /* coloured typewriter stickers; the common name large, the scientific name small underneath */
   .tag { --tc:#ffe27a; --tr:0deg; display:inline-block; max-width:100%; text-align:left; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
-         font:400 12px/1.15 'Special Elite','American Typewriter','Courier New',monospace; color:#2b2b2b; padding:6px 22px 6px 9px; border:0; border-radius:2px; position:relative;
-         background:linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0) 40%), var(--tc); box-shadow:0 2px 4px rgba(0,0,0,.35); transform:rotate(var(--tr)); }
+         font:400 12px/1.15 'Special Elite','American Typewriter','Courier New',monospace; color:#2b2b2b; padding:6px 22px 6px 9px; border:0; border-radius:8px 8px 0 0; position:relative;
+         background:linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0) 40%), var(--tc); box-shadow:0 -1px 3px rgba(0,0,0,.3); }
   .tag b { display:block; font-weight:400; font-size:17px; line-height:1.1; overflow-wrap:anywhere; }
   .tag small { display:block; margin-top:2px; font-size:11px; opacity:.72; overflow-wrap:anywhere; }
   .tag small.sci { font-style:italic; }
   .tag::after { content:'▾'; position:absolute; right:7px; top:6px; font-size:11px; opacity:.45; }
   .tag.col::after { content:'▸'; }
-  .tag.sm { padding:3px 18px 3px 7px; }
+  .tag.sm { padding:3px 18px 3px 8px; }
   .tag.sm b { display:inline; font-size:14px; } .tag.sm small { display:inline; margin:0 0 0 6px; font-size:10px; }
   .tag.sm::after { top:3px; right:5px; }
   .tag:active { filter:brightness(.94); }
@@ -1584,7 +1584,7 @@ function drawGallery() {
     if (tags.length) { const box = document.createElement('div'); box.className = 'tags'; tags.forEach(g => box.append(tagEl(g, false))); cell.append(box); }
     cell.append(k < 0 ? polTile(it.o) : stackEl(it.path[k]));
     grid.append(cell); n++;
-    gal.cells.push({ el: cell, path: k < 0 ? it.path : it.path.slice(0, k + 1) });
+    gal.cells.push({ el: cell, tagGroups: tags, path: k < 0 ? it.path : it.path.slice(0, k + 1) });
   }
   gal.shownTo = i;
   el.replaceChildren(grid);
@@ -1595,10 +1595,29 @@ function drawGallery() {
     more.onclick = () => { gal.limit += GAL_PAGE; drawGallery(); };
     el.append(more);
   }
+  spanTags();
   syncExpCol();
   $('pathbar').dataset.sig = '';
   schedulePath();
 }
+
+// A row of tabs may run on over the neighbouring cells to its right, as long as their photos are in the same group (and have no tabs of their own).
+function spanTags() {
+  const grid = $('gal').firstElementChild;
+  if (!grid || !grid.classList.contains('pgrid')) return;
+  const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+  if (!(cols > 1)) return;
+  const cs = gal.cells;
+  cs.forEach((c, i) => {
+    const tags = c.el.firstElementChild;
+    if (!tags || !tags.classList.contains('tags')) return;
+    const g = c.tagGroups[c.tagGroups.length - 1];
+    let n = 1;
+    while ((i + n) % cols !== 0 && cs[i + n] && !cs[i + n].tagGroups.length && cs[i + n].path.includes(g)) n++;
+    tags.style.setProperty('--span', n);
+  });
+}
+addEventListener('resize', () => { if (isGal(view)) spanTags(); });
 
 // ---- collapsing ----
 const barHeight = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar-h')) || 0;
@@ -4497,7 +4516,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-1 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-2 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
