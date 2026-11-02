@@ -371,6 +371,7 @@
   .pgrid .tile .cap span { display:block; max-width:100%; word-break:break-word; }
   .pgrid .tile .cap:hover { text-decoration:none; color:#1f5a2a; }
   /* coloured typewriter stickers; the common name large, the scientific name small underneath */
+  :root { --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .25  0 0 0 0 .2  0 0 0 0 .1  0 0 0 .4 -.1'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"); }
   :root { --board:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='120'><filter id='c' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.9 .06' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .2  0 0 0 0 .08  0 0 0 .9 -.28'/></filter><rect width='100%25' height='100%25' filter='url(%23c)'/></svg>"); }
   /* group tabs: overlapping chevrons in mixed materials, one per level (denim, linen, pink dots, graph paper, red stripes) */
   .tw { display:flex; max-width:100%; position:relative; margin-left:-20px; filter:drop-shadow(-2px 1px 2px rgba(0,0,0,.45)); }
@@ -397,10 +398,10 @@
   @media (max-width:480px) { #iconbar .ib.tb { width:36px; } }
   #pathbar { position:sticky; top:var(--bar-h, 0px); height:0; z-index:55; transition:top .2s; }
   #pathbar[hidden] { display:none; }
-  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; align-items:stretch; flex-wrap:wrap; gap:0; padding:12px 8px 10px 28px; gap:2px 0; }
-  /* the strip under the tabs: dark cardboard edge to edge, so photos scroll away under it, with the folder's edge along its bottom */
-  #pathbar .pbin::before { content:''; position:absolute; z-index:-1; left:50%; width:100vw; margin-left:-50vw; top:0; bottom:0; background:linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.05)), var(--board), #6b4d2c; }
-  #pathbar .pbin::after { content:''; position:absolute; left:50%; width:100vw; margin-left:-50vw; bottom:0; height:10px; background:linear-gradient(rgba(255,255,255,.25), rgba(60,35,10,.2)), var(--board), var(--tc, #c8a26a); box-shadow:0 3px 6px rgba(0,0,0,.4); }
+  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; align-items:stretch; flex-wrap:wrap; gap:0; padding:0 0 10px 20px; gap:0; }
+  /* the strip under the tabs: dark grey felt edge to edge, so photos scroll away under it, with the folder's edge along its bottom */
+  #pathbar .pbin::before { content:''; position:absolute; z-index:-1; left:50%; width:100vw; margin-left:-50vw; top:0; bottom:0; background:linear-gradient(rgba(255,255,255,.07), rgba(0,0,0,.28)), var(--grain), #3c4045; } /* dark grey felt */
+  #pathbar .pbin::after { content:''; position:absolute; left:50%; width:100vw; margin-left:-50vw; bottom:0; height:10px; background:linear-gradient(rgba(255,255,255,.25), rgba(0,0,0,.25)), var(--grain), var(--tc, #35568a); box-shadow:0 3px 6px rgba(0,0,0,.4); }
   #pathbar .tag { max-width:100%; }
 </style>
 </head>
@@ -4514,7 +4515,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-31 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-32 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
