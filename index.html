@@ -380,7 +380,7 @@
          clip-path:polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%); }
   .tag.m0 { color:#1d2f6b; background:linear-gradient(rgba(60,100,160,.35) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(60,100,160,.35) 1px, transparent 1px) 0 0/10px 10px, #faf6e8; }
   .tag.m1 { color:#3a2a14; background:repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), #d9d2bd; }
-  .tag.m2 { color:#14284a; background:repeating-linear-gradient(135deg, rgba(255,255,255,.28) 0 2px, transparent 2px 5px), #9dbbe0; } /* light, faded denim */
+  .tag.m2 { color:#173a1f; background:repeating-linear-gradient(135deg, rgba(255,255,255,.28) 0 2px, transparent 2px 5px), #a6d3a0; } /* light green denim */
   .tag b { display:block; font-weight:700; font-size:15px; line-height:1; overflow-wrap:anywhere; }
   .tag small { display:block; margin-top:0; font-size:11px; font-weight:400; opacity:.88; overflow-wrap:anywhere; }
   .tag small.sci { font-style:italic; }
@@ -1412,7 +1412,7 @@ function shuffleKey(id, seed = shuffleSeed) {
 const GAL = ['recent', 'tree', 'place'];
 const isGal = v => GAL.includes(v);
 const GAL_PAGE = 150;
-const TAG_COLORS = ['#faf6e8', '#d9d2bd', '#9dbbe0']; // graph paper, linen and denim in turn by level
+const TAG_COLORS = ['#faf6e8', '#d9d2bd', '#a6d3a0']; // graph paper, linen and denim in turn by level
 const collapsed = { recent: new Set(), tree: new Set(), place: new Set() }; // keys of the collapsed groups, per sort
 const gal = { sort: 'recent', items: [], groups: [], byKey: new Map(), cells: [], limit: GAL_PAGE, shownTo: 0, drawnSort: '' };
 const ordinal = n => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
@@ -4510,7 +4510,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-39 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-40 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
