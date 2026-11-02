@@ -217,6 +217,23 @@
   .dividers .d:nth-child(2) { top:34px; background:#c9dcc9; z-index:2; } .dividers .d:nth-child(2)::before { left:calc(33% + 6px); }
   .dividers .d:nth-child(3) { top:68px; background:#c9d4ea; z-index:3; } .dividers .d:nth-child(3)::before { left:calc(66% + 0px); }
   .wideimg { grid-column:1 / -1; }
+
+  /* ---------- overlapping chevrons ---------- */
+  .chev { display:flex; flex-wrap:wrap; padding:6px 0 10px 12px; }
+  .chev > .w { filter:drop-shadow(-2px 1px 2px rgba(0,0,0,.4)); margin-left:-12px; position:relative; }
+  .chev > .w:first-child { margin-left:-12px; }
+  .cv { display:block; padding:7px 34px 8px 30px; min-height:48px; font:700 21px/1.05 var(--hw); clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%, 20px 50%); }
+:where(.cv) { color:#3a2a14; }
+  .cv small { display:block; font-size:14px; font-weight:400; opacity:.85; }
+  .w:first-child .cv { clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%); padding-left:16px; border-radius:6px 0 0 6px; }
+  /* tip on top: each chevron lies over the point of the one before, no notch */
+  .chev.over { padding-left:20px; } .chev.over > .w, .chev.over > .w:first-child { margin-left:-20px; }
+  .chev.over .cv, .chev.over .w:first-child .cv { clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%); padding-left:28px; border-radius:0; }
+  .chev.over .w:first-child .cv { padding-left:16px; border-radius:6px 0 0 6px; }
+  .chev.over > .w:nth-child(1) { z-index:6; } .chev.over > .w:nth-child(2) { z-index:5; } .chev.over > .w:nth-child(3) { z-index:4; } .chev.over > .w:nth-child(4) { z-index:3; } .chev.over > .w:nth-child(5) { z-index:2; }
+  .chev.rev > .w { filter:drop-shadow(2px 1px 2px rgba(0,0,0,.4)); }
+  .narrow { max-width:300px; }
+  .narrow .chev { row-gap:2px; }
 </style>
 </head>
 <body>
@@ -340,6 +357,45 @@
     <div class="cell"><div class="row apart"><span class="w"><b class="t m-plastic c-blue sh-pill f-sans">Birds</b></span><span class="w"><b class="t m-grey sh-pill f-label">Birds · Aves</b></span><span class="w"><b class="t m-grey sh-pill f-small">Birds</b></span></div><div class="cap">poster sans · UI label · small caps</div></div>
     <div class="cell"><div class="row apart"><span class="w"><b class="t m-manila sh-curve f-marker">Birds!</b></span><span class="w"><b class="t m-kraft sh-curve" style="font-size:30px">Birds</b></span></div><div class="cap">marker pen · big handwriting</div></div>
     <div class="cell"><div class="row apart"><span class="w"><b class="t m-kraft sh-pill" style="color:#6e4f26;text-shadow:0 1px 0 rgba(255,255,255,.4), 0 -1px 0 rgba(0,0,0,.45)">Birds</b></span><span class="w"><b class="t m-board sh-pill" style="color:#e9c98a;text-shadow:0 1px 0 rgba(0,0,0,.6), 0 0 6px rgba(240,190,100,.6)">Gilded</b></span></div><div class="cap">debossed · gold-foil lettering</div></div>
+  </div>
+
+  <h3 class="sub">Overlapping chevrons (breadcrumb tabs, longer names)</h3>
+  <div class="grid" style="grid-template-columns:repeat(auto-fill, minmax(420px, 1fr))">
+    <div class="cell"><div class="chev">
+      <span class="w"><b class="cv m-kraft">Animalia<small>Animals</small></b></span>
+      <span class="w"><b class="cv m-manila">Chordata<small>Vertebrates and relatives</small></b></span>
+      <span class="w"><b class="cv m-kraft">Aves<small>Birds</small></b></span>
+      <span class="w"><b class="cv m-manila">Passeriformes<small>Perching birds</small></b></span>
+      <span class="w"><b class="cv m-board" style="color:#f4e7cf">Turdidae<small>Thrushes and allies</small></b></span>
+    </div><div class="cap">nested chevrons: each point sits in the next one's notch</div></div>
+    <div class="cell"><div class="chev">
+      <span class="w"><b class="cv m c-red p-stripe">Animalia<small>Animals</small></b></span>
+      <span class="w"><b class="cv m c-blue p-gingham">Chordata<small>Vertebrates and relatives</small></b></span>
+      <span class="w"><b class="cv m c-yellow p-polka">Aves<small>Birds</small></b></span>
+      <span class="w"><b class="cv m c-green p-tartan">Passeriformes<small>Perching birds</small></b></span>
+      <span class="w"><b class="cv m p-wood">Turdidae<small>Thrushes and allies</small></b></span>
+    </div><div class="cap">a different pattern per level</div></div>
+    <div class="cell"><div class="chev over">
+      <span class="w"><b class="cv m-plastic c-teal">Animalia<small>Animals</small></b></span>
+      <span class="w"><b class="cv m-plastic c-blue">Chordata<small>Vertebrates and relatives</small></b></span>
+      <span class="w"><b class="cv m-plastic c-purple">Aves<small>Birds</small></b></span>
+      <span class="w"><b class="cv m-plastic c-pink">Passeriformes<small>Perching birds</small></b></span>
+      <span class="w"><b class="cv m-plastic c-orange">Turdidae<small>Thrushes and allies</small></b></span>
+    </div><div class="cap">overlapping: each chevron lies over the point of the one before (plastic)</div></div>
+    <div class="cell"><div class="chev over">
+      <span class="w"><b class="cv m p-denim">Animalia<small>Animals</small></b></span>
+      <span class="w"><b class="cv m p-linen">Chordata<small>Vertebrates and relatives</small></b></span>
+      <span class="w"><b class="cv m c-pink p-dots" style="--c:#f3c0d0">Aves<small>Birds</small></b></span>
+      <span class="w"><b class="cv m p-graph">Passeriformes<small>Perching birds</small></b></span>
+      <span class="w"><b class="cv m p-leather stitched">Turdidae<small>Thrushes and allies</small></b></span>
+    </div><div class="cap">overlapping, mixed materials</div></div>
+    <div class="cell"><div class="narrow"><div class="chev over">
+      <span class="w"><b class="cv m-kraft f-serif">Animalia<small>Animals</small></b></span>
+      <span class="w"><b class="cv m-manila f-serif">Chordata<small>Vertebrates and relatives</small></b></span>
+      <span class="w"><b class="cv m-kraft f-serif">Passeriformes<small>Perching birds</small></b></span>
+      <span class="w"><b class="cv m-manila f-serif">Sylvioidea<small>Warblers, tits, larks, swallows and relatives</small></b></span>
+    </div></div><div class="cap">wrapping at a narrow width, with very long names</div></div>
+    <div class="cell"><div class="chev rev over" style="direction:rtl"><span class="w"><b class="cv m c-green p-stripe" style="direction:ltr;clip-path:polygon(20px 0, 100% 0, 100% 100%, 20px 100%, 0 50%);padding-left:34px;padding-right:16px">Turdidae<small>Thrushes and allies</small></b></span><span class="w"><b class="cv m c-blue p-gingham" style="direction:ltr;clip-path:polygon(20px 0, 100% 0, 100% 100%, 20px 100%, 0 50%);padding-left:34px;padding-right:16px">Passeriformes<small>Perching birds</small></b></span></div><div class="cap">pointing the other way (tail towards the page edge)</div></div>
   </div>
 
   <h2>9 · Similar concepts</h2>
