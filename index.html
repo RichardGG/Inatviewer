@@ -394,8 +394,8 @@
   #pathbar { position:sticky; top:var(--bar-h, 0px); height:0; z-index:55; transition:top .2s; }
   #pathbar[hidden] { display:none; }
   #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; flex-wrap:wrap; gap:0; padding:12px 8px 10px 30px; }
-  /* the strip under the tabs: desk-coloured paper edge to edge, so photos scroll away under it, with the folder's edge along its bottom */
-  #pathbar .pbin::before { content:''; position:absolute; z-index:-1; left:50%; width:100vw; margin-left:-50vw; top:0; bottom:0; background:var(--paper), var(--desk, var(--bg)); background-position:0 var(--dy, 0px), 0 var(--dy, 0px), 0 0; }
+  /* the strip under the tabs: dark cardboard edge to edge, so photos scroll away under it, with the folder's edge along its bottom */
+  #pathbar .pbin::before { content:''; position:absolute; z-index:-1; left:50%; width:100vw; margin-left:-50vw; top:0; bottom:0; background:linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.05)), var(--board), #6b4d2c; }
   #pathbar .pbin::after { content:''; position:absolute; left:50%; width:100vw; margin-left:-50vw; bottom:0; height:10px; background:linear-gradient(rgba(255,255,255,.25), rgba(60,35,10,.2)), var(--board), var(--tc, #c8a26a); box-shadow:0 3px 6px rgba(0,0,0,.4); }
   #pathbar .tag { max-width:100%; }
 </style>
@@ -1676,9 +1676,6 @@ function updatePath() {
     inner.style.setProperty('--tc', TAG_COLORS[path[path.length - 1].depth % TAG_COLORS.length]);
   }
   pb.hidden = false;
-  // the strip is stuck to the screen but its dots belong to the page: shift them so they line up with the dots that scroll past below
-  const stripTop = pb.firstElementChild.getBoundingClientRect().top;
-  pb.firstElementChild.style.setProperty('--dy', (((-(scrollY + stripTop)) % 22) + 22) % 22 + 'px');
 }
 addEventListener('scroll', schedulePath, { passive: true });
 addEventListener('resize', schedulePath);
@@ -4513,7 +4510,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-28 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-29 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
