@@ -360,7 +360,7 @@
   @media (min-width:1100px) { .pgrid { --cols:5; } }
   @media (min-width:1400px) { .pgrid { --cols:6; } }
   .cell { min-width:0; display:flex; flex-direction:column; justify-content:flex-end; scroll-margin-top:calc(var(--bar-h, 0px) + 60px); }
-  .cell .tags { display:flex; flex-flow:row wrap; align-items:flex-end; gap:0; margin:0 0 -9px; padding:6px 0 0 22px; width:calc(var(--span, 1) * 100% + (var(--span, 1) - 1) * var(--gx, 14px)); position:relative; z-index:3; }
+  .cell .tags { display:flex; flex-flow:row wrap; align-items:flex-end; gap:2px 0; margin:0 0 -9px; padding:6px 0 0 20px; width:calc(var(--span, 1) * 100% + (var(--span, 1) - 1) * var(--gx, 14px)); position:relative; z-index:3; }
   .pgrid .tile { position:relative; z-index:4; aspect-ratio:auto; background:#fbfaf4; border-radius:3px; overflow:visible; padding:9px 9px 0;
                  box-shadow:0 4px 12px rgba(0,0,0,.38), 0 1px 2px rgba(0,0,0,.28); transform:rotate(var(--rot, 0deg)); transition:transform .15s; }
   .pgrid .tile:hover { transform:rotate(0deg) scale(1.03); z-index:4; }
@@ -372,15 +372,19 @@
   .pgrid .tile .cap:hover { text-decoration:none; color:#1f5a2a; }
   /* coloured typewriter stickers; the common name large, the scientific name small underneath */
   :root { --board:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='120'><filter id='c' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.9 .06' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .2  0 0 0 0 .08  0 0 0 .9 -.28'/></filter><rect width='100%25' height='100%25' filter='url(%23c)'/></svg>"); }
-  .tag { --tc:#c8a26a; --tr:0deg; margin:0; display:inline-block; max-width:100%; text-align:left; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
-         font:400 12px/1.15 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; color:#3a2a14; padding:6px 9px; border:0; border-radius:10px 30px 0 0 / 10px 100% 0 0; position:relative;
-         background:linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 30%, rgba(0,0,0,0) 62%, rgba(60,35,10,.3)), var(--board), var(--tc);
-         box-shadow:-5px 0 6px -3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(90,55,20,.28); } /* a folder tab: rounded front, a long curve down the back; each tab overlaps the one before it */
-  .tag b { display:block; font-weight:400; font-size:17px; line-height:1.1; overflow-wrap:anywhere; }
-  .tag small { display:block; margin-top:2px; font-size:11px; opacity:.72; overflow-wrap:anywhere; }
+  /* group tabs: overlapping chevrons in mixed materials, one per level (denim, linen, pink dots, graph paper, red stripes) */
+  .tw { display:inline-block; max-width:100%; position:relative; margin-left:-20px; filter:drop-shadow(-2px 1px 2px rgba(0,0,0,.45)); }
+  .tag { --tc:#35568a; margin:0; display:block; max-width:100%; text-align:left; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
+         font:700 17px/1.05 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; padding:7px 34px 14px 28px; border:0; border-radius:0; position:relative;
+         clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%); }
+  .tag.m0 { color:#fff; text-shadow:0 1px 1px rgba(0,0,0,.5); background:repeating-linear-gradient(135deg, rgba(255,255,255,.12) 0 2px, transparent 2px 5px), #35568a; }
+  .tag.m1 { color:#3a2a14; background:repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), #d9d2bd; }
+  .tag.m2 { color:#4a1f2e; background:radial-gradient(circle, rgba(255,255,255,.75) 2px, transparent 2.5px) 0 0/11px 11px, #f3c0d0; }
+  .tag.m3 { color:#1d2f6b; background:linear-gradient(rgba(60,100,160,.35) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(60,100,160,.35) 1px, transparent 1px) 0 0/10px 10px, #faf6e8; }
+  .tag.m4 { color:#fff; text-shadow:0 1px 1px rgba(0,0,0,.55); background:repeating-linear-gradient(45deg, rgba(255,255,255,.35) 0 7px, transparent 7px 14px), #d0473b; }
+  .tag b { display:block; font-weight:700; font-size:17px; line-height:1.1; overflow-wrap:anywhere; }
+  .tag small { display:block; margin-top:1px; font-size:13px; font-weight:400; opacity:.88; overflow-wrap:anywhere; }
   .tag small.sci { font-style:italic; }
-  .tag.sm { padding:3px 30px 13px 14px; margin:-6px 0 0 -22px; } /* wrapped rows overlap: the next row's angled sides show the tab behind */
-  .tag.sm b { display:block; font-size:17px; } .tag.sm small { display:block; margin:0; font-size:13px; }
   .tag:active { filter:brightness(.94); }
   .tag.flash { animation:flash 1.8s ease-out; }
   /* collapsed group: a small pile of overlapping Polaroids */
@@ -393,7 +397,7 @@
   @media (max-width:480px) { #iconbar .ib.tb { width:36px; } }
   #pathbar { position:sticky; top:var(--bar-h, 0px); height:0; z-index:55; transition:top .2s; }
   #pathbar[hidden] { display:none; }
-  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; flex-wrap:wrap; gap:0; padding:12px 8px 10px 30px; }
+  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; flex-wrap:wrap; gap:0; padding:12px 8px 10px 28px; gap:2px 0; }
   /* the strip under the tabs: dark cardboard edge to edge, so photos scroll away under it, with the folder's edge along its bottom */
   #pathbar .pbin::before { content:''; position:absolute; z-index:-1; left:50%; width:100vw; margin-left:-50vw; top:0; bottom:0; background:linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.05)), var(--board), #6b4d2c; }
   #pathbar .pbin::after { content:''; position:absolute; left:50%; width:100vw; margin-left:-50vw; bottom:0; height:10px; background:linear-gradient(rgba(255,255,255,.25), rgba(60,35,10,.2)), var(--board), var(--tc, #c8a26a); box-shadow:0 3px 6px rgba(0,0,0,.4); }
@@ -1412,7 +1416,7 @@ function shuffleKey(id, seed = shuffleSeed) {
 const GAL = ['recent', 'tree', 'place'];
 const isGal = v => GAL.includes(v);
 const GAL_PAGE = 150;
-const TAG_COLORS = ['#c8a26a', '#b8925c', '#d0ac76', '#ad8553', '#c19a64', '#d6b480']; // kraft cardboard, a slightly different board per level
+const TAG_COLORS = ['#35568a', '#d9d2bd', '#f3c0d0', '#faf6e8', '#d0473b']; // the base colour of each level's material (denim, linen, pink dots, graph paper, red stripes)
 const collapsed = { recent: new Set(), tree: new Set(), place: new Set() }; // keys of the collapsed groups, per sort
 const gal = { sort: 'recent', items: [], groups: [], byKey: new Map(), cells: [], limit: GAL_PAGE, shownTo: 0, drawnSort: '' };
 const ordinal = n => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
@@ -1520,14 +1524,14 @@ function polTile(o) {
 function tagEl(g, compact) {
   const isCol = collapsed[gal.sort].has(g.key);
   const b = document.createElement('button'); b.type = 'button';
-  b.className = 'tag' + (compact ? ' sm' : '') + (isCol ? ' col' : '');
+  b.className = 'tag m' + (g.depth % TAG_COLORS.length) + (isCol ? ' col' : '');
   b.dataset.key = g.key; b.dataset.rank = g.rank;
-  b.style.setProperty('--tc', TAG_COLORS[g.depth % TAG_COLORS.length]);
-  b.style.setProperty('--tr', ((shuffleKey(g.key, 'tag') % 5 - 2) * 0.7).toFixed(1) + 'deg');
   b.title = `${g.rank}: ${g.main}${g.sub ? ' (' + g.sub + ')' : ''} · tap to ${isCol ? 'expand' : 'collapse'} every ${g.rank}`;
   const m = document.createElement('b'); m.textContent = g.main; b.append(m);
   if (g.sub) { const s = document.createElement('small'); s.textContent = g.sub; if (gal.sort === 'tree') s.className = 'sci'; b.append(s); }
-  return b;
+  const w = document.createElement('span'); w.className = 'tw'; w.style.zIndex = 20 - g.depth; // each chevron lies over the point of the one before
+  w.append(b);
+  return w;
 }
 // A collapsed group: up to three of its photos as a small overlapping pile.
 function stackEl(g) {
@@ -4510,7 +4514,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-29 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-30 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
