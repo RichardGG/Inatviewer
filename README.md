@@ -53,3 +53,7 @@ handwriting-font label (Caveat; common name large, scientific name small) sits a
 
 Tap a label to collapse every group of its level into small overlapping stacks of Polaroids (tap a label or a stack again to expand them all; the group you tapped stays where it is on screen); the button on the right of the icon bar collapses or expands everything. While scrolling, the labels of the group you are in sit side by side
 (wrapping onto more lines) in a sticky header under the icon bar. Fonts are pinned in `package.json` and copied into `vendor/fonts/` at deploy time.
+
+## Design prototype
+
+`prototype.html` (served next to `index.html`) is a sheet of skeuomorphic design ideas: notebook and graph paper, spiral/stitched/ring binding, washi and masking tape, clips and pins, label-maker strips, ink stamps, stickers, watercolour washes, highlighter and brush marks, and photo treatments, composed into a scrapbook spread at the end. It is plain CSS/SVG.

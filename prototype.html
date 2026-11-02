@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iNat Viewer · scrapbook design prototype</title>
+<style>
+  /* Caveat comes from the deployed vendor/ folder (see scripts/vendor.mjs); the fallbacks keep the page readable without it */
+  @font-face { font-family:'Caveat'; font-style:normal; font-weight:700; font-display:swap; src:url('vendor/fonts/caveat-latin-700-normal.woff2') format('woff2'); }
+  :root {
+    --desk:#e6e0d2; --ink:#2b2a33; --pencil:#555a64; --paper:#fbf8ee; --kraft:#c8a26a; --rule:#9ec3e0; --margin:#e58f8f; --red:#c8453b; --blue:#3b6ea8; --green:#4a8a4a; --yellow:#f3d34a;
+    --hw:'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive;
+    --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .25  0 0 0 0 .2  0 0 0 0 .1  0 0 0 .4 -.1'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    --fibre:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='120'><filter id='c' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.9 .06' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .2  0 0 0 0 .08  0 0 0 .9 -.28'/></filter><rect width='100%25' height='100%25' filter='url(%23c)'/></svg>");
+    --mottle:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='m' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.012 .03' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .25  0 0 0 0 .15  0 0 0 .32 -.1'/></filter><rect width='100%25' height='100%25' filter='url(%23m)'/></svg>");
+  }
+  @media (prefers-color-scheme: dark) { :root { --desk:#2a4636; --ink:#2b2a33; } body { color:#e9efe3; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font:20px/1.25 var(--hw); font-size-adjust:.5; color:var(--ink); background:var(--grain), var(--mottle), var(--desk); min-height:100vh; }
+  main { max-width:1000px; margin:0 auto; padding:24px 16px 80px; }
+  h1 { font-size:44px; margin:0 0 4px; } h2 { font-size:30px; margin:46px 0 4px; } p.note { margin:0 0 16px; opacity:.8; font-size:19px; }
+  .grid { padding-top:22px; display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:34px 26px; align-items:start; }
+  .cell { position:relative; }
+  .cap { text-align:center; font-size:17px; margin-top:8px; opacity:.75; }
+  svg.defs { position:absolute; width:0; height:0; }
+
+  /* ---------- paper surfaces ---------- */
+  .page { position:relative; padding:22px 22px 22px 66px; background:var(--grain), var(--paper); box-shadow:0 2px 3px rgba(0,0,0,.25), 0 10px 22px -8px rgba(0,0,0,.45); min-height:190px; }
+  .lined { background:var(--grain), repeating-linear-gradient(transparent 0 29px, var(--rule) 29px 30px), var(--paper); background-position:0 22px; }
+  .lined::before { content:''; position:absolute; left:52px; top:0; bottom:0; width:2px; background:var(--margin); opacity:.7; box-shadow:3px 0 0 -0.5px rgba(229,143,143,.5); }
+  .lined .holes { position:absolute; left:14px; top:0; bottom:0; width:20px; display:flex; flex-direction:column; justify-content:space-around; padding:18px 0; }
+  .holes i { width:18px; height:18px; border-radius:50%; background:var(--desk); box-shadow:inset 1px 2px 3px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.5); }
+  .lined p { margin:0; line-height:30px; font-size:24px; color:#2d3a8c; transform:translateY(-4px); }
+  .graph { padding-left:22px; background:var(--grain), linear-gradient(rgba(70,120,160,.25) 1px, transparent 1px) 0 0/20px 20px, linear-gradient(90deg, rgba(70,120,160,.25) 1px, transparent 1px) 0 0/20px 20px, var(--paper); }
+  .dots { padding-left:22px; background:var(--grain), radial-gradient(circle, rgba(60,60,80,.45) 1.2px, transparent 1.6px) 0 0/20px 20px, var(--paper); }
+  .kraftpaper { padding-left:22px; background:var(--fibre), var(--kraft); }
+  .cork { padding-left:22px; background:radial-gradient(circle at 20% 30%, rgba(90,50,10,.35) 0 2px, transparent 3px) 0 0/23px 19px, radial-gradient(circle at 70% 60%, rgba(255,230,180,.35) 0 2px, transparent 3px) 0 0/17px 21px, radial-gradient(circle at 50% 80%, rgba(70,40,10,.3) 0 1.5px, transparent 2.5px) 0 0/13px 11px, #b98d58; box-shadow:inset 0 0 0 7px #8a5f33, inset 0 0 14px 8px rgba(0,0,0,.35), 0 8px 18px -6px rgba(0,0,0,.5); }
+  .torn { padding-left:22px; background:var(--grain), var(--paper); filter:drop-shadow(0 6px 8px rgba(0,0,0,.4)); clip-path:polygon(0 0, 100% 0, 100% 94%, 96% 97%, 92% 94%, 87% 98%, 82% 95%, 76% 99%, 71% 95%, 65% 98%, 59% 94%, 53% 98%, 47% 95%, 41% 99%, 35% 95%, 29% 98%, 23% 94%, 17% 98%, 11% 95%, 6% 98%, 0 95%); padding-bottom:34px; }
+  .torn.rt { clip-path:polygon(0 3%, 6% 0, 12% 4%, 19% 1%, 26% 4%, 33% 0, 40% 3%, 47% 0, 54% 4%, 61% 1%, 68% 4%, 75% 0, 82% 3%, 89% 0, 94% 3%, 100% 1%, 100% 96%, 94% 100%, 86% 96%, 77% 100%, 68% 97%, 60% 100%, 52% 97%, 44% 100%, 35% 96%, 27% 100%, 18% 97%, 9% 100%, 0 97%); padding:34px 22px; }
+  .coffee { position:absolute; width:96px; height:96px; right:14px; bottom:12px; border-radius:50%; background:radial-gradient(circle, transparent 54%, rgba(120,70,20,.25) 58%, rgba(120,70,20,.45) 63%, rgba(120,70,20,.12) 69%, transparent 72%); transform:rotate(18deg); pointer-events:none; filter:url(#rough); }
+  .fold { position:relative; }
+  .fold::after { content:''; position:absolute; right:0; top:0; width:38px; height:38px; background:linear-gradient(225deg, var(--desk) 50%, #e4dcc4 50%); box-shadow:-3px 3px 5px rgba(0,0,0,.3); }
+
+  /* ---------- binding ---------- */
+  .spiral { position:relative; padding-top:34px; margin-top:18px; }
+  .spiral .rings { position:absolute; left:0; right:0; top:-4px; height:30px; display:flex; justify-content:space-around; padding:0 12px; z-index:3; }
+  .rings i { width:12px; height:36px; border-radius:7px; background:linear-gradient(90deg, #6a6e76, #e8ebef 45%, #8d9199 70%, #555a62); box-shadow:0 2px 3px rgba(0,0,0,.5); position:relative; top:-6px; }
+  .spiral .page { padding:34px 22px 22px 22px; }
+  .spiral .page::before { content:''; position:absolute; left:0; right:0; top:0; height:30px; background:radial-gradient(circle at 50% 22px, var(--desk) 0 5px, transparent 6px) 0 0/28px 30px; box-shadow:inset 0 -2px 3px -2px rgba(0,0,0,.3); }
+  .stitch { padding-left:40px; background:var(--grain), var(--paper); position:relative; }
+  .stitch::before { content:''; position:absolute; left:18px; top:10px; bottom:10px; border-left:3px dashed #b3402f; }
+  .stitch::after { content:''; position:absolute; left:0; top:0; bottom:0; width:14px; background:linear-gradient(90deg, rgba(0,0,0,.28), transparent); }
+  .ribbon { position:absolute; right:30px; top:-6px; width:22px; height:120px; background:linear-gradient(90deg, #a52c2c, #d8504a 50%, #8e2020); clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 90%, 0 100%); filter:drop-shadow(1px 3px 2px rgba(0,0,0,.4)); z-index:3; }
+  .binder { position:relative; }
+  .binder::before { content:''; position:absolute; left:-10px; top:36px; width:44px; height:32px; border:5px solid #6f757e; border-left-color:#9aa0a8; border-radius:20px 0 0 20px; border-right:0; box-shadow:-1px 2px 3px rgba(0,0,0,.4); z-index:3; }
+  .binder::after { content:''; position:absolute; left:-10px; bottom:36px; width:44px; height:32px; border:5px solid #6f757e; border-left-color:#9aa0a8; border-radius:20px 0 0 20px; border-right:0; box-shadow:-1px 2px 3px rgba(0,0,0,.4); z-index:3; }
+
+  /* ---------- tapes, clips, pins ---------- */
+  .tape { position:absolute; width:96px; height:28px; z-index:4; opacity:.9; box-shadow:0 1px 2px rgba(0,0,0,.25); clip-path:polygon(0 0, 4% 14%, 0 28%, 4% 42%, 0 57%, 4% 71%, 0 86%, 3% 100%, 100% 100%, 96% 86%, 100% 71%, 96% 57%, 100% 42%, 96% 28%, 100% 14%, 97% 0); }
+  .tape.stripe { background:repeating-linear-gradient(45deg, #f3b6c6 0 8px, #fbe3ea 8px 16px); }
+  .tape.dotted { background:radial-gradient(circle, #fff 2.5px, transparent 3px) 0 0/12px 12px, #78b7a0; }
+  .tape.plain { background:rgba(240,226,160,.78); }
+  .tape.blue { background:repeating-linear-gradient(90deg, rgba(255,255,255,.35) 0 3px, transparent 3px 9px), #6ba0d6; }
+  .tape.masking { background:var(--fibre), #e6d6a8; opacity:.85; }
+  .tape.t1 { top:-12px; left:50%; margin-left:-48px; transform:rotate(-4deg); } .tape.t2 { top:-8px; left:-24px; transform:rotate(-38deg); } .tape.t3 { top:-8px; right:-24px; transform:rotate(36deg); }
+  .pin { position:absolute; top:-8px; left:50%; width:22px; height:22px; margin-left:-11px; border-radius:50%; z-index:5; background:radial-gradient(circle at 35% 30%, #fff 0 12%, #ff6a5c 14% 55%, #a82418 100%); box-shadow:3px 5px 4px rgba(0,0,0,.4); }
+  .clip { position:absolute; top:-18px; left:24px; width:30px; height:70px; z-index:5; filter:drop-shadow(2px 3px 2px rgba(0,0,0,.4)); }
+  .bclip { position:absolute; top:-14px; right:24px; width:52px; height:36px; z-index:5; background:linear-gradient(#3a3d44, #1d1f24); border-radius:4px 4px 2px 2px; box-shadow:2px 4px 4px rgba(0,0,0,.45); }
+  .bclip::before, .bclip::after { content:''; position:absolute; top:-18px; width:6px; height:28px; border:3px solid #b9bcc4; border-bottom:0; border-radius:12px 12px 0 0; }
+  .bclip::before { left:6px; } .bclip::after { right:6px; }
+  .staple { position:absolute; left:24px; top:14px; width:34px; height:9px; border:2px solid #9aa0a8; border-top:0; border-bottom:2px solid #6c727a; z-index:4; transform:rotate(-12deg); filter:drop-shadow(1px 1px 1px rgba(0,0,0,.4)); }
+  .corners i { position:absolute; width:34px; height:34px; z-index:3; background:#2d2d33; box-shadow:1px 2px 3px rgba(0,0,0,.4); }
+  .corners i:nth-child(1) { left:-4px; top:-4px; clip-path:polygon(0 0, 100% 0, 0 100%); } .corners i:nth-child(2) { right:-4px; top:-4px; clip-path:polygon(0 0, 100% 0, 100% 100%); }
+  .corners i:nth-child(3) { left:-4px; bottom:-4px; clip-path:polygon(0 0, 100% 100%, 0 100%); } .corners i:nth-child(4) { right:-4px; bottom:-4px; clip-path:polygon(100% 0, 100% 100%, 0 100%); }
+
+  /* ---------- photos ---------- */
+  .photo { position:relative; background:#fbfaf4; padding:10px 10px 0; box-shadow:0 4px 12px rgba(0,0,0,.38), 0 1px 2px rgba(0,0,0,.28); width:210px; margin:0 auto; }
+  .photo .img { aspect-ratio:1; background:var(--pic, linear-gradient(135deg,#7ab36a,#2e6b4f)); position:relative; overflow:hidden; }
+  .photo .img::after { content:''; position:absolute; inset:0; background:radial-gradient(circle at 50% 40%, rgba(255,255,255,.55) 0 18%, transparent 19%), linear-gradient(transparent 60%, rgba(0,0,0,.2)); }
+  .photo b { display:block; height:58px; text-align:center; font-size:30px; line-height:58px; transform:rotate(-1deg); }
+  .photo.plain { padding:0; } .photo.plain .img { aspect-ratio:4/3; }
+  .film { background:#1b1b1d; padding:16px 0; display:flex; gap:6px; position:relative; overflow:hidden; box-shadow:0 5px 12px rgba(0,0,0,.45); }
+  .film::before, .film::after { content:''; position:absolute; left:0; right:0; height:8px; background:repeating-linear-gradient(90deg, #efe9d8 0 9px, transparent 9px 18px); } .film::before { top:3px; } .film::after { bottom:3px; }
+  .film span { flex:1; aspect-ratio:1; background:var(--pic); margin:0 3px; } .film span:nth-child(2) { --pic:linear-gradient(135deg,#e0a458,#a5502a); } .film span:nth-child(3) { --pic:linear-gradient(135deg,#6fa8dc,#274b7a); } .film span:nth-child(1) { --pic:linear-gradient(135deg,#7ab36a,#2e6b4f); }
+  .string { position:absolute; left:50%; top:-60px; width:2px; height:60px; background:#8b6a3e; transform-origin:top; }
+  .hang { transform:rotate(3deg); }
+
+  /* ---------- labels ---------- */
+  .tab { display:inline-block; padding:6px 30px 14px 14px; margin-left:-22px; font:700 20px/1.05 var(--hw); color:#3a2a14; border-radius:10px 30px 0 0 / 10px 100% 0 0; box-shadow:-5px 0 6px -3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(90,55,20,.28); background:linear-gradient(rgba(255,255,255,.28), transparent 30%, transparent 62%, rgba(60,35,10,.3)), var(--fibre), var(--kraft); }
+  .tab small { display:block; font-size:14px; opacity:.7; }
+  .dymo { display:inline-block; padding:3px 12px; background:#1f1f22; color:#f3f3f3; font:700 22px/1.2 var(--hw); letter-spacing:2px; text-transform:uppercase; border-radius:2px; box-shadow:inset 0 1px 0 rgba(255,255,255,.28), inset 0 -2px 3px rgba(0,0,0,.6), 0 2px 3px rgba(0,0,0,.4); text-shadow:0 -1px 0 rgba(255,255,255,.35), 0 1px 1px #000; }
+  .dymo.red { background:#a52c2c; } .dymo.blue { background:#2b4f86; }
+  .stamp { display:inline-block; padding:4px 14px; font:700 30px/1 var(--hw); letter-spacing:2px; text-transform:uppercase; color:var(--red); border:4px solid var(--red); border-radius:8px; transform:rotate(-8deg); opacity:.82; filter:url(#rough) contrast(1.2); mix-blend-mode:multiply; }
+  .stamp.blue { color:var(--blue); border-color:var(--blue); transform:rotate(5deg); border-radius:50%; padding:14px 12px; text-align:center; font-size:22px; }
+  .postage { display:inline-block; padding:8px; background:radial-gradient(circle, transparent 3px, #fff 3.5px) 0 0/12px 12px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.35)); -webkit-mask:radial-gradient(circle 4px at 6px 0, transparent 98%, #000) top/12px 51% repeat-x; }
+  .postage-wrap { display:inline-block; position:relative; background:#fff; padding:9px; box-shadow:0 2px 4px rgba(0,0,0,.35); -webkit-mask:radial-gradient(circle 4px at 0 0, transparent 97%, #000) 0 0/12px 12px; }
+  .postage-wrap .img { width:90px; height:110px; background:linear-gradient(160deg,#6fa8dc,#2d5b8c); display:grid; place-items:center; color:#fff; font:700 28px var(--hw); }
+  .sticker { display:inline-grid; place-items:center; width:92px; height:92px; border-radius:50%; background:var(--yellow); color:#5a3a00; font:700 26px/1 var(--hw); text-align:center; border:5px solid #fff; box-shadow:0 3px 6px rgba(0,0,0,.4), inset 0 0 0 2px rgba(0,0,0,.08); transform:rotate(-8deg); position:relative; }
+  .sticker::after { content:''; position:absolute; inset:0; border-radius:50%; background:linear-gradient(120deg, rgba(255,255,255,.55), transparent 35%); }
+  .sticker.leaf { background:#6bb26b; color:#fff; border-radius:50% 0 50% 0; transform:rotate(8deg); } .sticker.leaf::after { border-radius:50% 0 50% 0; }
+  .sticker.star { background:#ff8f6b; color:#fff; border-radius:12px; transform:rotate(12deg); }
+  .pricetag { position:relative; display:inline-block; padding:12px 18px 12px 34px; background:var(--fibre), #efe2c0; clip-path:polygon(18px 0, 100% 0, 100% 100%, 18px 100%, 0 50%); filter:drop-shadow(0 3px 3px rgba(0,0,0,.4)); font-size:26px; }
+  .pricetag::before { content:''; position:absolute; left:17px; top:50%; width:10px; height:10px; margin-top:-5px; border-radius:50%; background:var(--desk); box-shadow:inset 1px 1px 2px rgba(0,0,0,.6); }
+  .index { display:inline-block; padding:10px 14px; background:var(--grain), #fffdf2; border:1px solid #d8cfa8; box-shadow:0 3px 6px rgba(0,0,0,.3); background-image:var(--grain), repeating-linear-gradient(transparent 0 23px, #b7d1e6 23px 24px); background-position:0 6px; width:240px; line-height:24px; font-size:22px; }
+  .index::first-line { color:var(--red); }
+  .postit { width:170px; padding:14px 14px 22px; background:linear-gradient(170deg, #fff3a0, #f7e271); box-shadow:0 6px 8px -4px rgba(0,0,0,.45); transform:rotate(3deg); font-size:24px; position:relative; }
+  .postit::after { content:''; position:absolute; left:0; right:0; bottom:0; height:12px; background:linear-gradient(transparent, rgba(0,0,0,.08)); }
+
+  /* ---------- painted elements ---------- */
+  .wash { position:relative; display:inline-block; padding:10px 30px; font-size:34px; z-index:0; }
+  .wash::before { content:''; position:absolute; inset:-6px -10px; z-index:-1; background:radial-gradient(ellipse at 30% 40%, rgba(70,150,200,.55), transparent 62%), radial-gradient(ellipse at 70% 60%, rgba(60,170,130,.5), transparent 60%), radial-gradient(ellipse at 50% 50%, rgba(90,120,220,.35), transparent 70%); filter:url(#watercolor); }
+  .wash.warm::before { background:radial-gradient(ellipse at 30% 40%, rgba(240,150,70,.6), transparent 62%), radial-gradient(ellipse at 70% 60%, rgba(230,90,90,.5), transparent 60%), radial-gradient(ellipse at 50% 50%, rgba(250,210,90,.4), transparent 70%); }
+  .bigwash { height:150px; position:relative; }
+  .bigwash::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 25% 40%, rgba(70,150,200,.7), transparent 55%), radial-gradient(ellipse at 65% 55%, rgba(60,170,130,.65), transparent 55%), radial-gradient(ellipse at 85% 30%, rgba(250,200,90,.6), transparent 45%), radial-gradient(ellipse at 45% 75%, rgba(200,90,140,.45), transparent 50%); filter:url(#watercolor); mix-blend-mode:multiply; }
+  .bigwash span { position:relative; display:block; text-align:center; font-size:40px; padding-top:50px; }
+  .hl { background:linear-gradient(104deg, transparent 0.9em, rgba(250,230,60,.75) 1em, rgba(250,225,40,.8) 96%, transparent 99%); padding:0 6px; border-radius:3px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+  .hl.pink { background:linear-gradient(104deg, transparent 0.9em, rgba(255,130,190,.65) 1em, rgba(255,120,180,.7) 96%, transparent 99%); }
+  .brush { position:relative; display:inline-block; font-size:38px; }
+  .brush svg { position:absolute; left:-6px; right:-6px; bottom:-10px; width:calc(100% + 12px); height:22px; overflow:visible; }
+  .circled { position:relative; display:inline-block; padding:4px 14px; font-size:30px; }
+  .circled svg { position:absolute; inset:-8px -10px; width:calc(100% + 20px); height:calc(100% + 16px); overflow:visible; }
+  .splat { position:relative; height:140px; }
+  .splat i { position:absolute; border-radius:50%; background:var(--c); opacity:.85; filter:url(#rough); mix-blend-mode:multiply; }
+  .crayon { padding:22px; border:12px solid transparent; border-image:repeating-linear-gradient(45deg, #e5483b 0 12px, #f3c53b 12px 24px, #4a9b50 24px 36px, #3b78c3 36px 48px) 12; background:var(--grain), var(--paper); filter:url(#rough); }
+  .crayon > * { filter:none; }
+  .ink { font-size:30px; color:#1b2b6b; text-shadow:0 0 1px rgba(27,43,107,.7), 1px 1px 2px rgba(27,43,107,.25); }
+  .pencil { color:var(--pencil); font-size:26px; text-shadow:0 0 1px rgba(60,60,70,.6); filter:url(#rough); }
+  .scribble { stroke:var(--red); stroke-width:3.2; fill:none; stroke-linecap:round; stroke-linejoin:round; filter:url(#rough); }
+
+  /* ---------- composed spread ---------- */
+  .spread { position:relative; padding:34px 30px 40px; margin-top:12px; background:var(--fibre), var(--kraft); box-shadow:inset 0 0 0 8px #a98350, 0 12px 26px -8px rgba(0,0,0,.55); border-radius:6px; display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:40px 30px; align-items:center; }
+  .spread .photo { transform:rotate(-3deg); } .spread .photo:nth-of-type(2) { transform:rotate(2.5deg); } .spread .photo:nth-of-type(3) { transform:rotate(-1.5deg); }
+  .bar { background:#3a2a14; color:#fff; border-radius:10px; padding:10px 14px; margin-top:8px; font-size:18px; opacity:.9; }
+</style>
+</head>
+<body>
+<!-- shared SVG filters: a rough, hand-made edge and a watercolour bleed -->
+<svg class="defs" aria-hidden="true">
+  <filter id="rough" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="3" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.5"/></filter>
+  <filter id="watercolor" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".022" numOctaves="4" seed="8" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="26" result="d"/><feGaussianBlur in="d" stdDeviation="1.2" result="b"/><feTurbulence type="fractalNoise" baseFrequency=".6" numOctaves="2" seed="2" result="g"/><feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .9 .25" result="ga"/><feComposite in="b" in2="ga" operator="in"/></filter>
+</svg>
+
+<main>
+  <h1>Scrapbook design prototype</h1>
+  <p class="note">A sheet of ideas for the skeuomorphic look: notebook pages, binding, tapes and fasteners, labels, painted marks and photo treatments. Everything here is plain CSS/SVG (no images), so it can move straight into the app. The last section shows them composed.</p>
+
+  <h2>1 · Paper &amp; surfaces</h2>
+  <div class="grid">
+    <div class="cell"><div class="page lined"><div class="holes"><i></i><i></i><i></i></div><p>Robin — garden, 7am</p><p>Blue tit on the feeder</p><p>Heard a wren!</p></div><div class="cap">lined notebook, margin line, punched holes</div></div>
+    <div class="cell"><div class="page graph"><div class="pencil">Transect 4 · 12 sp.</div><div class="pencil">sketch plot →</div></div><div class="cap">graph paper</div></div>
+    <div class="cell"><div class="page dots"><div class="ink">Bullet-journal dots</div></div><div class="cap">dot grid</div></div>
+    <div class="cell"><div class="page kraftpaper"><div class="ink" style="color:#3a2a14;text-shadow:none">Kraft paper</div></div><div class="cap">kraft / cardboard fibre</div></div>
+    <div class="cell"><div class="page cork"><div class="postit" style="margin:8px auto">Remember the<br>hand lens!</div></div><div class="cap">cork board with a post-it</div></div>
+    <div class="cell"><div class="page torn"><div class="ink">Torn bottom edge</div></div><div class="cap">torn paper (clip-path + shadow)</div></div>
+    <div class="cell"><div class="page torn rt"><div class="ink">Torn all round</div></div><div class="cap">ripped scrap</div></div>
+    <div class="cell"><div class="page lined fold"><p>Folded corner</p><span class="coffee"></span></div><div class="cap">dog-ear and coffee ring</div></div>
+  </div>
+
+  <h2>2 · Binding</h2>
+  <div class="grid">
+    <div class="cell spiral"><div class="rings"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="page lined" style="padding-left:66px"><div class="holes" style="display:none"></div><p>Spiral notebook</p><p>top-bound pad</p></div><div class="cap">spiral coil</div></div>
+    <div class="cell"><div class="page stitch"><div class="ink">Stitched spine</div><div class="ink" style="font-size:22px">sewn signature</div></div><div class="cap">sewn binding</div></div>
+    <div class="cell binder"><div class="page lined" style="padding-left:76px"><p>Ring binder</p><p>two rings</p></div><div class="cap">binder rings</div></div>
+    <div class="cell"><div class="page lined"><span class="ribbon"></span><p>Ribbon bookmark</p></div><div class="cap">ribbon</div></div>
+  </div>
+
+  <h2>3 · Tapes, clips &amp; pins</h2>
+  <div class="grid">
+    <div class="cell"><div class="page graph" style="min-height:130px"><span class="tape stripe t1"></span><div class="pencil">washi · stripes</div></div></div>
+    <div class="cell"><div class="page graph" style="min-height:130px"><span class="tape dotted t1"></span><div class="pencil">washi · dots</div></div></div>
+    <div class="cell"><div class="page graph" style="min-height:130px"><span class="tape blue t1"></span><div class="pencil">washi · blue</div></div></div>
+    <div class="cell"><div class="page graph" style="min-height:130px"><span class="tape masking t2"></span><span class="tape masking t3"></span><div class="pencil">masking tape corners</div></div></div>
+    <div class="cell"><div class="page graph" style="min-height:130px"><svg class="clip" viewBox="0 0 30 70" fill="none" stroke="#7d838c" stroke-width="3.4" stroke-linecap="round"><path d="M9 52V14a6 6 0 0 1 12 0v40a9 9 0 0 1-18 0V10"/></svg><div class="pencil">paper clip</div></div></div>
+    <div class="cell"><div class="page graph" style="min-height:130px"><span class="bclip"></span><div class="pencil">binder clip</div></div></div>
+    <div class="cell"><div class="page graph" style="min-height:130px"><span class="pin"></span><div class="pencil">push pin</div></div></div>
+    <div class="cell"><div class="page graph" style="min-height:130px"><span class="staple"></span><div class="pencil">staple</div></div></div>
+  </div>
+
+  <h2>4 · Labels, tabs &amp; stickers</h2>
+  <div class="grid">
+    <div class="cell" style="padding-left:22px"><span class="tab">Passeriformes<small>Passeriformes</small></span><span class="tab">Turdidae<small>Thrushes</small></span><div class="cap">card folder tabs (current)</div></div>
+    <div class="cell"><span class="dymo">Birds</span> <span class="dymo red">Rare</span> <span class="dymo blue">2026</span><div class="cap">embossed label-maker strips</div></div>
+    <div class="cell"><span class="stamp">Seen!</span> &nbsp; <span class="stamp blue">Life<br>tick</span><div class="cap">rubber ink stamps (rough edge, multiply)</div></div>
+    <div class="cell"><span class="postage-wrap"><span class="img" style="display:grid">Robin</span></span><div class="cap">postage stamp with perforations</div></div>
+    <div class="cell"><span class="sticker">Top<br>pick</span> <span class="sticker leaf">New!</span> <span class="sticker star">★ 12</span><div class="cap">die-cut stickers with a glossy shine</div></div>
+    <div class="cell"><span class="pricetag">Wren · 3</span><div class="cap">hang tag</div></div>
+    <div class="cell"><div class="index">Index card — notes on the song, the habitat and where it was seen.</div><div class="cap">ruled index card</div></div>
+    <div class="cell"><div class="postit">Check it<br>again in May</div><div class="cap">sticky note</div></div>
+  </div>
+
+  <h2>5 · Painted &amp; hand-drawn marks</h2>
+  <div class="grid">
+    <div class="cell" style="text-align:center"><span class="wash">Garden birds</span><br><br><span class="wash warm">Autumn visitors</span><div class="cap">watercolour wash behind a heading (turbulence displacement)</div></div>
+    <div class="cell"><div class="bigwash"><span>A wash of colour</span></div><div class="cap">layered watercolour blooms</div></div>
+    <div class="cell"><div class="page lined"><p>the <span class="hl">yellow highlighter</span> and</p><p>a <span class="hl pink">pink one</span> over ink</p></div><div class="cap">highlighter pens</div></div>
+    <div class="cell" style="text-align:center"><span class="brush">Brush stroke<svg viewBox="0 0 200 22" preserveAspectRatio="none"><path d="M3 14 C40 4, 80 20, 120 10 S180 6, 197 12" stroke="#c8453b" stroke-width="7" fill="none" stroke-linecap="round" opacity=".85" filter="url(#rough)"/><path d="M10 17 C60 9, 110 21, 190 14" stroke="#c8453b" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".6"/></svg></span><div class="cap">painted underline</div></div>
+    <div class="cell" style="text-align:center"><span class="circled">Look here<svg viewBox="0 0 100 40" preserveAspectRatio="none"><path class="scribble" vector-effect="non-scaling-stroke" d="M12 6 C60 -2, 98 8, 96 22 C94 36, 40 40, 10 30 C-4 22, 8 6, 52 3"/></svg></span><div class="cap">hand-drawn circle</div></div>
+    <div class="cell"><div class="page dots" style="min-height:110px"><svg width="120" height="60" viewBox="0 0 120 60"><path class="scribble" d="M4 40 C30 10, 60 60, 100 24"/><path class="scribble" d="M86 14 L102 24 L84 34"/></svg><div class="pencil">arrow &amp; note</div></div><div class="cap">scribbled arrow</div></div>
+    <div class="cell"><div class="splat"><i style="--c:#e5483b;left:20px;top:20px;width:64px;height:60px"></i><i style="--c:#3b78c3;left:90px;top:48px;width:48px;height:50px"></i><i style="--c:#f3c53b;left:140px;top:10px;width:70px;height:64px"></i><i style="--c:#4a9b50;left:60px;top:84px;width:40px;height:38px"></i><i style="--c:#c8453b;left:196px;top:80px;width:12px;height:12px"></i><i style="--c:#3b78c3;left:30px;top:96px;width:9px;height:9px"></i></div><div class="cap">gouache splodges &amp; splatter</div></div>
+    <div class="cell"><div class="crayon"><div class="ink">Crayon border</div></div><div class="cap">wax crayon frame</div></div>
+  </div>
+
+  <h2>6 · Photo treatments</h2>
+  <div class="grid">
+    <div class="cell"><div class="photo" style="transform:rotate(-3deg)"><span class="tape stripe t1"></span><div class="img"></div><b>Robin</b></div><div class="cap">Polaroid + washi tape</div></div>
+    <div class="cell"><div class="photo plain" style="--pic:linear-gradient(135deg,#e0a458,#a5502a)"><div class="corners"><i></i><i></i><i></i><i></i></div><div class="img"></div></div><div class="cap">photo corners (album)</div></div>
+    <div class="cell"><div class="film"><span></span><span></span><span></span></div><div class="cap">film strip</div></div>
+    <div class="cell" style="padding-top:60px"><div class="photo hang" style="--pic:linear-gradient(135deg,#6fa8dc,#274b7a)"><span class="string"></span><span class="pin"></span><div class="img"></div><b>Heron</b></div><div class="cap">pinned on a string</div></div>
+    <div class="cell"><div class="photo" style="transform:rotate(2deg)"><svg class="clip" viewBox="0 0 30 70" fill="none" stroke="#7d838c" stroke-width="3.4" stroke-linecap="round" style="left:auto;right:20px"><path d="M9 52V14a6 6 0 0 1 12 0v40a9 9 0 0 1-18 0V10"/></svg><div class="img" style="--pic:linear-gradient(135deg,#caa44a,#6b4d1a)"></div><b>Wren</b></div><div class="cap">paper-clipped print</div></div>
+  </div>
+
+  <h2>7 · Putting it together</h2>
+  <p class="note">Kraft board, cardboard tabs on a label strip, taped and pinned Polaroids, a stamp, a sticker and a painted heading.</p>
+  <div class="spread">
+    <div style="grid-column:1/-1"><span class="tab">Garden<small>March · 12th</small></span><span class="tab">Birds<small>Aves</small></span><div class="bar">Folder strip · 3 species today</div></div>
+    <div class="photo"><span class="tape dotted t1"></span><div class="img"></div><b>Robin</b></div>
+    <div class="photo" style="--pic:linear-gradient(135deg,#6fa8dc,#274b7a)"><span class="pin"></span><div class="img"></div><b>Blue tit</b></div>
+    <div class="photo" style="--pic:linear-gradient(135deg,#caa44a,#6b4d1a)"><span class="tape masking t2"></span><div class="img"></div><b>Wren</b></div>
+    <div style="text-align:center"><span class="wash warm">New this week</span><br><br><span class="stamp">Seen!</span> <span class="sticker">Top<br>pick</span></div>
+  </div>
+</main>
+</body>
+</html>
