@@ -395,7 +395,7 @@
   @media (max-width:480px) { #iconbar .ib.tb { width:36px; } }
   #pathbar { position:sticky; top:var(--bar-h, 0px); height:0; z-index:65; transition:top .2s; }
   #pathbar[hidden] { display:none; }
-  #pathbar .pbin { position:absolute; left:0; right:0; top:8px; display:flex; align-items:stretch; flex-wrap:wrap; gap:0; padding:0 0 0 13px; gap:0; }
+  #pathbar .pbin { position:absolute; left:0; right:0; top:26px; display:flex; align-items:stretch; flex-wrap:wrap; gap:0; padding:0 0 0 13px; gap:0; }
   #pathbar .tag { max-width:100%; }
 </style>
 </head>
@@ -4509,7 +4509,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-36 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-37 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
