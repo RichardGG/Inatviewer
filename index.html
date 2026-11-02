@@ -398,10 +398,9 @@
   @media (max-width:480px) { #iconbar .ib.tb { width:36px; } }
   #pathbar { position:sticky; top:var(--bar-h, 0px); height:0; z-index:55; transition:top .2s; }
   #pathbar[hidden] { display:none; }
-  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; align-items:stretch; flex-wrap:wrap; gap:0; padding:0 0 10px 20px; gap:0; }
+  #pathbar .pbin { position:absolute; left:0; right:0; top:0; display:flex; align-items:stretch; flex-wrap:wrap; gap:0; padding:0 0 0 20px; gap:0; }
   /* the strip under the tabs: dark grey felt edge to edge, so photos scroll away under it, with the folder's edge along its bottom */
   #pathbar .pbin::before { content:''; position:absolute; z-index:-1; left:50%; width:100vw; margin-left:-50vw; top:0; bottom:0; background:linear-gradient(rgba(255,255,255,.07), rgba(0,0,0,.28)), var(--grain), #3c4045; } /* dark grey felt */
-  #pathbar .pbin::after { content:''; position:absolute; left:50%; width:100vw; margin-left:-50vw; bottom:0; height:10px; background:linear-gradient(rgba(255,255,255,.25), rgba(0,0,0,.25)), var(--grain), var(--tc, #35568a); box-shadow:0 3px 6px rgba(0,0,0,.4); }
   #pathbar .tag { max-width:100%; }
 </style>
 </head>
@@ -4515,7 +4514,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-32 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-33 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
