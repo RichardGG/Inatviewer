@@ -1408,6 +1408,7 @@ function slim(o) {
 }
 
 // Newer observations first-in-id order after afterId (also used for the very first full load of my own account).
+let skippedUnidentified = 0; // observations iNaturalist returned that have no identification, so the viewer cannot place them in the tree
 async function fetchNewObservations(token, userParam, afterId, ds = state) {
   const fresh = []; // also appended to ds.obs and saved after every page
   let lastId = afterId, total = null, skipped = 0;
@@ -1418,7 +1419,7 @@ async function fetchNewObservations(token, userParam, afterId, ds = state) {
     if (!ds.user?.id && d.results[0].user) ds.user = { id: d.results[0].user.id, login: d.results[0].user.login };
     const page = [];
     for (const o of d.results) {
-      if (o.taxon?.ancestor_ids?.length) page.push(slim(o)); else skipped++;
+      if (o.taxon?.ancestor_ids?.length) page.push(slim(o)); else { skipped++; skippedUnidentified++; }
     }
     fresh.push(...page);
     ds.obs.push(...page);
@@ -1549,7 +1550,7 @@ async function fetchOlder(token, userParam, beforeId, cap, ds = state) {
     if (first) { ds.total = d.total_results; first = false; }
     if (!d.results.length) { ds.complete = true; break; }
     if (!ds.user?.id && d.results[0].user) ds.user = { id: d.results[0].user.id, login: d.results[0].user.login };
-    for (const o of d.results) if (o.taxon?.ancestor_ids?.length) { ds.obs.push(slim(o)); added++; }
+    for (const o of d.results) { if (o.taxon?.ancestor_ids?.length) { ds.obs.push(slim(o)); added++; } else skippedUnidentified++; }
     lastId = d.results[d.results.length - 1].id;
     await saveDataset(ds);
     if (ds === state) show();
@@ -3679,7 +3680,7 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
   const other = isOther();
   if (!token && !other) return status(state.obs.length ? 'Showing cached data (no token to refresh).' : 'Sign in with iNaturalist first.', true);
   if (token) store.set(token);
-  setBusy(true);
+  setBusy(true); skippedUnidentified = 0;
   try {
     let fresh = [], favChanges = 0;
     if (!other) {
@@ -3725,7 +3726,8 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
     show();
     renderPeople();
     if (favChanges) toast(`${favChanges} change${favChanges > 1 ? 's' : ''} picked up from iNaturalist`);
-    status(fresh.length ? `Done. ${fresh.length} new observations.` : state.complete ? '' : `Done. Showing the newest ${state.obs.length}${state.total ? ` of ${state.total}` : ''}.`);
+    const skipNote = skippedUnidentified ? ` ${skippedUnidentified} without an identification ${skippedUnidentified > 1 ? 'are' : 'is'} not shown.` : '';
+    status(full ? `Re-downloaded ${state.obs.length} observations.${skipNote}` : fresh.length ? `Done. ${fresh.length} new observations.${skipNote}` : skipNote.trim() ? skipNote.trim() : state.complete ? '' : `Done. Showing the newest ${state.obs.length}${state.total ? ` of ${state.total}` : ''}.`);
   } catch (e) {
     log(`refresh failed: ${e.stack || e}`, 'e');
     if (!retried && /Token rejected/.test(e.message) && localStorage.getItem(OAUTH_KEY)) {
@@ -3744,7 +3746,7 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
 let busyFlag = false; const busyNow = () => busyFlag;
 function setBusy(b) { busyFlag = b; $('load').disabled = $('full').disabled = b; $('loadall').disabled = b; }
 
-$('load').onclick = () => refresh();
+$('load').onclick = () => { setPanel(false); refresh(); };
 // Coming back to the app (e.g. after using iNaturalist or another device): pick up changed faves.
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState !== 'visible' || !navigator.onLine || Date.now() - lastFaveSync < 5 * 60e3) return;
@@ -3762,7 +3764,7 @@ document.addEventListener('visibilitychange', async () => {
     if (n) { backfillPrefMeta(); await saveCache(); show(true); toast(`${n} change${n > 1 ? 's' : ''} picked up from iNaturalist`); }
   } catch (e) { log(`fave sync failed: ${e.message}`, 'w'); lastFaveSync = Date.now(); }
 });
-$('full').onclick = () => refresh({ full: true });
+$('full').onclick = () => { setPanel(false); refresh({ full: true }); }; // close the modal so the progress on the cover is visible
 $('forget').onclick = () => {
   store.del(); $('token').value = '';
   try { localStorage.removeItem(OAUTH_KEY); } catch {}
@@ -3942,7 +3944,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-138 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-139 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
