@@ -621,7 +621,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
       <button id="bsort" aria-label="View"><i data-i="eye"></i><span id="sortlabel" class="vh">Latest</span></button>
       <button id="bfilter" aria-label="Filter"><i data-i="search"></i><span class="vh">Filter</span></button>
       <button id="areabtn" aria-label="Location" aria-expanded="false"><i data-i="map-pin"></i><span class="vh">Location</span></button>
-      <button id="bcmp" aria-label="Compare" hidden><i data-i="git-compare"></i><span class="vh">Compare</span></button>
     </div>
     <div id="controls">
     <div id="summary" class="status"></div>
@@ -634,6 +633,13 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
         <div id="fsGroupMode">
           <h4>Same species</h4>
           <div id="gmodechips" class="clsrow" role="group" aria-label="How to group observations of the same species"></div>
+        </div>
+        <div id="fsCompare" hidden>
+          <h4>Compare</h4>
+          <div id="cmppeople" class="clsrow" role="group" aria-label="People to compare with"></div>
+          <div id="cmpchips" class="clsrow" role="group" aria-label="Compare" style="margin-top:8px"></div>
+          <p class="status" id="cmpnote" style="margin:6px 0 0"></p>
+          <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
         </div>
         <div id="fsCommon">
           <h4>Common</h4>
@@ -676,14 +682,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
           <label class="status">From <input type="date" id="dfrom"></label>
           <label class="status">to <input type="date" id="dto"></label>
         </div>
-      </div>
-      <div class="card fpanel" id="pcmp" hidden>
-        <h4>Compare</h4>
-        <p class="status" style="margin:0 0 6px">Compare with (pick any number):</p>
-        <div id="cmppeople" class="clsrow" role="group" aria-label="People to compare with"></div>
-        <div id="cmpchips" class="clsrow" role="group" aria-label="Compare" style="margin-top:8px"></div>
-        <p class="status" id="cmpnote" style="margin:6px 0 0"></p>
-        <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
       </div>
       <div class="card" id="areapanel" hidden>
         <div id="areamap"></div>
@@ -2208,7 +2206,7 @@ function drawChips() {
     () => { favMode = ''; drawFilterChips(); scheduleShow(); }, 'Clear favourite filter');
   if (!nearby && cmpMode) add('git-compare', cmpLabel(cmpMode), () => { cmpMode = ''; drawCmpChips(); scheduleShow(); }, 'Clear comparison');
   const has = (id, on) => $(id).classList.toggle('has', !!on);
-  has('bcmp', cmpMode); has('areabtn', area); has('bfilter', dv !== 'all' || filterClasses.size || favMode);
+  has('bsort', cmpMode); has('areabtn', area); has('bfilter', dv !== 'all' || filterClasses.size || favMode);
 }
 // Largest circle that fits inside the map's current view (with a little margin).
 function viewportCircle() {
@@ -2334,7 +2332,7 @@ async function openAreaPanel(open) {
   if (view === 'explore' && !area) { $('follow').checked = true; setArea(viewportCircle()); } // Common needs an area: start with the map view
 }
 // Bottom bar: Sort, Filter and Compare open a sheet each (one at a time); Location opens the map sheet.
-const PANELS = { bsort: 'psort', bfilter: 'pfilter', bcmp: 'pcmp' };
+const PANELS = { bsort: 'psort', bfilter: 'pfilter' };
 const anyPanelOpen = () => Object.values(PANELS).some(p => !$(p).hidden) || !$('areapanel').hidden;
 function closePanels(except) {
   for (const [btn, pan] of Object.entries(PANELS)) if (pan !== except) { $(pan).hidden = true; $(btn).classList.remove('open'); }
@@ -2346,8 +2344,7 @@ for (const [btn, pan] of Object.entries(PANELS)) {
     const opening = $(pan).hidden;
     closePanels(pan);
     $(pan).hidden = !opening; $(btn).classList.toggle('open', opening); $('sheetbg').hidden = !opening;
-    if (opening && btn === 'bcmp') drawCmpChips();
-    if (opening && btn === 'bsort') { drawSortChips(); drawGroupChips(); }
+    if (opening && btn === 'bsort') { drawSortChips(); drawGroupChips(); drawCmpChips(); }
     if (opening && btn === 'bfilter') { $('fsJump').hidden = $('fsFav').hidden = view === 'explore'; }
   };
 }
@@ -3192,7 +3189,7 @@ function refreshViewing() {
   }
   $('share').hidden = !(other || state.user?.login || meLogin);
   if (favMode && !favModes().some(m => m[0] === favMode)) { favMode = ''; drawFilterChips(); drawChips(); } // e.g. a filter that only exists for my own observations
-  $('bcmp').hidden = !(other || candidates().length);
+  $('fsCompare').hidden = !(other || candidates().length); // comparing needs someone to compare with
   $('loadall').hidden = state.complete !== false;
   $('loadall').textContent = `Load full history${state.total ? ` (${state.total.toLocaleString()} observations)` : ''}`;
 }
@@ -3608,7 +3605,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-79 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-80 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
