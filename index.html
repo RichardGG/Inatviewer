@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>iNat Viewer</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#232733">
+<meta name="theme-color" content="#f1ecdc">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,7 +16,10 @@
 var THEME_KEY = 'inat_theme', themeMq = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
 function applyTheme(t) {
   try { t = t || localStorage.getItem(THEME_KEY) || 'auto'; } catch (e) { t = t || 'auto'; }
-  document.documentElement.classList.toggle('dark', t === 'dark' || (t === 'auto' && !!themeMq && themeMq.matches));
+  var dark = t === 'dark' || (t === 'auto' && !!themeMq && themeMq.matches);
+  document.documentElement.classList.toggle('dark', dark);
+  // the browser's status and navigation bars take the colour of the desk, so the page runs edge to edge
+  var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', dark ? '#233d2e' : '#f1ecdc');
 }
 applyTheme();
 if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', function () { applyTheme(); });
@@ -772,6 +775,12 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .pchip .eyebtn { padding:0 5px; color:#27348b; border-radius:10px; } .pchip.m-off .eyebtn { opacity:.4; }
   .pchip.m-seen .eyebtn { background:rgba(74,155,80,.4); } .pchip.m-unseen .eyebtn { background:rgba(200,69,59,.35); }
   header.cover .chip.pchip.m-off { opacity:.8; }
+  /* edge to edge: the page draws under the status and navigation bars (their colour is the desk's, set by the theme-color tag) and keeps clear of notches and gesture bars */
+  html { background:var(--desk, #f1ecdc); }
+  .dark html, html.dark { background:#233d2e; }
+  main { padding-top:max(24px, env(safe-area-inset-top)); }
+  @media (max-width: 899px) { main { padding-top:max(10px, env(safe-area-inset-top)); padding-left:env(safe-area-inset-left); padding-right:env(safe-area-inset-right); } }
+  #totop { bottom:calc(16px + env(safe-area-inset-bottom)); }
 </style>
 </head>
 <body>
@@ -4069,7 +4078,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-153 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-154 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
