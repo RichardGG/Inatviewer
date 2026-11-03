@@ -834,10 +834,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
           <label class="status">From <input type="date" id="dfrom"></label>
           <label class="status">to <input type="date" id="dto"></label>
         </div>
-        <div id="fsGroupMode">
-          <h4>Same species</h4>
-          <div id="gmodechips" class="clsrow" role="group" aria-label="How to group observations of the same species"></div>
-        </div>
         <div id="fsCompare" hidden>
           <h4>Compare</h4>
           <div id="cmppeople" class="clsrow" role="group" aria-label="People to compare with"></div>
@@ -1746,7 +1742,7 @@ function treeItems(root, meta) {
 
 // Recent: observations (or one per species) newest first, grouped [year][month][day]; flat when shuffled or rarity-sorted.
 function recentItems(obs) {
-  let list = groupMode === 'species' ? uniqueSpecies(obs) : groupMode === 'day' ? dailySpecies(obs) : [...obs];
+  let list = raritySort ? uniqueSpecies(obs) : [...obs]; // only Latest lists every observation; Rarest is one entry per species
   list = list.filter(o => photosOf(o).length); // the gallery is photos only
   const rc = rarityCmp(), shuffled = recentSeed != null;
   list = raritySort ? list.sort((a, b) => rc(rarityOf(a), rarityOf(b)) || recentDate(b).localeCompare(recentDate(a)))
@@ -2246,9 +2242,7 @@ let view = 'recent', lastGal = 'recent';
 try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent', 'explore'].includes(v) ? v : 'recent'; } catch {}
 if (isGal(view)) lastGal = view;
 
-const UNIQUE_KEY = 'inat_recent_unique';
-let recentSeed = null, groupMode = 'all'; // how observations of one species are grouped: 'all' (each on its own), 'day' (one per species per day), 'species' (one per species)
-try { groupMode = localStorage.getItem('inat_group_mode') || (localStorage.getItem(UNIQUE_KEY) === '1' ? 'species' : 'all'); if (!['all', 'day', 'species'].includes(groupMode)) groupMode = 'all'; } catch {}
+let recentSeed = null;
 
 // One entry per species: my starred observation if there is one, otherwise the newest one with a photo.
 // _n = how many observations of the species, _last = date it was last seen.
@@ -2264,12 +2258,6 @@ function uniqueSpecies(obs) {
     const rep = thumbObs(g);
     return { ...rep, _n: g.length, _last: byNew[0].date || '', _pile: g.length > 1 };
   });
-}
-// One entry per species per day (the day's best photo).
-function dailySpecies(obs) {
-  const groups = new Map();
-  for (const o of obs) { const k = `${o.date || ''}|${speciesIdOf(o) ?? o.tid}`; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(o); }
-  return [...groups.values()].map(g => { const rep = thumbObs(g); return { ...rep, _n: g.length, _last: rep.date || '', _pile: g.length > 1 }; });
 }
 const recentDate = o => o._last ?? o.date ?? '';
 
@@ -2381,7 +2369,7 @@ async function loadRarityData() {
   finally { rarityBusy = false; finishBm(); }
 }
 let cmpMode = ''; // '' | 'missing' (species the other person hasn't seen) | 'common' (seen by both)
-let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite) | 'others' (faved by other users) | 'theirs' / 'mine' (someone else's account: their favourites / ones I faved)
+let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'others' (faved by other users) | 'theirs' / 'mine' (someone else's account: their favourites / ones I faved)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
                     47158: 'Insecta', 47119: 'Arachnida', 47115: 'Mollusca', 47126: 'Plantae', 47170: 'Fungi' };
 const CLASS_NAMES = new Set(Object.values(CLASS_IDS));
@@ -2396,13 +2384,13 @@ function classMatch(o) {
 function textFiltered() {
   const range = dateRange();
   if (!range && !filterClasses.size && !favMode && !(cmpMode && activePartners().length)) return state.obs;
-  const stats = favMode === 'need' || favMode === 'new' ? favStats() : null, act = cmpMode ? activePartners() : [];
+  const stats = favMode === 'need' ? favStats() : null, act = cmpMode ? activePartners() : [];
   return state.obs.filter(o => {
     if (cmpMode && act.length && !cmpPass(o, act)) return false;
     if (favMode === 'others') { if (!(o.ff > 0)) return false; }
     else if (favMode === 'theirs') { if (!o.fav) return false; }
     else if (favMode === 'mine') { if (!o.mf) return false; }
-    else if (favMode) { const s = stats.get(o.tid); if (!(favMode === 'need' ? needsFav(s) : s && s.newN > 0)) return false; }
+    else if (favMode) { const s = stats.get(o.tid); if (!(needsFav(s) || (s && s.newN > 0))) return false; }
     if (range && !(o.date && o.date >= range[0] && o.date <= range[1])) return false;
     if (filterClasses.size && !classMatch(o)) return false;
     return true;
@@ -2627,7 +2615,7 @@ for (const [btn, pan] of Object.entries(PANELS)) {
     const opening = $(pan).hidden;
     closePanels(pan);
     $(pan).hidden = !opening; $(btn).classList.toggle('open', opening); $('sheetbg').hidden = !opening; document.body.classList.toggle('sheet-open', opening);
-    if (opening) { drawGroupChips(); drawCmpChips(); $('fsJump').hidden = $('fsFav').hidden = view === 'explore'; }
+    if (opening) { drawCmpChips(); $('fsJump').hidden = $('fsFav').hidden = view === 'explore'; }
   };
 }
 // Location: one map for every sort. The orange circle is the view of the map; it filters my observations and is the area Common searches.
@@ -3327,7 +3315,7 @@ loadSet(filterClasses, 'inat_fclass');
 let lastFavOther = false;
 const favModes = () => isOther()
   ? [['theirs', 'favtheirs'], ['others', 'favothers'], ...(meId ? [['mine', 'favmine']] : [])]
-  : [['need', 'favneed'], ['new', 'favnew'], ['others', 'favothers']];
+  : [['need', 'favneed'], ['others', 'favothers']];
 function favChips(box) {
   box.replaceChildren();
   for (const [mode, id] of favModes()) {
@@ -3347,10 +3335,9 @@ function refreshFavChips() {
   set('favmine', 'user-round', 'Faved by me', count(o => o.mf), 'Observations you have favourited');
   if (!$('favneed')) return;
   const st = favStats();
-  let need = 0, fresh = 0;
-  for (const s of st.values()) { if (needsFav(s)) need++; if (s.newN > 0) fresh++; }
-  set('favneed', 'star', 'Needs favourite', need, 'Species with 2 or more photos but no favourite chosen');
-  set('favnew', 'refresh-cw', 'New since favourite', fresh, 'Species with observations added after you chose the favourite');
+  let need = 0;
+  for (const s of st.values()) if (needsFav(s) || s.newN > 0) need++;
+  set('favneed', 'star', 'Needs favourite', need, 'Species with 2 or more photos but no favourite chosen yet, or with new observations since you chose one');
 }
 function drawFilterChips() { drawChips2($('fclasses'), filterClasses, 'inat_fclass', () => scheduleShow()); favChips($('ffav')); }
 drawFilterChips();
@@ -3506,7 +3493,6 @@ function buildShareUrl() {
   if (area) p.set('area', `${area.lat.toFixed(4)},${area.lng.toFixed(4)},${Math.round(area.r)}`);
   if (cmpMode) p.set('cmp', cmpMode);
   if (raritySort && view === 'recent') p.set('rsort', 'rare');
-  if (groupMode !== 'all') p.set('uniq', groupMode);
   return `${redirectUri()}?${p}`;
 }
 $('share').onclick = async () => {
@@ -3533,7 +3519,6 @@ function applyUrlState() {
   if (ar.length === 3 && ar.every(Number.isFinite) && ar[2] > 0) { area = { lat: ar[0], lng: ar[1], r: ar[2] }; $('follow').checked = true; }
   if (['missing', 'common'].includes(g('cmp'))) cmpMode = g('cmp');
   if (g('rsort') === '1' || g('rsort') === 'rare' || g('rsort') === 'threat') { raritySort = 'rare'; view = 'recent'; }
-  if (['day', 'species'].includes(g('uniq')) || g('uniq') === '1') { groupMode = g('uniq') === 'day' ? 'day' : 'species'; syncRecentTools(); }
 }
 
 const scrollPos = {}; // scroll offset remembered per tab
@@ -3820,17 +3805,6 @@ function toast(msg) {
   }
 })();
 
-const GMODES = [['all', 'Every observation'], ['day', 'One per species per day'], ['species', 'One per species']];
-function drawGroupChips() {
-  $('fsGroupMode').hidden = view !== 'recent';
-  const box = $('gmodechips'); box.replaceChildren();
-  for (const [k, label] of GMODES) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (groupMode === k ? ' on' : ''); b.textContent = label;
-    b.setAttribute('aria-pressed', String(groupMode === k));
-    b.onclick = () => { groupMode = k; try { localStorage.setItem('inat_group_mode', k); } catch {} drawGroupChips(); show(true); };
-    box.append(b);
-  }
-}
 let galStyle = 'polaroid', galSize = 'l';
 try { if (localStorage.getItem('inat_gal_style') === 'simple') galStyle = 'simple'; const z = localStorage.getItem('inat_gal_size'); if (['xl', 'l', 'm', 's'].includes(z)) galSize = z; } catch {}
 function applyGalLook() {
@@ -3890,7 +3864,6 @@ function syncRecentTools() {
   $('unshuffle').hidden = shuffleSeed == null && recentSeed == null;
   $('shuffle').classList.toggle('on', !$('unshuffle').hidden);
   $('shuffle').title = $('unshuffle').hidden ? 'Shuffle' : 'Shuffled: tap for a new order';
-  drawGroupChips();
 }
 // one seed shuffles every sort of the gallery (a shuffle replaces the Rarest sort)
 $('shuffle').onclick = () => { if (raritySort) { raritySort = ''; try { localStorage.removeItem('inat_rsort'); } catch {} } shuffleSeed = recentSeed = Math.floor(Math.random() * 2 ** 31); syncRecentTools(); updateSortUi(); show(true); };
@@ -3969,7 +3942,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-137 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-138 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

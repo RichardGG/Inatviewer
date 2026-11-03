@@ -34,8 +34,7 @@ Bump `VER` in `sw.js` to force the cached libraries, tiles and photos to be drop
 A bottom bar has the main controls; each opens a sheet above it.
 
 - **Sort**: *Latest* (grouped by year, month, day), *Rarest* (species with the fewest iNaturalist observations first), *Taxonomy*, *Place* and *Nearby* (the most observed species inside the Location circle, shown as Polaroids with a green tick on the ones you have seen; "hide species I've seen" and "research grade only" are in the Sort sheet).
-  For Latest and Rarest, *Same species* chooses between every observation, one per species per day, or one per species (grouped entries look like a small pile of Polaroids). *Shuffle* randomises the order.
-- **Filter**: jump to a group or species, group (birds, plants…), favourite-photo status, and date.
+  Only Latest lists every observation; Rarest, Taxonomy, Place and Nearby show one photo per species. - **Filter**: jump to a group or species, group (birds, plants…), favourite-photo status, and date.
 - **Location**: one map for every sort. The orange circle is the current view of the map; it filters your observations to the area and is the area Nearby searches (within 100 km). Buttons on the map jump to your location or search for a place by name.
 - **Small groups**: a group with fewer than 3 photos gets no folder of its own. Its photos join the folder above, each with a yellow sticker naming the group. The decision is made from the current counts, so a big group (parrots) keeps its folder while a small one (spiders) is folded in.
 - **Infinite scroll**: the gallery and Nearby load the next page by themselves as you near the bottom. Rarest, a shuffle and Nearby sit in one folder with its own tab; Rarest shows each species' worldwide iNaturalist observation count and Nearby shows how many observations of it there are in the area.
