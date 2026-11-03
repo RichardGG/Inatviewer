@@ -426,7 +426,9 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbpr .season-l { font:700 18px var(--hw); color:#27348b; } .nbpr .season-l .me { color:#b5352b; }
   .nbmap { position:relative; }
   .nbmap #dmap { border:9px solid #fbfaf4; border-radius:2px; box-shadow:0 4px 12px rgba(0,0,0,.38); }
-  .msearch { position:absolute; z-index:1100; top:10px; left:10px; right:62px; }
+  .msearch { position:absolute; z-index:1100; top:12px; right:62px; width:0; overflow:visible; opacity:0; pointer-events:none; transition:width .25s ease, opacity .2s; }
+  .msearch.open { width:calc(100% - 74px); opacity:1; pointer-events:auto; }
+  .msearch input { height:38px; }
   .msearch input { width:100%; padding:7px 10px; font:inherit; border:2px solid rgba(0,0,0,.25); border-radius:4px; background:#fff; color:#222; }
   .msug { background:#fff; color:#222; box-shadow:0 6px 18px rgba(0,0,0,.3); max-height:190px; overflow-y:auto; font-size:14px; }
   .msug:empty { display:none; }
@@ -627,15 +629,14 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .marker-cluster div { width:34px !important; height:34px !important; margin:3px !important; display:grid; place-items:center; border:2px solid #fff; border-radius:50% !important; background:#ffe27a !important; color:#3a2a14 !important; box-shadow:0 2px 5px rgba(0,0,0,.5); font:700 17px var(--hw) !important; }
   .marker-cluster-medium div { background:#f9bd80 !important; } .marker-cluster-large div { background:#f7a8bd !important; }
   .marker-cluster span { line-height:1; }
-  .msearch input { background:var(--grain), #f6f2e4; color:#27348b; border:2.5px solid #27348b; border-radius:10px; font:700 20px var(--hw); padding:6px 12px; }
+  .msearch input { background:var(--grain), #fbf6e2; color:#27348b; border:0; border-radius:5px; font:700 21px var(--hw); padding:6px 14px; box-shadow:0 2px 5px rgba(0,0,0,.5), inset 0 0 0 1px rgba(0,0,0,.12); transform:rotate(-.6deg); }
   .msearch input::-webkit-search-cancel-button, .msearch input::-webkit-search-decoration { -webkit-appearance:none; appearance:none; display:none; } /* the browser's own clear button; the search button closes the box */
-  .msearch input:focus { outline:none; box-shadow:0 0 0 3px rgba(250,225,60,.6); }
+  .msearch input:focus { outline:none; box-shadow:none; }
   .msearch input::placeholder { color:#6a76a8; }
-  .msug { background:var(--grain), #f6f2e4; color:#27348b; border-radius:0 0 10px 10px; box-shadow:0 6px 16px rgba(0,0,0,.45); font:700 18px var(--hw); }
+  .msug { background:var(--grain), #fbf6e2; color:#27348b; border-radius:0 0 10px 10px; box-shadow:0 6px 16px rgba(0,0,0,.45); font:700 18px var(--hw); }
   .msug button { background:none; color:#27348b; border-top:1px solid #c8cfe6; font:700 20px var(--hw); } .msug button small { color:#5a6590; font:700 14px var(--hw); }
   #areapanel input[type=checkbox] { accent-color:#27348b; width:20px; height:20px; }
   .dark .leaflet-popup-content-wrapper { background:var(--grain), #262c36; color:#a9bdf2; } .dark .leaflet-popup-tip { background:#262c36; } .dark .leaflet-popup-content a, .dark .leaflet-popup-close-button { color:#a9bdf2 !important; } .dark .mp .d { color:#8fa6cf; }
-  .dark .msearch input, .dark .msug { background:var(--grain), #262c36; color:#a9bdf2; border-color:#a9bdf2; } .dark .msug button { color:#a9bdf2; border-top-color:#3a4256; } .dark .msug button small { color:#8fa6cf; }
   .dark .leaflet-control-attribution { background:rgba(38,44,54,.88) !important; color:#8fa6cf !important; } .dark .leaflet-control-attribution a { color:#a9bdf2 !important; }
   /* the top of the page is the cover of a field notes memo book: kraft board, a bold printed title, small print, staples down the spine */
   header.cover { position:relative; display:flex; flex-direction:column; min-height:calc(100vh - 44px); min-height:calc(100dvh - 44px); margin:6px 0 14px; padding:22vh 56px 110px 34px; padding-top:22dvh; border-radius:10px; text-align:center;
@@ -2517,13 +2518,13 @@ function addMapButtons(map) {
     });
     new C().addTo(map);
   };
-  const wrap = document.createElement('div'); wrap.className = 'msearch'; wrap.hidden = true;
+  const wrap = document.createElement('div'); wrap.className = 'msearch';
   const inp = document.createElement('input'); inp.type = 'search'; inp.placeholder = 'Town, park, address, region…'; inp.autocomplete = 'off'; inp.spellcheck = false;
   const sug = document.createElement('div'); sug.className = 'msug';
   wrap.append(inp, sug); map.getContainer().append(wrap);
   L.DomEvent.disableClickPropagation(wrap); L.DomEvent.disableScrollPropagation(wrap);
   let timer, seq = 0;
-  const close = () => { wrap.hidden = true; sug.replaceChildren(); inp.value = ''; };
+  const close = () => { wrap.classList.remove('open'); sug.replaceChildren(); inp.value = ''; inp.blur(); };
   inp.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
   inp.addEventListener('input', () => {
     clearTimeout(timer);
@@ -2562,7 +2563,12 @@ function addMapButtons(map) {
       status(err.code === 1 ? 'Location permission denied. Search for a place name instead.' : `Could not get your location (${err.message}).`, true);
     }, { timeout: 15000, maximumAge: 60000 });
   });
-  button('search', 'Search for a place', () => { wrap.hidden = !wrap.hidden; if (!wrap.hidden) inp.focus(); else close(); });
+  button('search', 'Search for a place', () => {
+    if (wrap.classList.contains('open')) return close();
+    const btn = map.getContainer().querySelector('a[title="Search for a place"]');
+    if (btn) wrap.style.top = (btn.getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top) + 'px'; // grows out of the search button, level with it
+    wrap.classList.add('open'); setTimeout(() => inp.focus(), 180);
+  });
 }
 // The Location map is a real element that lives docked in the bottom right corner (tilted, barely on screen); opening it slides it into place.
 let areaMapReady = null;
@@ -3915,7 +3921,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-129 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-130 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
