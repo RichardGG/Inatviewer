@@ -578,6 +578,11 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbpr h3 { line-height:30px; }
   .nbpr .mine { padding:8px 2px 4px; }
   .nbpr .season { margin-top:0; }
+  /* a group too small for a folder: a paper sticker stuck on the photo */
+  .gsticker { position:absolute; z-index:6; top:-9px; left:6px; max-width:92%; padding:2px 9px 3px; background:#ffe27a; color:#3a2a14; border-radius:3px; transform:rotate(-2.5deg); box-shadow:0 2px 4px rgba(0,0,0,.4);
+              font:700 15px/1 var(--hw); font-size-adjust:.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
+  .gsticker small { margin-left:5px; font-size:12px; font-weight:400; opacity:.75; } .gsticker small.sci { font-style:italic; }
+  #gal.st-simple .gsticker { top:6px; left:6px; }
 </style>
 </head>
 <body>
@@ -664,6 +669,10 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
         <div id="sortchips" class="clsrow" role="group" aria-label="Sort the photos"></div>
         <h4>Size</h4>
         <div id="sizechips" class="seg" role="group" aria-label="Photo size"></div>
+        <div id="fsMerge">
+          <h4>Small groups</h4>
+          <div id="mergechips" class="clsrow" role="group" aria-label="Fold small groups into the folder above"></div>
+        </div>
         <div id="fsGroupMode">
           <h4>Same species</h4>
           <div id="gmodechips" class="clsrow" role="group" aria-label="How to group observations of the same species"></div>
@@ -1661,7 +1670,7 @@ function partnerPhoto(p, sid) {
   }
   return p._pm.best.get(sid);
 }
-function polTile(o) {
+function polTile(o, tag) {
   const ph = photosOf(o);
   const t = document.createElement('div');
   t.className = 'tile'; markBrow(t, o.tid, o.id);
@@ -1695,6 +1704,12 @@ function polTile(o) {
   speciesLink(cap, o.tid);
   const sp = document.createElement('span'); sp.textContent = o.common || o.name; cap.append(sp); capObserver.observe(cap);
   t.append(b, cap);
+  if (tag) { // a group too small for its own folder: a sticker on the photo says which group it belongs to
+    const st = document.createElement('span'); st.className = 'gsticker'; st.title = `${tag.rank}: ${tag.main}${tag.sub ? ' (' + tag.sub + ')' : ''}`;
+    st.append(tag.main);
+    if (tag.sub) { const sm = document.createElement('small'); sm.textContent = tag.sub; if (gal.sort === 'tree') sm.className = 'sci'; st.append(sm); }
+    t.append(st);
+  }
   return t;
 }
 
@@ -1735,6 +1750,12 @@ function renderGallery(obs) {
   gal.items = view === 'recent' ? recentItems(obs)
     : view === 'place' ? treeItems(buildTree(obs, placeChain), PLACE_META)
     : treeItems(buildTree(obs), TAXON_META(state.names));
+  // small groups don't get a folder of their own: their photos join the folder above, each with a sticker naming the group
+  if (galMerge > 1) {
+    const cnt = new Map();
+    for (const it of gal.items) for (const g of it.path) cnt.set(g, (cnt.get(g) || 0) + 1);
+    for (const it of gal.items) { const k = it.path.findIndex(g => cnt.get(g) < galMerge); if (k >= 0) { it.tag = it.path[k]; it.path = it.path.slice(0, k); } }
+  }
   gal.groups = []; gal.byKey = new Map();
   gal.items.forEach((it, i) => {
     it.starts = [];
@@ -1749,6 +1770,8 @@ function renderGallery(obs) {
   if (!gal.items.length) { gal.cells = []; el.replaceChildren(); $('pathbar').hidden = true; return; }
   drawGallery();
 }
+let galMerge = 3; // groups with fewer photos than this are folded into the folder above (0 = never)
+try { const m = localStorage.getItem('inat_merge'); if (m !== null && [0, 3, 6, 12].includes(+m)) galMerge = +m; } catch {}
 const galGroups = 'dividers'; // groups are always folder dividers (the old chevron-tab layout is still in the code but unused)
 // A divider section: a card with a folder tab on its top edge; sections nest, and their tabs step across the page by level.
 // A collapsed group in the dividers layout: small photos sampled evenly across the group, as many as fit the width, and the count at the end.
@@ -1811,7 +1834,7 @@ function drawDividers() {
       continue;
     }
     const cell = document.createElement('div'); cell.className = 'cell'; cell.dataset.i = i;
-    cell.append(polTile(it.o));
+    cell.append(polTile(it.o, it.tag));
     gridIn(open[open.length - 1].body).append(cell); n++;
     gal.cells.push({ el: cell, tagGroups: [], path: vis });
   }
@@ -1847,7 +1870,7 @@ function drawGallery() {
     const cell = document.createElement('div'); cell.className = 'cell'; cell.dataset.i = i;
     const tags = it.starts.filter(g => k < 0 || it.path.indexOf(g) <= k);
     if (tags.length) { const box = document.createElement('div'); box.className = 'tags'; tags.forEach(g => box.append(tagEl(g, true))); cell.append(box); }
-    cell.append(k < 0 ? polTile(it.o) : stackEl(it.path[k]));
+    cell.append(k < 0 ? polTile(it.o, it.tag) : stackEl(it.path[k]));
     grid.append(cell); n++;
     gal.cells.push({ el: cell, tagGroups: tags, path: k < 0 ? it.path : it.path.slice(0, k + 1) });
   }
@@ -3543,6 +3566,14 @@ function drawLookChips() {
   setIcon($('themebtn'), dark ? 'moon' : 'sun', 22); $('themebtn').title = dark ? 'Dark: tap for light' : 'Light: tap for dark';
   setIcon($('stylebtn'), galStyle === 'simple' ? 'simple' : 'polaroid', 22); $('stylebtn').title = galStyle === 'simple' ? 'Simple photos: tap for Polaroids' : 'Polaroids: tap for simple photos';
   setIcon($('shuffle'), 'shuffle', 22); setIcon($('unshuffle'), 'rotate-ccw', 22);
+  $('fsMerge').hidden = !(view === 'recent' && !raritySort && recentSeed == null) && view !== 'tree' && view !== 'place';
+  const mb = $('mergechips'); mb.replaceChildren();
+  for (const [n, label] of [[0, 'Own folder'], [3, 'Under 3'], [6, 'Under 6'], [12, 'Under 12']]) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (galMerge === n ? ' on' : ''); b.textContent = label; b.setAttribute('aria-pressed', String(galMerge === n));
+    b.title = n ? `A group with fewer than ${n} photos shares the folder above` : 'Every group gets its own folder';
+    b.onclick = () => { galMerge = n; try { localStorage.setItem('inat_merge', String(n)); } catch {} drawLookChips(); show(true); };
+    mb.append(b);
+  }
   const box = $('sizechips'); box.replaceChildren();
   for (const [k, label, cols] of [['xl', 'XL', 1], ['l', 'L', 2], ['m', 'M', 3], ['s', 'S', 4]]) {
     const b = document.createElement('button'); b.type = 'button'; b.className = galSize === k ? 'on' : ''; b.setAttribute('aria-pressed', String(galSize === k)); b.title = `${cols} column${cols > 1 ? 's' : ''} on a phone`;
@@ -3639,7 +3670,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-86 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-87 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
