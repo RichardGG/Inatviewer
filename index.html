@@ -578,6 +578,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbpr h3 { line-height:30px; }
   .nbpr .mine { padding:8px 2px 4px; }
   .nbpr .season { margin-top:0; }
+  .cntpill { position:absolute; right:5px; bottom:5px; z-index:3; padding:1px 8px 2px; border-radius:10px; background:rgba(0,0,0,.68); color:#fff; font:700 14px/1.2 var(--hw); font-size-adjust:.5; pointer-events:none; white-space:nowrap; }
   /* a group too small for a folder: a paper sticker stuck on the photo */
   .gsticker { position:absolute; z-index:6; top:-9px; left:6px; max-width:92%; padding:2px 9px 3px; background:#ffe27a; color:#3a2a14; border-radius:3px; transform:rotate(-2.5deg); box-shadow:0 2px 4px rgba(0,0,0,.4);
               font:700 15px/1 var(--hw); font-size-adjust:.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
@@ -1706,6 +1707,7 @@ function polTile(o, tag) {
   cap.className = 'cap'; cap.href = `https://www.inaturalist.org/taxa/${o.tid}`; cap.target = '_blank'; cap.rel = 'noopener';
   speciesLink(cap, o.tid);
   const sp = document.createElement('span'); sp.textContent = o.common || o.name; cap.append(sp); capObserver.observe(cap);
+  if (raritySort && view === 'recent') { const r = rarityOf(o); if (r) { const c = document.createElement('span'); c.className = 'cntpill'; c.textContent = `${fmtCount(r.n)} worldwide`; c.title = `${r.n.toLocaleString()} observations on iNaturalist`; b.append(c); } }
   t.append(b, cap);
   if (tag) { // a group too small for its own folder: a sticker on the photo says which group it belongs to
     const st = document.createElement('span'); st.className = 'gsticker'; st.style.background = stickerColor(tag); st.title = `${tag.rank}: ${tag.main}${tag.sub ? ' (' + tag.sub + ')' : ''}`;
@@ -1814,8 +1816,11 @@ function dvSection(g) {
   sec.append(head, body);
   return { el: sec, body };
 }
+// Infinite scroll: the "Show more" button loads the next page by itself as soon as it comes near the screen.
+const moreObserver = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting && !e.target.hidden && !e.target.disabled) e.target.click(); }, { rootMargin: '900px 0px' });
+function autoMore(btn) { moreObserver.observe(btn); }
 function drawDividers() {
-  stripObserver.disconnect();
+  stripObserver.disconnect(); moreObserver.disconnect();
   const el = $('gal'), items = gal.items, col = collapsed[gal.sort];
   const root = document.createElement('div'); root.className = 'dvroot';
   const open = [{ g: null, body: root }]; // the sections the current photo is inside, outermost first
@@ -1847,16 +1852,23 @@ function drawDividers() {
     const more = document.createElement('button'); more.className = 'secondary'; more.style.margin = '12px 0 0';
     more.textContent = `Show more (${items.length - i} left)`;
     more.onclick = () => { gal.limit += GAL_PAGE; drawGallery(); };
-    el.append(more);
+    el.append(more); autoMore(more);
   }
   $('pathbar').dataset.sig = '';
   schedulePath();
 }
 // A flat list (Rarest, a shuffle, Common) sits in one folder with no tab, so the background matches the grouped sorts.
+function flatTitle() {
+  if (view === 'explore') return ['Common', area ? `within ${fmtDist(Math.min(area.r, 100000))}` : ''];
+  if (raritySort) return ['Rarest', 'fewest observations worldwide'];
+  if (shuffleSeed != null || recentSeed != null) return ['Shuffled', ''];
+  return [SORTS.find(x => x[0] === view)?.[1] || 'Photos', ''];
+}
 function oneFolder(...kids) {
   if (galGroups !== 'dividers') return kids;
-  const sec = document.createElement('section'); sec.className = 'dv d0 dvroot1'; const body = document.createElement('div');
-  body.className = 'dvb'; sec.append(body);
+  const [main, sub] = flatTitle();
+  const { el: sec, body } = dvSection({ key: 'flat', rank: 'list', depth: 0, main, sub });
+  sec.classList.add('dvroot1'); sec.querySelector('.dvt').title = main;
   for (const k of kids) { if (k.classList?.contains('pgrid')) k.classList.add('top'); body.append(k); }
   return [sec];
 }
@@ -1878,13 +1890,14 @@ function drawGallery() {
     gal.cells.push({ el: cell, tagGroups: tags, path: k < 0 ? it.path : it.path.slice(0, k + 1) });
   }
   gal.shownTo = i;
+  moreObserver.disconnect();
   el.replaceChildren(...oneFolder(grid));
   if (i < items.length) {
     const more = document.createElement('button'); more.className = 'secondary'; more.style.margin = '12px 0 0';
     const left = items.length - i;
     more.textContent = `Show more (${left} left)`;
     more.onclick = () => { gal.limit += GAL_PAGE; drawGallery(); };
-    el.append(more);
+    el.append(more); autoMore(more);
   }
   spanTags();
   $('pathbar').dataset.sig = '';
@@ -3046,6 +3059,7 @@ function commonTile(it, mine, myPhoto, act = []) {
     } else b.append(shown);
   }
   if (n) { const k = document.createElement('span'); k.className = 'seentag'; k.textContent = '✓'; k.title = `You have seen this (${n})`; b.append(k); }
+  { const c = document.createElement('span'); c.className = 'cntpill'; c.textContent = `${fmtCount(it.count)} here`; c.title = `${it.count.toLocaleString()} observations in this area`; b.append(c); }
   b.onclick = () => openSpecies(t.id);
   const cap = document.createElement('a');
   cap.className = 'cap'; cap.href = `https://www.inaturalist.org/taxa/${t.id}`; cap.target = '_blank'; cap.rel = 'noopener';
@@ -3054,7 +3068,8 @@ function commonTile(it, mine, myPhoto, act = []) {
   tile.append(b, cap);
   return tile;
 }
-$('expmore').onclick = () => loadExplore(true);
+$('expmore').onclick = () => { if (!explore.loading) loadExplore(true); };
+autoMore($('expmore'));
 $('exprefresh').onclick = () => { explore.cachedAt = null; loadExplore(); };
 // Common's own options live in the Sort sheet.
 function drawCommonChips() {
@@ -3673,7 +3688,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-89 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-90 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
