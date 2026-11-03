@@ -22,6 +22,7 @@ applyTheme();
 if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', function () { applyTheme(); });
 </script>
 <style>
+  :root { --hw:'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; }
   :root { --bg:#fafaf7; --fg:#1d2a1f; --muted:#6b7a6d; --accent:#4a8a2a; --line:#dde3d8; --card:#fff; }
   :root.dark { --bg:#14181a; --fg:#e6ece6; --muted:#8c9a8e; --accent:#7fc45a; --line:#2a3330; --card:#1b2124; color-scheme:dark; }
   :root:not(.dark) { color-scheme:light; }
@@ -377,7 +378,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   @media (min-width: 760px) { .notebook { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:0; padding:10px 8px; } }
   .nbpage { position:relative; min-width:0; padding:20px 20px 26px; background:var(--grain), #f6f2e4; color:#27348b; min-height:340px; }
   .nbpl { border-radius:8px 0 0 8px; box-shadow:inset -16px 0 16px -14px rgba(0,0,0,.4); }
-  .nbpr { border-radius:0 8px 8px 0; background:var(--grain), repeating-linear-gradient(transparent 0 29px, #a9c6e0 29px 30px), #f6f2e4; background-position:0 0, 0 6px, 0 0; box-shadow:inset 16px 0 16px -14px rgba(0,0,0,.4); }
+  .nbpr { border-radius:0 8px 8px 0; background:var(--grain), repeating-linear-gradient(transparent 0 29px, #a9c6e0 29px 30px), #f6f2e4; background-position:0 0, 0 -6px, 0 0; box-shadow:inset 16px 0 16px -14px rgba(0,0,0,.4); }
   @media (max-width: 759px) { .nbpl { border-radius:8px 8px 0 0; } .nbpr { border-radius:0 0 8px 8px; } }
   /* the printed parts: small capitals in a form-like sans-serif */
   .nbhead, .nblab, .nbpr h3, .nbdesc::before { font-family:'Trebuchet MS', 'Arial Narrow', Arial, sans-serif; font-size-adjust:none; text-transform:uppercase; letter-spacing:.12em; color:#37507a; font-weight:700; }
@@ -395,7 +396,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbdesc:not(:empty) { margin:12px 0 0; }
   .nbdesc::before { content:'Description'; display:block; font-size:10px; margin:0 0 2px; }
   .nbdesc:empty::before { content:none; }
-  .nbdesc p { margin:0 0 6px; font:700 21px/30px var(--hw); font-size-adjust:.5; color:#27348b; background:repeating-linear-gradient(transparent 0 29px, #9bb0c6 29px 30px); }
+  .nbdesc p { margin:0; font:700 21px/30px var(--hw); font-size-adjust:.5; color:#27348b; background:repeating-linear-gradient(transparent 0 29px, #9bb0c6 29px 30px) 0 -6px; }
   .nbdesc a { color:#27348b; font:700 18px var(--hw); }
   .nbform .cons { position:relative; margin:6px 0; padding:2px 0 4px; border:0; border-bottom:1px solid #9bb0c6; border-radius:0; background:none !important; color:#27348b; font:700 20px/1.2 var(--hw); font-size-adjust:.5; }
   .nbform .cons strong { color:inherit; } .nbform .cons .status { font:700 16px var(--hw); color:#5a6590; }
@@ -484,11 +485,11 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .dark #gal.st-simple .pgrid .tile .cap { color:#f1ede0; }
   .dark .strip img { box-shadow:0 1px 4px rgba(0,0,0,.7); }
   .dark .nbpage { background:var(--grain), #262c36; color:#a9bdf2; }
-  .dark .nbpr { background:var(--grain), repeating-linear-gradient(transparent 0 29px, rgba(150,180,230,.22) 29px 30px), #262c36; background-position:0 0, 0 6px, 0 0; }
+  .dark .nbpr { background:var(--grain), repeating-linear-gradient(transparent 0 29px, rgba(150,180,230,.22) 29px 30px), #262c36; background-position:0 0, 0 -6px, 0 0; }
   .dark .nbhead, .dark .nblab, .dark .nbpr h3, .dark .nbdesc::before { color:#8fa6cf; }
   .dark .nbf { border-bottom-color:#4a5873; }
   .dark .nbv, .dark .nbchk, .dark .ccap, .dark .crumbs, .dark .crumbs button, .dark .nbdesc p, .dark .nbdesc a, .dark .nbpr p.status, .dark .nbpr .season-l { color:#a9bdf2; }
-  .dark .nbdesc p { background:repeating-linear-gradient(transparent 0 29px, #4a5873 29px 30px); }
+  .dark .nbdesc p { background:repeating-linear-gradient(transparent 0 29px, #4a5873 29px 30px) 0 -6px; }
   .dark .nbchk::before { color:#7fc45a; } .dark .nbchk.warn, .dark .nbchk.no::before, .dark .nbpr .season-l .me { color:#ff8f84; }
   .dark .nbform .cons { color:#a9bdf2; border-bottom-color:#4a5873; } .dark .nbform .cons .status { color:#8fa6cf; }
   .dark .nbpr .season div { background:repeating-linear-gradient(135deg, #8fa6cf 0 2px, #4a5873 2px 4px); }
@@ -570,6 +571,13 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .glyph { display:grid; grid-template-columns:repeat(var(--c), 1fr); grid-template-rows:repeat(2, 1fr); gap:3px; width:38px; height:30px; }
   .glyph i { display:block; background:currentColor; opacity:.75; border-radius:2px; }
   .dark .seg { border-color:#a9bdf2; } .dark .seg button { color:#a9bdf2; } .dark .seg button + button { border-left-color:#a9bdf2; } .dark .seg button.on { background:rgba(250,225,60,.45); }
+  /* right page: every block is a whole number of 30px rows (snapped in script), so the ruled lines run under the text */
+  .nbpr { padding-top:0; padding-bottom:0; }
+  .nbpr > * { margin:0 !important; }
+  .nbpr .nbhead { line-height:60px; font-size:15px; }
+  .nbpr h3 { line-height:30px; }
+  .nbpr .mine { padding:8px 2px 4px; }
+  .nbpr .season { margin-top:0; }
 </style>
 </head>
 <body>
@@ -2571,6 +2579,13 @@ async function openSpecies(id, focusObs, ctx) {
   const formHead = el('div', 'nbhead', 'Species of interest'), form = el('div', 'nbform'), desc = el('div', 'nbdesc');
   const field = (label, text) => { const row = el('div', 'nbf'), v = el('span', 'nbv'); row.append(el('span', 'nblab', label), v); if (text) v.textContent = text; form.append(row); return v; };
   right.append(el('div', 'nbhead', 'Observations'));
+  // keep the right page's blocks to whole 30px rows so the ruled lines stay under the handwriting
+  const snapRows = () => {
+    const kids = [...right.children];
+    for (const k of kids) k.style.minHeight = '';
+    for (const k of kids) { const h = k.getBoundingClientRect().height; if (h) k.style.minHeight = Math.ceil(h / 30 - 0.01) * 30 + 'px'; }
+  };
+  new ResizeObserver(snapRows).observe(right);
 
   // ---- hero: a swipeable carousel of the focused observation's photos (rendered immediately from local data) ----
   const photoObs = mineObs.filter(o => photosOf(o).length);
@@ -3624,7 +3639,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-82 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-84 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
