@@ -667,6 +667,13 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   header.cover .chip:nth-child(even) { transform:rotate(1.2deg); }
   header.cover .chip button { color:#37507a; padding:0 4px; }
   header.cover .chip svg { color:#27348b; }
+  /* every text block inside the right page is a whole number of 30px rows, so no margin may break the rhythm */
+  .nbpr h3 { margin:0 !important; line-height:30px; }
+  .nbpr p, .nbpr .status { margin:0 !important; }
+  .nbpr .season-l { height:30px; line-height:30px; align-items:center; }
+  .nbpr .season { height:90px; margin:0; }
+  .nbpr #dmap { margin-top:0 !important; }
+  .nbpr .nbmap, .nbpr > div { padding:0; }
 </style>
 </head>
 <body>
@@ -3833,7 +3840,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-109 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-110 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
