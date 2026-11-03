@@ -306,6 +306,25 @@
   .lb2 .curl { position:absolute; right:14px; bottom:50px; width:54px; height:54px; background:linear-gradient(315deg, #2a2a30 50%, #4a4a52 50%); border-radius:0 0 6px 0; box-shadow:-3px -3px 6px rgba(0,0,0,.5); clip-path:polygon(100% 0, 100% 100%, 0 100%); z-index:4; }
   .lb2 .tabs2 { position:absolute; left:14px; right:14px; bottom:10px; display:flex; justify-content:center; gap:6px; }
   .lb2 .tabs2 i { width:34px; height:5px; border-radius:2px; background:rgba(217,180,90,.3); } .lb2 .tabs2 i.on { background:#d9b45a; }
+
+  /* 3 · film strip / contact sheet */
+  .lb3 { background:radial-gradient(circle, rgba(190,225,195,.3) 1.3px, transparent 1.7px) 0 0/22px 22px, var(--grain), #233d2e; }
+  .lb3 .main { position:absolute; left:22px; right:22px; top:70px; background:#fbfaf4; padding:12px 12px 0; box-shadow:0 8px 20px rgba(0,0,0,.55); transform:rotate(-.8deg); }
+  .lb3 .main .img { aspect-ratio:1; background:var(--pic); position:relative; overflow:hidden; } .lb3 .main .img::after { content:''; position:absolute; inset:0; background:radial-gradient(circle at 50% 40%, rgba(255,255,255,.55) 0 18%, transparent 19%); }
+  .lb3 .main .hw { padding:6px 4px 0; font:700 24px/1.05 var(--hw); color:#252a33; height:50px; } .lb3 .main .hw small { font-size:17px; font-weight:400; opacity:.75; margin-left:6px; }
+  .lb3 .strip3 { position:absolute; left:0; right:0; bottom:46px; height:96px; background:#1b1b1d; display:flex; gap:6px; padding:16px 10px; box-shadow:0 -4px 14px rgba(0,0,0,.5); overflow:hidden; }
+  .lb3 .strip3::before, .lb3 .strip3::after { content:''; position:absolute; left:0; right:0; height:8px; background:repeating-linear-gradient(90deg, #efe9d8 0 9px, transparent 9px 18px); } .lb3 .strip3::before { top:4px; } .lb3 .strip3::after { bottom:4px; }
+  .lb3 .strip3 span { flex:none; width:62px; background:var(--pic); position:relative; opacity:.6; } .lb3 .strip3 span.on { opacity:1; outline:3px solid #d9b45a; outline-offset:1px; z-index:2; }
+  .lb3 .strip3 span::after { content:attr(data-n); position:absolute; left:3px; bottom:2px; font:700 11px Arial; color:#f4c36a; }
+  .lb3 .hint { bottom:12px; }
+  /* 3b · contact sheet */
+  .lb3b { background:var(--grain), #f1ecdc; }
+  .lb3b .x svg { stroke:#3a2a14; filter:none; } .lb3b .cnt { color:#3a2a14; }
+  .lb3b .sheet { position:absolute; left:14px; right:14px; top:62px; bottom:20px; background:#101012; padding:10px; box-shadow:0 8px 20px rgba(0,0,0,.45); display:grid; grid-template-columns:1fr 1fr; gap:8px; align-content:start; }
+  .lb3b .sheet span { aspect-ratio:1; background:var(--pic); position:relative; } .lb3b .sheet span::after { content:attr(data-n); position:absolute; left:4px; bottom:2px; font:700 11px Arial; color:#f4c36a; }
+  .lb3b .sheet span.big { grid-column:1 / -1; }
+  .lb3b .sheet span.pick::before { content:''; position:absolute; inset:-5px; border:4px solid #e0443a; border-radius:46% 54% 50% 50% / 55% 45% 55% 45%; transform:rotate(-3deg); z-index:3; filter:url(#rough); }
+  .lb3b .hint { color:#3a2a14; }
 </style>
 </head>
 <body>
@@ -505,6 +524,15 @@
       <div class="page"><div class="ph" style="--pic:linear-gradient(135deg,#7ab36a,#2e6b4f)"><i></i><i></i><i></i><i></i></div><div class="cap">Robin<small>10 March 2026 · Hyde Park</small></div><span class="curl"></span></div>
       <div class="tabs2"><i class="on"></i><i></i><i></i></div></div>
       <div class="cap">2 · A page in a photo album (photo corners; swipe turns the page, the corner curls)</div></div>
+
+    <div><div class="lb lb3"><div class="x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div><div class="cnt">2/5</div>
+      <div class="main" style="--pic:linear-gradient(135deg,#6fa8dc,#274b7a)"><div class="img"></div><div class="hw">Robin<small>10 Mar 2026 · Hyde Park</small></div></div>
+      <div class="strip3"><span data-n="1" style="--pic:linear-gradient(135deg,#7ab36a,#2e6b4f)"></span><span class="on" data-n="2" style="--pic:linear-gradient(135deg,#6fa8dc,#274b7a)"></span><span data-n="3" style="--pic:linear-gradient(135deg,#caa44a,#6b4d1a)"></span><span data-n="4" style="--pic:linear-gradient(135deg,#c06a8a,#5a2a44)"></span><span data-n="5" style="--pic:linear-gradient(135deg,#8a7ac0,#3a2a6b)"></span></div>
+      <div class="hint">tap a frame, or swipe the print</div></div>
+      <div class="cap">3 · Film strip under the print (the chosen frame is outlined in gold)</div></div>
+    <div><div class="lb lb3b"><div class="x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div><div class="cnt">5 frames</div>
+      <div class="sheet"><span class="big" data-n="1" style="--pic:linear-gradient(135deg,#7ab36a,#2e6b4f);aspect-ratio:1.6"></span><span class="pick" data-n="2" style="--pic:linear-gradient(135deg,#6fa8dc,#274b7a)"></span><span data-n="3" style="--pic:linear-gradient(135deg,#caa44a,#6b4d1a)"></span><span data-n="4" style="--pic:linear-gradient(135deg,#c06a8a,#5a2a44)"></span><span data-n="5" style="--pic:linear-gradient(135deg,#8a7ac0,#3a2a6b)"></span></div></div>
+      <div class="cap">3b · Contact sheet (all the photos at once; tap a frame to open it; the favourite is ringed in red grease pencil)</div></div>
   </div>
 </main>
 
