@@ -1636,7 +1636,7 @@ function partnerPhoto(p, sid) {
 function polTile(o) {
   const ph = photosOf(o);
   const t = document.createElement('div');
-  t.className = 'tile' + ; markBrow(t, o.tid, o.id);
+  t.className = 'tile'; markBrow(t, o.tid, o.id);
   t.style.setProperty('--rot', ((Math.imul(o.id, 2654435761) >>> 0) % 1300 / 100 - 6.5).toFixed(2) + 'deg'); // a random tilt of up to 6.5 degrees, fixed per observation
   t.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
   const b = document.createElement('button');
