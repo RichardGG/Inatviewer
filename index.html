@@ -739,6 +739,10 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   @media (max-width: 899px) { .coverwrap { margin:6px 12px 84px; } }
   header.cover { margin:0 !important; z-index:1; }
   .marks { z-index:0 !important; }
+  .pmap { cursor:pointer; }
+  /* observation photos on the map: small prints stuck on the map */
+  .pmk { background:none; border:0; } .pmk img { width:44px; height:44px; padding:3px 3px 8px; background:#fbfaf4; object-fit:cover; box-sizing:content-box; box-shadow:0 2px 6px rgba(0,0,0,.55); transform:rotate(-3deg); border-radius:2px; }
+  .pmk:nth-child(even) img { transform:rotate(2.5deg); }
 </style>
 </head>
 <body>
@@ -1979,9 +1983,21 @@ const TILE_ATTR = '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler
 const PMAP_H = 96;
 const mercator = (lat, lng, z) => { const n = 256 * 2 ** z, r = lat * Math.PI / 180; return [(lng + 180) / 360 * n, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n]; };
 function placeMap(g) {
-  const el = document.createElement('div'); el.className = 'pmap'; el.dataset.key = g.key;
+  const el = document.createElement('div'); el.className = 'pmap'; el.dataset.key = g.key; el.title = `Open the map at ${g.main}`;
+  el.onclick = () => openPlaceOnMap(g);
   pmapObserver.observe(el);
   return el;
+}
+// Tapping a folder's map opens the Location map focused on that place (it does not change the Only here filter).
+async function openPlaceOnMap(g) {
+  const pts = [];
+  for (let i = g.first; i <= g.last; i++) for (const o of (gal.items[i].all || [gal.items[i].o])) { const ll = parseLoc(o); if (ll) pts.push(ll); }
+  if (!pts.length) return toast('No locations for this place');
+  if ($('areapanel').hidden) $('areabtn').click();
+  await initAreaMap(); if (!areaMap) return;
+  await sleep(380); // the map slides into place first
+  moveMap(() => { areaMap.invalidateSize({ animate: false }); areaMap.fitBounds(L.latLngBounds(pts).pad(0.15), { maxZoom: 17, animate: false }); });
+  areaFitted = true; updatePhotoMarkers();
 }
 function fillPlaceMap(el) {
   const g = gal.byKey.get(el.dataset.key), W = el.clientWidth;
@@ -2486,6 +2502,24 @@ let suppressMove = false;
 function moveMap(fn) { suppressMove = true; try { fn(); } finally { suppressMove = false; } }
 
 const markerKey = () => `${Object.keys(rarity).length}|${cmpMode}|${partners.join()}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
+// Zoomed in far enough, the dots become the observations' own photos.
+const PHOTO_ZOOM = 15;
+let areaPhotos = null;
+function updatePhotoMarkers() {
+  if (!areaMap || !window.L) return;
+  if (!areaPhotos) areaPhotos = L.layerGroup();
+  const close = areaMap.getZoom() >= PHOTO_ZOOM;
+  if (!close) { areaMap.removeLayer(areaPhotos); areaPhotos.clearLayers(); if (!areaMap.hasLayer(areaCluster)) areaMap.addLayer(areaCluster); return; }
+  const b = areaMap.getBounds().pad(0.1), list = [];
+  for (const o of textFiltered()) { const ll = parseLoc(o); if (ll && b.contains(ll) && photosOf(o).length) list.push([ll, o]); if (list.length >= 150) break; }
+  areaPhotos.clearLayers();
+  for (const [ll, o] of list) {
+    const icon = L.divIcon({ className: 'pmk', html: `<img alt="" src="${sized(photosOf(o)[0], 'square')}">`, iconSize: [50, 56], iconAnchor: [25, 28] });
+    L.marker(ll, { icon, bubblingMouseEvents: false }).bindPopup(() => obsPopup(o), { minWidth: 200 }).addTo(areaPhotos);
+  }
+  if (areaMap.hasLayer(areaCluster)) areaMap.removeLayer(areaCluster);
+  if (!areaMap.hasLayer(areaPhotos)) areaMap.addLayer(areaPhotos);
+}
 function drawAreaMarkers() {
   if (!areaMap) return;
   markerSig = markerKey();
@@ -2496,6 +2530,7 @@ function drawAreaMarkers() {
     if (ll) markers.push(L.circleMarker(ll, { radius: 7, color: '#fff', weight: 2, fillColor: '#c8453b', fillOpacity: 1 }).bindPopup(() => obsPopup(o), { minWidth: 200 }));
   }
   areaCluster.addLayers(markers);
+  updatePhotoMarkers();
   if (!areaFitted) {
     moveMap(() => {
       if (area) areaMap.fitBounds(L.latLng(area.lat, area.lng).toBounds(area.r * 2), { animate: false });
@@ -2588,6 +2623,7 @@ function initAreaMap() {
     // While filtering, the circle tracks the view live; the filter itself updates when the move ends.
     areaMap.on('move', () => { if ($('follow').checked && !suppressMove) drawArea(viewportCircle()); });
     areaMap.on('moveend', () => { if ($('follow').checked && !suppressMove) setArea(viewportCircle()); });
+    areaMap.on('zoomend moveend', updatePhotoMarkers);
     drawArea(); drawAreaMarkers();
   })();
 }
@@ -3944,7 +3980,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-139 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-140 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
