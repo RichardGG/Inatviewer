@@ -1933,6 +1933,11 @@ function fillStrip(st) {
   st.replaceChildren(frag);
 }
 const stripObserver = new ResizeObserver(es => es.forEach(e => fillStrip(e.target)));
+// The view is already collapsed to a level when every group down to that level is open and every deeper group is collapsed.
+function levelShown(depth) {
+  const col = collapsed[gal.sort];
+  return gal.groups.every(g => g.depth > depth ? col.has(g.key) : !col.has(g.key)) && gal.groups.some(g => g.depth > depth);
+}
 function dvSection(g) {
   const sec = document.createElement('section'); sec.className = 'dv d' + (g.depth % 3); sec.dataset.key = g.key; sec.style.setProperty('--dd', g.depth);
   const t = document.createElement('button'); t.type = 'button'; t.className = 'dvt'; t.dataset.key = g.key; t.dataset.rank = g.rank;
@@ -1942,8 +1947,8 @@ function dvSection(g) {
   const body = document.createElement('div'); body.className = 'dvb';
   const head = document.createElement('div'); head.className = 'dvh'; head.append(t);
   if (gal.groups.length) { // top right of the tab row: expand every group (or, when everything is open, collapse them all)
-    const any = collapsed[gal.sort].size > 0, x = document.createElement('button'); x.type = 'button'; x.className = 'dvx'; x.dataset.key = g.key;
-    x.innerHTML = ic(any ? 'chevrons-up-down' : 'chevrons-down-up', 18); x.title = x.ariaLabel = any ? 'Expand all groups' : 'Collapse all groups';
+    const done = levelShown(g.depth), x = document.createElement('button'); x.type = 'button'; x.className = 'dvx'; x.dataset.key = g.key;
+    x.innerHTML = ic(done ? 'chevrons-up-down' : 'chevrons-down-up', 18); x.title = x.ariaLabel = done ? 'Expand all groups' : `Collapse to the ${g.rank} level`;
     head.append(x);
   }
   sec.append(head, body);
@@ -3730,7 +3735,9 @@ function toast(msg) {
     if (!x) return;
     e.stopPropagation();
     const col = collapsed[gal.sort];
-    if (col.size) col.clear(); else gal.groups.forEach(g => col.add(g.key));
+    const at = gal.byKey.get(x.dataset.key);
+    if (!at || levelShown(at.depth) || !gal.groups.some(g => g.depth > at.depth)) col.clear(); // tapping again (or nothing deeper to fold) opens everything
+    else gal.groups.forEach(g => { if (g.depth > at.depth) col.add(g.key); else col.delete(g.key); }); // collapse to this tab's level
     gal.byKey.has(x.dataset.key) ? redrawKeep(x.dataset.key, false) : drawGallery();
   }, true);
   for (const host of [$('gal'), $('pathbar')]) {
@@ -3868,7 +3875,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-114 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-115 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
