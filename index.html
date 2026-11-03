@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>iNat Viewer</title>
+<title>Naturalist Report</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#f1ecdc">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="iNat Viewer">
+<meta name="apple-mobile-web-app-title" content="Naturalist Report">
 <script>
 // Appearance: 'auto' follows the device, or force 'light' / 'dark'. Set before the first paint.
 var THEME_KEY = 'inat_theme', themeMq = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
@@ -789,7 +789,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   <div class="coverwrap">
   <nav class="marks" id="marks" aria-label="Sort"></nav>
   <header class="top cover">
-    <div class="clabel"><h1><span>Nature</span><span>Observations</span></h1><p>Field notes · observation book<br>Made from your iNaturalist records</p><button type="button" id="covername" aria-haspopup="dialog" title="Switch user, search or share"></button>
+    <div class="clabel"><h1><span>Naturalist</span><span>Report</span></h1><p>Field notes · observation book<br>Made from your iNaturalist records</p><button type="button" id="covername" aria-haspopup="dialog" title="Switch user, search or share"></button>
       <button type="button" id="coverava" class="coverava" aria-label="Observers" title="Switch user, search or share" hidden></button></div>
     <button id="acct" aria-label="Account and sync" aria-expanded="false" hidden></button>
     <button type="button" id="signin" class="signin" hidden>Sign in</button>
@@ -3635,7 +3635,7 @@ $('share').onclick = async () => {
   const url = buildShareUrl();
   if (!url) return toast('Log in or view someone first.');
   log(`share link: ${url}`);
-  try { if (navigator.share) { await navigator.share({ title: 'iNat Viewer', url }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+  try { if (navigator.share) { await navigator.share({ title: 'Naturalist Report', url }); return; } } catch (e) { if (e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(url); toast('Link copied'); } catch { window.prompt('Copy this link', url); }
 };
 // Apply tab/filters from the address (shared link). Called once at startup.
@@ -4078,7 +4078,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-154 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-155 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

@@ -1,4 +1,4 @@
-# iNat Viewer
+# Naturalist Report
 
 Sign in with iNaturalist (the Sign in sticker on the cover) and your observations are shown as a
 taxonomic tree (kingdom → genus → species), so closely related species sit together.

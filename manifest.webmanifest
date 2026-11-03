@@ -1,6 +1,6 @@
 {
-  "name": "iNat Viewer",
-  "short_name": "iNat Viewer",
+  "name": "Naturalist Report",
+  "short_name": "Naturalist Report",
   "description": "Browse and compare iNaturalist observations",
   "start_url": "./",
   "scope": "./",
