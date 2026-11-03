@@ -560,6 +560,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .vhead { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 0 4px; }
   .vtitle { font:700 34px/1 var(--hw); font-size-adjust:.5; color:#27348b; } .dark .vtitle { color:#a9bdf2; }
   .vtools { display:flex; gap:8px; }
+  #sortchips .cls { gap:7px; padding-left:9px; }
   .vt { width:42px; height:42px; padding:0; display:grid; place-items:center; border-radius:50%; background:none; color:#27348b; border:2.5px solid #27348b; }
   .vt.on { background:rgba(250,225,60,.55); }
   .vt[hidden] { display:none; }
@@ -3358,7 +3359,8 @@ function chooseSort(k) {
 function drawSortChips() {
   const box = $('sortchips'); box.replaceChildren();
   for (const [k, label] of SORTS) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (sortId() === k ? ' on' : ''); b.textContent = label;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (sortId() === k ? ' on' : '');
+    b.insertAdjacentHTML('beforeend', ic({ recent: 'clock', rare: 'gem', tree: 'list-tree', place: 'map-pin', explore: 'compass' }[k], 18)); b.append(label);
     b.setAttribute('aria-pressed', String(sortId() === k));
     b.onclick = () => chooseSort(k);
     box.append(b);
@@ -3688,7 +3690,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-90 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-91 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
