@@ -357,7 +357,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .fpanel::before, #areapanel::before { content:''; position:absolute; left:50%; top:7px; width:44px; height:4px; margin-left:-22px; border-radius:2px; background:rgba(55,80,122,.35); }
   .fpanel h4 { font:700 13px 'Trebuchet MS', Arial, sans-serif; font-size-adjust:none; letter-spacing:.14em; text-transform:uppercase; color:#37507a; }
   .fpanel .status, #areapanel .status { color:#5a6590; }
-  .fpanel .cls { border:2.5px solid #27348b; border-radius:7px; background:none; color:#27348b; opacity:.88; text-transform:uppercase; letter-spacing:.05em; font-size:15px; padding:5px 11px; filter:url(#rough); }
+  .fpanel .cls { border:2.5px solid #27348b; border-radius:7px; background:none; color:#27348b; opacity:.88; text-transform:uppercase; letter-spacing:.05em; font-size:15px; padding:5px 11px; }
   .fpanel .cls.on { background:rgba(250,225,60,.55); opacity:1; border-color:#27348b; color:#1b2b6b; }
   .fpanel .cls.fav { border-style:solid; }
   .fpanel select, .fpanel input[type=date], .fpanel input[type=search], #jump { background:transparent !important; color:#27348b !important; border:0 !important; border-bottom:1px solid #9bb0c6 !important; border-radius:0 !important; font:700 22px var(--hw) !important; padding:4px 0 !important; }
@@ -691,10 +691,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
         </div>
         <h4>Sort</h4>
         <div id="sortchips" class="clsrow" role="group" aria-label="Sort the photos"></div>
-        <div id="fsMerge">
-          <h4>Small groups</h4>
-          <div id="mergechips" class="clsrow" role="group" aria-label="Fold small groups into the folder above"></div>
-        </div>
         <div id="fsGroupMode">
           <h4>Same species</h4>
           <div id="gmodechips" class="clsrow" role="group" aria-label="How to group observations of the same species"></div>
@@ -1808,8 +1804,7 @@ function renderGallery(obs) {
   if (!gal.items.length) { gal.cells = []; el.replaceChildren(); $('pathbar').hidden = true; return; }
   drawGallery();
 }
-let galMerge = 3; // groups with fewer photos than this are folded into the folder above (0 = never)
-try { const m = localStorage.getItem('inat_merge'); if (m !== null && [0, 3, 6, 12].includes(+m)) galMerge = +m; } catch {}
+const galMerge = 3; // a group with fewer photos than this has no folder: its photos join the folder above, each with a sticker
 const galGroups = 'dividers'; // groups are always folder dividers (the old chevron-tab layout is still in the code but unused)
 // A divider section: a card with a folder tab on its top edge; sections nest, and their tabs step across the page by level.
 // A collapsed group in the dividers layout: small photos sampled evenly across the group, as many as fit the width, and the count at the end.
@@ -3672,14 +3667,6 @@ function drawLookChips() {
   setIcon($('themebtn'), dark ? 'moon' : 'sun', 22); $('themebtn').title = dark ? 'Dark: tap for light' : 'Light: tap for dark';
   setIcon($('stylebtn'), galStyle === 'simple' ? 'simple' : 'polaroid', 22); $('stylebtn').title = galStyle === 'simple' ? 'Simple photos: tap for Polaroids' : 'Polaroids: tap for simple photos';
   setIcon($('shuffle'), 'shuffle', 22); setIcon($('unshuffle'), 'rotate-ccw', 22);
-  $('fsMerge').hidden = !(view === 'recent' && !raritySort && recentSeed == null) && view !== 'tree' && view !== 'place';
-  const mb = $('mergechips'); mb.replaceChildren();
-  for (const [n, label] of [[0, 'Own folder'], [3, 'Under 3'], [6, 'Under 6'], [12, 'Under 12']]) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (galMerge === n ? ' on' : ''); b.textContent = label; b.setAttribute('aria-pressed', String(galMerge === n));
-    b.title = n ? `A group with fewer than ${n} photos shares the folder above` : 'Every group gets its own folder';
-    b.onclick = () => { galMerge = n; try { localStorage.setItem('inat_merge', String(n)); } catch {} drawLookChips(); show(true); };
-    mb.append(b);
-  }
   const glyph = cols => { const g = document.createElement('span'); g.className = 'glyph'; g.style.setProperty('--c', cols); for (let i = 0; i < cols * 2; i++) g.append(document.createElement('i')); return g; };
   const SIZES = [['xl', 'XL', 1], ['l', 'L', 2], ['m', 'M', 3], ['s', 'S', 4]], cur = SIZES.find(x => x[0] === galSize);
   const btn = $('sizebtn'); btn.replaceChildren(glyph(cur[2])); btn.title = `Photo size ${cur[1]}: ${cur[2]} column${cur[2] > 1 ? 's' : ''} on a phone`;
@@ -3779,7 +3766,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-101 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-102 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
