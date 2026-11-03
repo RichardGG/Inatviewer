@@ -36,10 +36,10 @@ Bump `VER` in `sw.js` to force the cached libraries, tiles and photos to be drop
 
 A bottom bar has the main controls; each opens a sheet above it.
 
-- **Sort**: *Latest* (grouped by year, month, day), *Rarest* (species with the fewest iNaturalist observations first), *Taxonomy*, *Place* and *Common* (the most observed species around a place, shown as Polaroids with a green tick on the ones you have seen).
+- **Sort**: *Latest* (grouped by year, month, day), *Rarest* (species with the fewest iNaturalist observations first), *Taxonomy*, *Place* and *Common* (the most observed species inside the Location circle, shown as Polaroids with a green tick on the ones you have seen; "hide species I've seen" and "research grade only" are in the Sort sheet).
   For Latest and Rarest, *Same species* chooses between every observation, one per species per day, or one per species (grouped entries look like a small pile of Polaroids). *Shuffle* randomises the order.
 - **Filter**: jump to a group or species, group (birds, plants…), favourite-photo status, and date.
-- **Location**: in the observation sorts, a map where the orange circle filters your observations to the area in view; in Common, the place picker (tap the map, search for a place or use your location; radius or iNaturalist place; recent searches; research grade only; hide species you've seen).
+- **Location**: one map for every sort. The orange circle is the current view of the map; it filters your observations to the area and is the area Common searches (within 100 km). Buttons on the map jump to your location or search for a place by name.
 - **Compare**: species missing from another person's list, or seen by both (available from your own account and while viewing someone else).
 
 Every photo is a Polaroid (white frame, handwritten name in Caveat, a small random tilt fixed per observation) in one strict grid. A group is not a row in between: its overlapping

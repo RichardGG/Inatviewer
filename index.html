@@ -421,6 +421,12 @@
   .nbpr .season-l { font:700 18px var(--hw); color:#27348b; } .nbpr .season-l .me { color:#b5352b; }
   .nbmap { position:relative; }
   .nbmap #dmap { border:9px solid #fbfaf4; border-radius:2px; box-shadow:0 4px 12px rgba(0,0,0,.38); }
+  .msearch { position:absolute; z-index:1100; top:10px; left:52px; right:10px; }
+  .msearch input { width:100%; padding:7px 10px; font:inherit; border:2px solid rgba(0,0,0,.25); border-radius:4px; background:#fff; color:#222; }
+  .msug { background:#fff; color:#222; box-shadow:0 6px 18px rgba(0,0,0,.3); max-height:190px; overflow-y:auto; font-size:14px; }
+  .msug:empty { display:none; }
+  .msug button { display:flex; flex-direction:column; align-items:flex-start; width:100%; text-align:left; background:#fff; color:#222; border:0; border-top:1px solid #eee; border-radius:0; padding:7px 10px; font-size:15px; }
+  .msug button small { color:#666; font-size:11px; }
 </style>
 </head>
 <body>
@@ -502,6 +508,10 @@
           <h4>Same species</h4>
           <div id="gmodechips" class="clsrow" role="group" aria-label="How to group observations of the same species"></div>
         </div>
+        <div id="fsCommon">
+          <h4>Common</h4>
+          <div id="commonchips" class="clsrow" role="group" aria-label="Options for the Common sort"></div>
+        </div>
         <h4>Order</h4>
         <div class="clsrow">
           <button type="button" class="cls" id="shuffle">Shuffle</button>
@@ -542,28 +552,8 @@
         <p class="status" id="cmpnote" style="margin:6px 0 0"></p>
         <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
       </div>
-      <div class="card fpanel" id="pexplore" hidden>
-        <h4>Location for Common</h4>
-        <p class="status" style="margin:0 0 8px">Tap the map, search for a place, or use your location. Common lists the most observed species there and which ones you have seen.</p>
-      <div id="expmapwrap">
-        <div id="expmap"></div>
-        <div id="expsearch">
-          <button type="button" id="expsbtn" aria-label="Search for a place" title="Search for a place"><i data-i="search" data-s="18"></i></button>
-          <input type="search" id="expq" placeholder="Town, park, address, region…" autocomplete="off" spellcheck="false" hidden>
-          <div id="expsug" hidden></div>
-        </div>
-        <div id="exphist" hidden></div>
-      </div>
-        <div id="exppills"></div>
-        <div class="row" style="margin:6px 0 4px">
-          <label class="status"><input type="checkbox" id="expres" checked> Research grade only</label>
-          <label class="status"><input type="checkbox" id="expunseen"> Hide species I've seen</label>
-        </div>
-        <p id="expnote" class="status"></p>
-        <button class="secondary" id="exprefresh" hidden style="margin-top:6px">Refresh from iNaturalist</button>
-      </div>
       <div class="card" id="areapanel" hidden>
-        <p class="status" style="margin:0 0 8px">Pan and zoom the map: the orange circle always fits the current view. Turn the filter on and only observations inside the circle are shown in every view.</p>
+        <p class="status" style="margin:0 0 8px">Pan and zoom the map: the orange circle always fits the current view. While the filter is on, only observations inside the circle are shown, and Common lists the species seen inside it. Use the search and target buttons to jump to a place.</p>
         <div id="areamap"></div>
         <div class="row">
           <label style="display:flex;align-items:center;gap:8px;flex:1;min-width:150px"><input type="checkbox" id="follow"> Filter to the map view</label>
@@ -579,6 +569,7 @@
     <div id="pathbar" hidden><div class="pbin"></div></div>
     <div class="card" id="gal"></div>
     <button class="secondary" id="expmore" hidden style="margin:12px 12px 0">Show more</button>
+    <button class="secondary" id="exprefresh" hidden style="margin:12px 12px 0">Refresh from iNaturalist</button>
   </div>
 <div id="sheetbg" hidden></div>
 </main>
@@ -1928,8 +1919,8 @@ function drawChips() {
   const dv = $('datesel').value;
   if (dv !== 'all') add('calendar', `${dv === 'custom' ? `${$('dfrom').value || '…'} → ${$('dto').value || '…'}` : $('datesel').selectedOptions[0].textContent}`,
     () => { $('datesel').value = 'all'; $('customdates').hidden = true; scheduleShow(); }, 'Clear date filter');
-  const nearby = view === 'explore'; // Nearby only uses the date and group filters
-  if (!nearby && area) add('map-pin', `within ${fmtDist(area.r)}`, () => setArea(null), 'Clear area filter');
+  const nearby = view === 'explore'; // Common uses the date, group and area filters
+  if (area) add('map-pin', `within ${fmtDist(area.r)}`, () => setArea(null), 'Clear area filter');
   if (filterClasses.size) add('paw-print', `${[...filterClasses].map(k => EXP_CLASSES.find(x => x[0] === k)[1]).join(', ')}`,
     () => { filterClasses.clear(); try { localStorage.setItem('inat_fclass', ''); } catch {} drawFilterChips(); scheduleShow(); }, 'Clear group filter');
   if (!nearby && favMode) add({ need: 'star', theirs: 'star', others: 'heart', mine: 'user-round', new: 'refresh-cw' }[favMode], { need: 'Needs favourite', theirs: 'Their favourites', others: 'Faved by others', mine: 'Faved by me', new: 'New since favourite' }[favMode],
@@ -1968,12 +1959,75 @@ function drawAreaMarkers() {
   areaCluster.addLayers(markers);
   if (!areaFitted) {
     moveMap(() => {
-      if (area) areaMap.fitBounds(L.circle([area.lat, area.lng], { radius: area.r }).getBounds(), { animate: false });
+      if (area) areaMap.fitBounds(L.latLng(area.lat, area.lng).toBounds(area.r * 2), { animate: false });
       else if (markers.length) areaMap.fitBounds(L.latLngBounds(markers.map(m => m.getLatLng())).pad(0.1), { maxZoom: 12, animate: false });
       else areaMap.setView([20, 0], 2, { animate: false });
     });
     areaFitted = true;
   }
+}
+// Map buttons: jump to my location, and search for a place by name (OpenStreetMap's Nominatim, light use).
+function addMapButtons(map) {
+  const button = (icon, label, fn) => {
+    const C = L.Control.extend({
+      options: { position: 'topleft' },
+      onAdd() {
+        const box = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        const a = L.DomUtil.create('a', 'gpsbtn', box);
+        a.href = '#'; a.role = 'button'; a.title = label; a.setAttribute('aria-label', label); a.innerHTML = ic(icon, 18);
+        L.DomEvent.disableClickPropagation(box);
+        L.DomEvent.on(a, 'click', e => { L.DomEvent.preventDefault(e); fn(); });
+        return box;
+      },
+    });
+    new C().addTo(map);
+  };
+  const wrap = document.createElement('div'); wrap.className = 'msearch'; wrap.hidden = true;
+  const inp = document.createElement('input'); inp.type = 'search'; inp.placeholder = 'Town, park, address, region…'; inp.autocomplete = 'off'; inp.spellcheck = false;
+  const sug = document.createElement('div'); sug.className = 'msug';
+  wrap.append(inp, sug); map.getContainer().append(wrap);
+  L.DomEvent.disableClickPropagation(wrap); L.DomEvent.disableScrollPropagation(wrap);
+  let timer, seq = 0;
+  const close = () => { wrap.hidden = true; sug.replaceChildren(); inp.value = ''; };
+  inp.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  inp.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = inp.value.trim();
+    if (q.length < 2) { sug.replaceChildren(); return; }
+    timer = setTimeout(async () => {
+      const my = ++seq;
+      sug.textContent = 'Searching…';
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=${encodeURIComponent(q)}`;
+        log(`GET ${url}`);
+        const r = await fetch(url); if (!r.ok) throw new Error(`geocoder ${r.status}`);
+        const list = await r.json();
+        if (my !== seq) return;
+        sug.replaceChildren();
+        if (!list.length) { sug.textContent = 'No matching places.'; return; }
+        for (const p of list) {
+          const b = document.createElement('button'); b.type = 'button';
+          b.append(p.name || p.display_name.split(',')[0]);
+          const sm = document.createElement('small'); sm.textContent = p.display_name; b.append(sm);
+          b.onclick = () => { map.setView([+p.lat, +p.lon], 11, { animate: false }); close(); };
+          sug.append(b);
+        }
+      } catch (e) { log(`geocoding failed: ${e.message}`, 'e'); if (my === seq) sug.textContent = 'Could not search for places.'; }
+    }, 600);
+  });
+  button('locate-fixed', 'My location', () => {
+    if (!navigator.geolocation) return status('Geolocation is not available in this browser.', true);
+    status('Getting your location…');
+    navigator.geolocation.getCurrentPosition(pos => {
+      status('');
+      log(`geolocation: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (±${Math.round(pos.coords.accuracy)} m)`);
+      map.setView([pos.coords.latitude, pos.coords.longitude], 11, { animate: false });
+    }, err => {
+      log(`geolocation error ${err.code}: ${err.message}`, 'e');
+      status(err.code === 1 ? 'Location permission denied. Search for a place name instead.' : `Could not get your location (${err.message}).`, true);
+    }, { timeout: 15000, maximumAge: 60000 });
+  });
+  button('search', 'Search for a place', () => { wrap.hidden = !wrap.hidden; if (!wrap.hidden) inp.focus(); else close(); });
 }
 async function openAreaPanel(open) {
   $('areapanel').hidden = !open;
@@ -1988,6 +2042,7 @@ async function openAreaPanel(open) {
     areaCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40, showCoverageOnHover: false });
     areaMap.addLayer(areaCluster);
     areaMap.setView([20, 0], 2);
+    addMapButtons(areaMap);
     // While filtering, the circle tracks the view live; the filter itself updates when the move ends.
     areaMap.on('move', () => { if ($('follow').checked && !suppressMove) drawArea(viewportCircle()); });
     areaMap.on('moveend', () => { if ($('follow').checked && !suppressMove) setArea(viewportCircle()); });
@@ -1995,14 +2050,14 @@ async function openAreaPanel(open) {
   moveMap(() => areaMap.invalidateSize({ animate: false }));
   drawArea();
   drawAreaMarkers();
+  if (view === 'explore' && !area) { $('follow').checked = true; setArea(viewportCircle()); } // Common needs an area: start with the map view
 }
 // Bottom bar: Sort, Filter and Compare open a sheet each (one at a time); Location opens the map sheet.
 const PANELS = { bsort: 'psort', bfilter: 'pfilter', bcmp: 'pcmp' };
-const anyPanelOpen = () => Object.values(PANELS).some(p => !$(p).hidden) || !$('areapanel').hidden || !$('pexplore').hidden;
+const anyPanelOpen = () => Object.values(PANELS).some(p => !$(p).hidden) || !$('areapanel').hidden;
 function closePanels(except) {
   for (const [btn, pan] of Object.entries(PANELS)) if (pan !== except) { $(pan).hidden = true; $(btn).classList.remove('open'); }
   if (except !== 'areapanel' && !$('areapanel').hidden) { openAreaPanel(false); $('areabtn').classList.remove('open'); }
-  if (except !== 'pexplore' && !$('pexplore').hidden) { $('pexplore').hidden = true; $('areabtn').classList.remove('open'); }
   $('sheetbg').hidden = !anyPanelOpen();
 }
 for (const [btn, pan] of Object.entries(PANELS)) {
@@ -2015,15 +2070,8 @@ for (const [btn, pan] of Object.entries(PANELS)) {
     if (opening && btn === 'bfilter') { $('fsJump').hidden = $('fsFav').hidden = view === 'explore'; }
   };
 }
-// Location: in Common it is the place picker (map, search, recent searches, radius); in the other sorts it is the circle that filters my observations.
+// Location: one map for every sort. The orange circle is the view of the map; it filters my observations and is the area Common searches.
 $('areabtn').onclick = () => {
-  if (view === 'explore') {
-    closePanels('pexplore');
-    const opening = $('pexplore').hidden;
-    $('pexplore').hidden = !opening; $('areabtn').classList.toggle('open', opening); $('sheetbg').hidden = !opening;
-    if (opening) initExpMap();
-    return;
-  }
   closePanels('areapanel');
   const opening = $('areapanel').hidden;
   openAreaPanel(opening); $('areabtn').classList.toggle('open', opening); $('sheetbg').hidden = !opening;
@@ -2492,14 +2540,10 @@ document.addEventListener('click', e => {
   location.href = intent;
 }, true); // capture phase: some containers (map popups etc.) stop click propagation
 
-// ---------- Nearby: most observed species in a place, and whether I've seen them ----------
-const EXP_KEY = 'inat_explore';
-const explore = { chain: [], extra: [], selected: null, point: null, radius: 10, items: [], total: 0, page: 0, loading: false, err: '', seq: 0 };
-try {
-  const s = JSON.parse(localStorage.getItem(EXP_KEY) || 'null');
-  if (s && Array.isArray(s.chain)) Object.assign(explore, { chain: s.chain, extra: s.extra || [], selected: s.selected || null, point: s.point || null, radius: s.radius || 10 });
-} catch {}
-const saveExplore = () => { try { localStorage.setItem(EXP_KEY, JSON.stringify({ chain: explore.chain, extra: explore.extra, selected: explore.selected, point: explore.point, radius: explore.radius })); } catch {} };
+// ---------- Common: the most observed species inside the Location circle, and whether I've seen them ----------
+const explore = { items: [], total: 0, page: 0, loading: false, err: '', seq: 0, fkey: '', cachedAt: null };
+let exploreResearch = true, exploreHideSeen = false;
+try { exploreResearch = localStorage.getItem('inat_common_res') !== '0'; exploreHideSeen = localStorage.getItem('inat_common_hide') === '1'; } catch {}
 
 function speciesIdOf(o) {
   if (state.names[o.tid]?.rank === 'species') return o.tid;
@@ -2527,351 +2571,58 @@ function myPhotoBySpecies() {
   }
   return m;
 }
-const placeObj = id => {
-  const p = state.places[id];
-  return p && !p.missing ? { id, name: p.name, rank: placeRank(p), level: p.level } : null;
-};
-function pickDefaultLevel(chain) {
-  return (chain.find(p => p.level === 20) || chain[chain.length - 1] || {}).id || null;
-}
-function setExplore(chain, extra, selected) {
-  Object.assign(explore, { chain, extra, selected: selected ?? pickDefaultLevel(chain) });
-  saveExplore();
-  loadExplore();
-}
-
+// iNaturalist's species list is searched by radius; very wide circles are cut to the nearest 100 km.
+const exploreKm = () => Math.min(100, Math.max(0.1, area.r / 1000));
+// Open Common around where an observation was made.
 async function exploreFromObs(o) {
+  const ll = parseLoc(o);
+  if (!ll) { status('That observation has no location.', true); return; }
+  $('follow').checked = true; areaFitted = false;
+  setArea({ lat: ll[0], lng: ll[1], r: 10000 });
   setView('explore');
-  status('Looking up places…');
-  await ensurePlaces();
-  const chain = placeChain(o).filter(id => id !== UNKNOWN_LOC).map(placeObj).filter(Boolean);
-  if (!chain.length) { status('No place data for that observation (private, or cached before location support).', true); return; }
-  status('');
-  explore.point = null;
-  setExplore(chain, []);
 }
-
-let expMapObj, expMarker;
-function markPoint(lat, lng, zoom) {
-  if (!expMapObj) return;
-  if (!expMarker) expMarker = L.circleMarker([lat, lng], { radius: 9, color: '#fff', weight: 2, fillColor: '#d9480f', fillOpacity: 0.95 }).addTo(expMapObj);
-  else expMarker.setLatLng([lat, lng]);
-  if (zoom) expMapObj.setView([lat, lng], zoom);
-}
-let expCircle;
-function drawExpCircle() {
-  if (!expMapObj) return;
-  if (expCircle) { expCircle.remove(); expCircle = null; }
-  if (explore.selected !== 'r' || !explore.point) return;
-  expCircle = L.circle([explore.point.lat, explore.point.lng], { radius: explore.radius * 1000, color: '#d9480f', weight: 2, fillColor: '#d9480f', fillOpacity: 0.08, interactive: false }).addTo(expMapObj);
-  expMapObj.fitBounds(expCircle.getBounds(), { animate: false });
-}
-// Outline of the selected iNaturalist place (its boundary polygon, else its bounding box), with the map zoomed to fit it.
-const placeGeo = new Map();
-let expShape, shapeSeq = 0;
-async function drawPlaceShape() {
-  if (!expMapObj) return;
-  const seq = ++shapeSeq, id = explore.selected;
-  if (expShape) { expShape.remove(); expShape = null; }
-  if (!id || id === 'r') return;
-  try {
-    let g = placeGeo.get(id);
-    if (!g) {
-      const r = (await api(`/places/${id}`)).results[0];
-      g = r.geometry_geojson || r.bounding_box_geojson || null;
-      placeGeo.set(id, g);
-      if (!g) log(`place ${id} has no boundary data`, 'w');
-    }
-    if (seq !== shapeSeq || !g || !expMapObj) return;
-    expShape = L.geoJSON(g, { style: { color: '#d9480f', weight: 2, fillColor: '#d9480f', fillOpacity: 0.1 }, interactive: false }).addTo(expMapObj);
-    const b = expShape.getBounds();
-    if (b.isValid()) { expMapObj.fitBounds(b, { animate: false, padding: [12, 12] }); if (explore.items.length && !explore.cachedAt) saveSearch(); }
-  } catch (e) { log(`place boundary failed: ${e.message}`, 'w'); }
-}
-// A copy of the current Nearby search area (radius circle or place outline) for use on another map; null if there isn't one.
+// The circle as a layer for another map (the species page frames the area that was searched).
 function nearbyAreaLayer() {
-  const style = { color: '#d9480f', weight: 2, fillColor: '#d9480f', fillOpacity: 0.08, interactive: false };
-  if (explore.selected === 'r' && explore.point) {
-    const c = L.latLng(explore.point.lat, explore.point.lng);
-    return { layer: L.circle(c, { radius: explore.radius * 1000, ...style }), bounds: c.toBounds(explore.radius * 2000) };
-  }
-  if (expShape) { const layer = L.geoJSON(expShape.toGeoJSON(), { style: () => style }); return { layer, bounds: layer.getBounds() }; }
-  return null;
-}
-// Find the iNaturalist places that contain a point and select the default level.
-async function lookupPoint(lat, lng, label, mode = 'r') {
-  status('Looking up places…');
-  explore.point = { lat, lng, label: label || `${lat.toFixed(3)}, ${lng.toFixed(3)}` };
-  markPoint(lat, lng);
-  try {
-    const d = 0.002; // ~200 m box around the point
-    const r = (await api(`/places/nearby?nelat=${lat + d}&nelng=${lng + d}&swlat=${lat - d}&swlng=${lng - d}&per_page=50`)).results;
-    const standard = Array.isArray(r) ? r : (r.standard || []), community = Array.isArray(r) ? [] : (r.community || []);
-    for (const p of [...standard, ...community]) {
-      state.places[p.id] = { id: p.id, name: p.name || p.display_name, level: p.admin_level ?? null, type: p.place_type ?? null };
-    }
-    const mk = p => ({ id: p.id, name: p.name || p.display_name, rank: placeRank({ level: p.admin_level ?? null }), level: p.admin_level ?? null });
-    const chain = standard.filter(p => p.admin_level != null).sort((a, b) => a.admin_level - b.admin_level).map(mk);
-    const extra = [...standard.filter(p => p.admin_level == null), ...community].slice(0, 12).map(mk);
-    if (explore.point.label === 'selected point') { const c = chain.find(p => p.level === 30); if (c) explore.point.label = c.name; } // name the spot after its city
-    log(`places/nearby: ${standard.length} standard, ${community.length} community → ${chain.length} admin levels`);
-    status('');
-    setExplore(chain, extra, mode === 'r' ? 'r' : (pickDefaultLevel(chain) || extra[0]?.id || 'r'));
-  } catch (e) {
-    // the radius search doesn't need the place lookup
-    log(`nearby lookup failed: ${e.stack || e}`, 'e'); status('');
-    if (mode === 'r') setExplore([], [], 'r'); else status(e.message, true);
-  }
+  if (!area) return null;
+  const layer = L.circle([area.lat, area.lng], { radius: area.r, color: '#d9480f', weight: 2, fillColor: '#d9480f', fillOpacity: 0.08, interactive: false });
+  return { layer, bounds: L.latLng(area.lat, area.lng).toBounds(area.r * 2) };
 }
 
-function useMyLocation() {
-  if (!navigator.geolocation) return status('Geolocation is not available in this browser.', true);
-  status('Getting your location…');
-  navigator.geolocation.getCurrentPosition(pos => {
-    const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-    log(`geolocation: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${Math.round(accuracy)} m)`);
-    markPoint(lat, lng, 9);
-    lookupPoint(lat, lng, 'my location', 'place');
-  }, err => {
-    log(`geolocation error ${err.code}: ${err.message}`, 'e');
-    status(err.code === 1 ? 'Location permission denied. Type a place name or pick on the map instead.' : `Could not get your location (${err.message}).`, true);
-  }, { timeout: 15000, maximumAge: 60000 });
-}
-
-// ---- type a place name: iNaturalist places + OpenStreetMap (Nominatim) locations ----
-let sugTimer, sugSeq = 0;
-function openPlaceSearch(on) {
-  $('expsearch').classList.toggle('open', on);
-  $('expq').hidden = !on;
-  if (on) $('exphist').hidden = true;
-  if (on) { $('expq').focus(); $('expq').select(); } else { $('expsug').hidden = true; $('expq').blur(); }
-}
-$('expsbtn').onclick = () => openPlaceSearch(true);
-$('expq').addEventListener('keydown', e => { if (e.key === 'Escape') openPlaceSearch(false); });
-$('expq').addEventListener('blur', () => setTimeout(() => { if (!$('expq').value.trim() && document.activeElement !== $('expq')) openPlaceSearch(false); }, 200));
-const sug = { inat: null, osm: null, q: '' };
-function drawSuggestions() {
-  const box = $('expsug');
-  box.replaceChildren(); box.className = '';
-  const head = t => { const d = document.createElement('div'); d.className = 'status'; d.style.padding = '6px 4px 2px'; d.textContent = t; box.append(d); };
-  if (sug.inat?.length) {
-    head('iNaturalist places (species lists for the whole place)');
-    for (const p of sug.inat) {
-      const b = document.createElement('button'); b.type = 'button';
-      b.append(p.name || p.display_name);
-      const sm = document.createElement('small');
-      sm.textContent = [p.display_name !== p.name ? p.display_name : '', placeRank({ level: p.admin_level ?? null })].filter(Boolean).join(' · ');
-      b.append(sm);
-      b.onclick = () => { $('expq').value = p.name || p.display_name; openPlaceSearch(false); pickPlace(p); };
-      box.append(b);
-    }
-  }
-  if (sug.osm?.length) {
-    head('Anywhere (radius search around the point)');
-    for (const r of sug.osm) {
-      const b = document.createElement('button'); b.type = 'button';
-      const nm = r.name || r.display_name.split(',')[0];
-      b.append(nm);
-      const sm = document.createElement('small'); sm.textContent = r.display_name; b.append(sm);
-      b.onclick = () => {
-        openPlaceSearch(false); $('expq').value = nm;
-        const lat = +r.lat, lng = +r.lon;
-        if (expMapObj) expMapObj.setView([lat, lng], 10, { animate: false });
-        lookupPoint(lat, lng, nm);
-      };
-      box.append(b);
-    }
-  }
-  if (!sug.inat?.length && !sug.osm?.length) { box.textContent = sug.inat && sug.osm ? 'No matching places.' : 'Searching…'; box.className = 'status'; }
-  box.hidden = false;
-}
-$('expq').addEventListener('input', () => {
-  clearTimeout(sugTimer);
-  const q = $('expq').value.trim();
-  if (q.length < 2) { $('expsug').hidden = true; return; }
-  sugTimer = setTimeout(() => {
-    const seq = ++sugSeq;
-    Object.assign(sug, { inat: null, osm: null, q });
-    drawSuggestions();
-    api(`/places/autocomplete?q=${encodeURIComponent(q)}&per_page=6`)
-      .then(d => d.results).catch(e => { log(`place autocomplete failed: ${e.message}`, 'e'); return []; })
-      .then(r => { if (seq === sugSeq) { sug.inat = r; drawSuggestions(); } });
-    // Nominatim usage policy: light use only, ≤1 request/second (this is debounced per keystroke burst)
-    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=${encodeURIComponent(q)}`;
-    log(`GET ${url}`);
-    fetch(url).then(r => r.ok ? r.json() : Promise.reject(new Error(`geocoder ${r.status}`)))
-      .catch(e => { log(`geocoding failed: ${e.message}`, 'e'); return []; })
-      .then(r => { if (seq === sugSeq) { sug.osm = r; drawSuggestions(); } });
-  }, 600);
-});
-async function pickPlace(p) {
-  status('Looking up place…');
-  try {
-    const full = (await api(`/places/${p.id}`)).results[0];
-    const anc = full.ancestor_place_ids || [];
-    const ancestors = anc.length ? (await api(`/places/${anc.join(',')}?per_page=50`)).results : [];
-    const all = [...ancestors, full];
-    for (const x of all) state.places[x.id] = { id: x.id, name: x.name || x.display_name, level: x.admin_level ?? null, type: x.place_type ?? null };
-    const mk = x => ({ id: x.id, name: x.name || x.display_name, rank: placeRank({ level: x.admin_level ?? null }), level: x.admin_level ?? null });
-    const chain = all.filter(x => x.admin_level != null).sort((a, b) => a.admin_level - b.admin_level).map(mk);
-    const extra = full.admin_level == null ? [mk(full)] : [];
-    status('');
-    explore.point = null;
-    setExplore(chain, extra, full.id);
-    if (full.location) { const [la, lo] = String(full.location).split(',').map(Number); if (isFinite(la) && isFinite(lo)) markPoint(la, lo, 8); }
-  } catch (e) { log(`place lookup failed: ${e.stack || e}`, 'e'); status(e.message, true); }
-}
-
-// ---- the selection map is always shown ----
-async function initExpMap() {
-  try { await ensureLeaflet(); } catch (e) { log(String(e), 'e'); return status(`Map library failed to load: ${e.message}`, true); }
-  if (view !== 'explore') return;
-  if (!expMapObj) {
-    expMapObj = L.map('expmap', { worldCopyJump: true });
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(expMapObj);
-    // standard white map buttons (below the zoom buttons): use my location, recent searches
-    const mapButton = (icon, label, fn) => {
-      const C = L.Control.extend({
-        options: { position: 'topleft' },
-        onAdd() {
-          const box = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-          const a = L.DomUtil.create('a', 'gpsbtn', box);
-          a.href = '#'; a.role = 'button'; a.title = label; a.setAttribute('aria-label', label); a.innerHTML = ic(icon, 18);
-          L.DomEvent.disableClickPropagation(box);
-          L.DomEvent.on(a, 'click', e => { L.DomEvent.preventDefault(e); fn(); });
-          return box;
-        },
-      });
-      new C().addTo(expMapObj);
-    };
-    mapButton('locate-fixed', 'My location', useMyLocation);
-    mapButton('history', 'Recent searches', toggleHistory);
-    expMapObj.on('click', e => lookupPoint(e.latlng.lat, e.latlng.lng, 'selected point'));
-    const pts = state.obs.map(parseLoc).filter(Boolean);
-    if (explore.point) expMapObj.setView([explore.point.lat, explore.point.lng], 9);
-    else if (pts.length) expMapObj.fitBounds(L.latLngBounds(pts).pad(0.1), { maxZoom: 10 });
-    else expMapObj.setView([20, 0], 2);
-  }
-  expMapObj.invalidateSize();
-  if (explore.point) markPoint(explore.point.lat, explore.point.lng);
-  drawExpCircle();
-  drawPlaceShape();
-}
-
-// ---- recent Nearby searches, kept in IndexedDB so they can be reopened (also offline) ----
+// ---- recent searches kept in IndexedDB, so a search shows again (also offline) ----
 const SEARCH_MAX = 15, SEARCH_ITEMS = 300;
-const searchFilters = () => ({ date: $('datesel').value, from: $('dfrom').value, to: $('dto').value, classes: [...filterClasses].sort(), research: $('expres').checked });
-const searchKey = () => {
-  const f = searchFilters(), where = explore.selected === 'r' ? `r:${explore.point.lat.toFixed(3)},${explore.point.lng.toFixed(3)}:${explore.radius}` : `p:${explore.selected}`;
-  return `${where}|${f.date}|${f.date === 'custom' ? f.from + '~' + f.to : ''}|${f.classes.join()}|${f.research}`;
-};
-const searchLabel = () => {
-  if (explore.selected === 'r') return `${explore.radius} km around ${explore.point?.label || 'a point'}`;
-  return [...explore.chain, ...explore.extra].find(p => p.id === explore.selected)?.name || 'Place';
-};
-// Title and surrounding place names (finest first) for a saved search, worked out from the place chain stored with it.
-function searchWhere(e) {
-  const chain = (e.chain || []).slice().sort((a, b) => (a.level ?? 0) - (b.level ?? 0));
-  if (e.selected === 'r') {
-    const own = e.point?.label === 'my location', city = chain.find(p => p.level === 30) || chain[chain.length - 1];
-    const use = own ? null : city;
-    return { title: `${e.radius} km around ${own ? 'my location' : (use?.name || e.point?.label || 'a point')}`, where: chain.filter(p => p !== use).slice(-2).reverse().map(p => p.name) };
-  }
-  const sel = [...chain, ...(e.extra || [])].find(p => p.id === e.selected);
-  const up = chain.filter(p => p.id !== e.selected && (sel?.level == null || p.level < sel.level));
-  return { title: sel?.name || e.label, where: up.slice(-2).reverse().map(p => p.name) };
-}
+const expFilterKey = () => `${area ? `${area.lat.toFixed(3)},${area.lng.toFixed(3)},${Math.round(area.r)}` : ''}|${dateRange()}|${[...filterClasses].sort().join()}|${exploreResearch}`;
 async function loadSearches() { return (await idb.get('nearby')) || []; }
 async function saveSearch() {
-  if (!explore.selected || !explore.items.length || (explore.selected === 'r' && !explore.point)) return;
-  const e = {
-    id: searchKey(), t: explore.cachedAt || Date.now(), label: searchLabel(), filters: searchFilters(),
-    chain: explore.chain, extra: explore.extra, selected: explore.selected, point: explore.point, radius: explore.radius,
-    total: explore.total, items: explore.items.slice(0, SEARCH_ITEMS).map(it => ({ count: it.count, taxon: { id: it.taxon.id, name: it.taxon.name, preferred_common_name: it.taxon.preferred_common_name, default_photo: { medium_url: it.taxon.default_photo?.medium_url, square_url: it.taxon.default_photo?.square_url } } })),
-    view: expMapObj ? { lat: expMapObj.getCenter().lat, lng: expMapObj.getCenter().lng, z: expMapObj.getZoom() } : null,
-  };
-  if (explore.cachedAt) e.t = explore.cachedAt;
+  if (!area || !explore.items.length) return;
+  const e = { id: expFilterKey(), t: explore.cachedAt || Date.now(), total: explore.total,
+    items: explore.items.slice(0, SEARCH_ITEMS).map(it => ({ count: it.count, taxon: { id: it.taxon.id, name: it.taxon.name, preferred_common_name: it.taxon.preferred_common_name, default_photo: { medium_url: it.taxon.default_photo?.medium_url, square_url: it.taxon.default_photo?.square_url } } })) };
   const list = (await loadSearches()).filter(x => x.id !== e.id);
   list.unshift(e);
   await idb.set('nearby', list.slice(0, SEARCH_MAX));
 }
 async function findSearch(key) { return (await loadSearches()).find(x => x.id === key); }
-// Bring a saved search back on screen (its species list comes from the cache, no network needed).
-async function restoreSearch(e) {
-  const f = e.filters || {};
-  if ([...$('datesel').options].some(o => o.value === f.date)) $('datesel').value = f.date; else $('datesel').value = 'all';
-  $('dfrom').value = f.from || ''; $('dto').value = f.to || ''; $('customdates').hidden = $('datesel').value !== 'custom';
-  filterClasses.clear(); (f.classes || []).forEach(c => filterClasses.add(c));
-  try { localStorage.setItem('inat_fclass', [...filterClasses].join(',')); } catch {}
-  $('expres').checked = f.research !== false;
-  drawFilterChips();
-  Object.assign(explore, { chain: e.chain, extra: e.extra, selected: e.selected, point: e.point, radius: e.radius, items: e.items, total: e.total,
-    page: Math.ceil(e.items.length / 100), loading: false, err: '', cachedAt: e.t, fkey: expFilterKey() });
-  saveExplore();
-  $('exphist').hidden = true;
-  if (expMapObj) {
-    if (e.point) markPoint(e.point.lat, e.point.lng);
-    if (e.view) expMapObj.setView([e.view.lat, e.view.lng], e.view.z, { animate: false });
-  }
-  drawChips(); renderExplore(); drawPlaceShape();
-}
-async function toggleHistory() {
-  const box = $('exphist');
-  if (!box.hidden) { box.hidden = true; return; }
-  openPlaceSearch(false);
-  await drawHistory(); box.hidden = false;
-}
-async function drawHistory() {
-  const box = $('exphist'), list = await loadSearches();
-  box.replaceChildren();
-  const head = document.createElement('div'); head.className = 'hh';
-  head.append(list.length ? 'Recent searches' : 'No saved searches yet');
-  if (list.length) {
-    const clr = document.createElement('button'); clr.type = 'button'; clr.textContent = 'Clear all';
-    clr.onclick = async () => { await idb.set('nearby', []); drawHistory(); };
-    head.append(clr);
-  }
-  box.append(head);
-  for (const e of list) {
-    const row = document.createElement('div'); row.className = 'hr';
-    const go = document.createElement('button'); go.type = 'button'; go.className = 'go';
-    const { title, where } = searchWhere(e), f = e.filters || {};
-    const bits = [where.join(', '), `${e.total.toLocaleString()} species`, f.date && f.date !== 'all' ? (f.date === 'custom' ? `${f.from || '…'} → ${f.to || '…'}` : f.date.replace(/^y/, '')) : '',
-      (f.classes || []).map(k => EXP_CLASSES.find(x => x[0] === k)?.[1] || k).join(', '), ago(new Date(e.t).toISOString())].filter(Boolean);
-    go.append(title); const sm = document.createElement('small'); sm.textContent = bits.join(' · '); go.append(sm);
-    go.onclick = () => restoreSearch(e);
-    const del = document.createElement('button'); del.type = 'button'; del.className = 'del'; del.title = 'Remove'; del.setAttribute('aria-label', 'Remove'); del.innerHTML = ic('x', 16);
-    del.onclick = async () => { await idb.set('nearby', (await loadSearches()).filter(x => x.id !== e.id)); drawHistory(); };
-    row.append(go, del); box.append(row);
-  }
-}
-const expFilterKey = () => `${dateRange()}|${[...filterClasses].join()}`;
+
 async function loadExplore(more = false) {
-  if (!explore.selected) return renderExplore();
+  if (!area) return renderExplore();
   const seq = ++explore.seq;
   if (!more) Object.assign(explore, { items: [], total: 0, page: 0, err: '', fkey: expFilterKey(), cachedAt: null });
   explore.loading = true; renderExplore();
-  if (!more) drawPlaceShape();
   try {
-    const q = new URLSearchParams({ per_page: 100, page: explore.page + 1 });
-    if (explore.selected === 'r') { q.set('lat', explore.point.lat); q.set('lng', explore.point.lng); q.set('radius', explore.radius); }
-    else q.set('place_id', explore.selected);
-    if ($('expres').checked) q.set('quality_grade', 'research');
+    const q = new URLSearchParams({ per_page: 100, page: explore.page + 1, lat: area.lat.toFixed(5), lng: area.lng.toFixed(5), radius: exploreKm().toFixed(2) });
+    if (exploreResearch) q.set('quality_grade', 'research');
     if (filterClasses.size) q.set('iconic_taxa', [...filterClasses].join(','));
     const dr = dateRange(); // the shared date filter
     if (dr) { if (dr[0] > '0001') q.set('d1', dr[0]); if (dr[1] < '9999') q.set('d2', dr[1]); }
     if (!navigator.onLine) throw new Error('You are offline');
     const d = await api(`/observations/species_counts?${q}`);
-    if (seq !== explore.seq) return; // selection changed while loading
+    if (seq !== explore.seq) return; // the area changed while loading
     explore.items.push(...d.results); explore.total = d.total_results; explore.page++;
     saveSearch();
   } catch (e) {
     if (seq !== explore.seq) return;
     log(`species_counts failed: ${e.stack || e}`, 'e'); explore.err = e.message;
     if (!more) { // offline or failing: fall back to the saved copy of this search, if there is one
-      const hit = await findSearch(searchKey());
+      const hit = await findSearch(expFilterKey());
       if (seq !== explore.seq) return;
       if (hit) Object.assign(explore, { items: hit.items, total: hit.total, page: Math.ceil(hit.items.length / 100), err: '', cachedAt: hit.t });
     }
@@ -2881,70 +2632,34 @@ async function loadExplore(more = false) {
 }
 
 function renderExplore() {
-  const pills = $('exppills');
-  pills.replaceChildren();
-  const addPill = (p, extra) => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'pill' + (extra ? ' extra' : '') + (p.id === explore.selected ? ' on' : '');
-    const s = document.createElement('small'); s.textContent = extra ? 'area' : p.rank;
-    b.append(s, p.name);
-    b.onclick = () => { explore.selected = p.id; saveExplore(); loadExplore(); };
-    pills.append(b);
-  };
-  const radiusSel = explore.point ? { id: 'r', rank: 'radius', name: `${explore.radius} km around ${explore.point.label}` } : null;
-  if (radiusSel) { // the radius chip carries its own km dropdown
-    const b = document.createElement('div');
-    b.className = 'pill' + (explore.selected === 'r' ? ' on' : ''); b.tabIndex = 0; b.setAttribute('role', 'button');
-    const s = document.createElement('small'); s.textContent = 'radius';
-    const row = document.createElement('span'); row.style.cssText = 'display:inline-flex;align-items:center;gap:4px';
-    const sel = document.createElement('select'); sel.id = 'expradius'; sel.setAttribute('aria-label', 'Radius in km');
-    sel.style.cssText = 'font:inherit;padding:0 2px;border-radius:6px';
-    for (const k of [1, 2, 5, 10, 25, 50, 100]) { const o = document.createElement('option'); o.value = o.textContent = String(k); sel.append(o); }
-    sel.value = String(explore.radius);
-    sel.onclick = e => e.stopPropagation();
-    sel.onchange = () => { explore.radius = +sel.value; explore.selected = 'r'; saveExplore(); loadExplore(); };
-    row.append(sel, ` km around ${explore.point.label}`);
-    b.append(s, row);
-    b.onclick = () => { if (explore.selected !== 'r') { explore.selected = 'r'; saveExplore(); loadExplore(); } };
-    pills.append(b);
-  }
-  explore.chain.forEach(p => addPill(p, false));
-  explore.extra.forEach(p => addPill(p, true));
-  drawExpCircle();
-
-  const sel = explore.selected === 'r' ? radiusSel : [...explore.chain, ...explore.extra].find(p => p.id === explore.selected);
   const host = $('gal');
   const draw = nodes => { // Common draws into the gallery
     if (view !== 'explore') return;
     Object.assign(gal, { items: [], groups: [], cells: [], drawnSort: '' }); $('pathbar').hidden = true;
     host.replaceChildren(...nodes);
   };
-  const msg = (text, chooseBtn) => {
-    const p = document.createElement('p'); p.className = 'status'; p.style.padding = '18px 14px'; p.textContent = text;
-    const nodes = [p];
-    if (chooseBtn) { const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Choose a location'; b.style.margin = '0 14px'; b.onclick = () => $('areabtn').click(); nodes.push(b); }
-    draw(nodes);
-  };
+  const para = text => { const p = document.createElement('p'); p.className = 'status'; p.style.padding = '10px 14px 0'; p.textContent = text; return p; };
   $('expmore').hidden = true; $('exprefresh').hidden = true;
-  if (!sel) {
-    $('expnote').textContent = 'Choose a location to see the most observed species there, and which ones you have seen.';
-    msg('Common lists the most observed species around a place, and which of them you have seen.', true);
+  if (!area) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Choose a location'; b.style.margin = '0 14px'; b.onclick = () => $('areabtn').click();
+    draw([para('Common lists the most observed species around a place, and which of them you have seen. Pan the map in Location to choose the place.'), b]);
     return;
   }
-  const mine = mySpeciesCounts(), myPhoto = myPhotoBySpecies(), hideSeen = $('expunseen').checked;
-  const rows = explore.items.filter(it => !hideSeen || !mine.has(it.taxon.id));
+  const mine = mySpeciesCounts(), myPhoto = myPhotoBySpecies();
+  const rows = explore.items.filter(it => !exploreHideSeen || !mine.has(it.taxon.id));
   const seenN = explore.items.filter(it => mine.has(it.taxon.id)).length;
-  $('expnote').textContent = explore.err ? explore.err
-    : explore.loading && !explore.items.length ? `Loading species for ${sel.name}…`
-    : `${sel.name}: ${explore.total.toLocaleString()} species. You've seen ${seenN} of the top ${explore.items.length} shown.` +
+  const where = `within ${fmtDist(Math.min(area.r, 100000))}${area.r > 100000 ? ' (the nearest 100 km)' : ''}`;
+  const note = explore.err && !explore.items.length ? explore.err
+    : explore.loading && !explore.items.length ? `Loading species ${where}…`
+    : `${explore.total.toLocaleString()} species ${where}. You've seen ${seenN} of the top ${explore.items.length} shown.` +
       (explore.cachedAt ? ` Saved ${ago(new Date(explore.cachedAt).toISOString())}.` : '') +
       (myObs().length ? '' : isOther() ? ' (Open Compare to load your own observations and see which you have seen.)' : ' (Load your observations to see which you have seen.)');
   if (!rows.length) {
-    msg(explore.err ? explore.err : explore.loading ? `Loading species for ${sel.name}…` : explore.items.length ? 'Nothing to show for this filter.' : `No species found for ${sel.name}.`);
+    draw([para(explore.err ? explore.err : explore.loading ? note : explore.items.length ? 'Nothing to show for this filter.' : `No species found ${where}.`)]);
   } else {
     const grid = document.createElement('div'); grid.className = 'pgrid';
     for (const it of rows) { const cell = document.createElement('div'); cell.className = 'cell'; cell.append(commonTile(it, mine, myPhoto)); grid.append(cell); }
-    draw([grid]);
+    draw([para(note), grid]);
   }
   $('exprefresh').hidden = !explore.cachedAt || explore.loading;
   $('expmore').hidden = explore.loading || explore.items.length >= explore.total;
@@ -2970,6 +2685,14 @@ function commonTile(it, mine, myPhoto) {
 }
 $('expmore').onclick = () => loadExplore(true);
 $('exprefresh').onclick = () => { explore.cachedAt = null; loadExplore(); };
+// Common's own options live in the Sort sheet.
+function drawCommonChips() {
+  $('fsCommon').hidden = view !== 'explore';
+  const box = $('commonchips'); box.replaceChildren();
+  const mk = (label, on, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (on ? ' on' : ''); b.textContent = label; b.setAttribute('aria-pressed', String(on)); b.onclick = fn; box.append(b); };
+  mk("Hide species I've seen", exploreHideSeen, () => { exploreHideSeen = !exploreHideSeen; try { localStorage.setItem('inat_common_hide', exploreHideSeen ? '1' : '0'); } catch {} drawCommonChips(); renderExplore(); });
+  mk('Research grade only', exploreResearch, () => { exploreResearch = !exploreResearch; try { localStorage.setItem('inat_common_res', exploreResearch ? '1' : '0'); } catch {} drawCommonChips(); loadExplore(); });
+}
 // Taxonomic group chips: select any number; none selected means all groups.
 const EXP_CLASSES = [['Aves', 'Birds'], ['Mammalia', 'Mammals'], ['Reptilia', 'Reptiles'], ['Amphibia', 'Amphibians'], ['Actinopterygii', 'Fish'],
   ['Insecta', 'Insects'], ['Arachnida', 'Arachnids'], ['Mollusca', 'Molluscs'], ['Plantae', 'Plants'], ['Fungi', 'Fungi']];
@@ -3024,8 +2747,6 @@ function refreshFavChips() {
 }
 function drawFilterChips() { drawChips2($('fclasses'), filterClasses, 'inat_fclass', () => scheduleShow()); favChips($('ffav')); }
 drawFilterChips();
-$('expres').onchange = () => loadExplore();
-$('expunseen').onchange = renderExplore;
 
 // ---------- viewing someone else's observations, comparing, sharing ----------
 // Species sets of the selected partners that have data; the comparison filter combines them.
@@ -3225,7 +2946,11 @@ function setView(v) {
   $('locTools').hidden = v !== 'place';
   syncRecentTools(); updateSortUi();
   if (!$('psort').hidden) drawSortChips(); // the Sort sheet stays open; its highlighted chip follows the change
-  if (v === 'explore') { initExpMap(); drawChips(); renderExplore(); if (explore.selected && !explore.items.length && !explore.loading) loadExplore(); else if (!explore.selected) setTimeout(() => { if (view === 'explore' && $('pexplore').hidden) $('areabtn').click(); }, 150); }
+  if (v === 'explore') {
+    drawChips(); renderExplore();
+    if (area && !explore.items.length && !explore.loading) loadExplore();
+    else if (!area) setTimeout(() => { if (view === 'explore' && !area && $('areapanel').hidden) $('areabtn').click(); }, 150);
+  }
   if (state.obs.length) show();
   // each sort keeps its own scroll position (re-applied once more next frame in case layout settles late)
   const y = scrollPos[v] || 0;
@@ -3275,7 +3000,7 @@ function show(keepStatus) {
   refreshViewing();
   if (view === 'explore') {
     drawChips();
-    if (expFilterKey() !== explore.fkey && explore.selected) loadExplore(); else renderExplore();
+    if (area && expFilterKey() !== explore.fkey) loadExplore(); else renderExplore();
     $('summary').textContent = ''; $('results').hidden = false; return; }
   if (!state.obs.length) return;
   const t0 = performance.now();
@@ -3461,6 +3186,7 @@ function drawGroupChips() {
   }
 }
 function syncRecentTools() {
+  drawCommonChips();
   $('unshuffle').hidden = shuffleSeed == null && recentSeed == null;
   $('shuffle').classList.toggle('on', !$('unshuffle').hidden);
   drawGroupChips();
@@ -3540,7 +3266,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-51 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-53 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
