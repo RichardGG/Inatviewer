@@ -718,7 +718,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #areapanel::before { display:none; }
   #areapanel .amwrap { position:relative; }
   #areapanel #areamap { border:0; box-shadow:none; height:min(62vh, 560px); }
-  #areapanel[hidden] { display:block !important; transform-origin:0 0; transform:translateX(calc(50vw - 64px)) translateY(calc(100% + var(--tabs-h, 70px) - 118px)) rotate(-12deg); cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.6) !important; }
+  #areapanel[hidden] { display:block !important; transform-origin:0 0; transform:translateX(calc(50vw - 64px)) translateY(calc(100% + var(--tabs-h, 70px) - 59px)) rotate(-12deg); cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.6) !important; }
   #areapanel[hidden] > * { pointer-events:none; }
   body:not(.scrolled) #areapanel[hidden], body.sheet-open #areapanel[hidden] { opacity:0; pointer-events:none; }
   .onlyhere { position:absolute; z-index:1200; left:10px; bottom:30px; display:flex; align-items:center; gap:8px; padding:5px 12px 6px 8px; background:var(--grain), #fbf6e2; color:#27348b; border-radius:3px; transform:rotate(-1.5deg); box-shadow:0 2px 6px rgba(0,0,0,.5); font:700 21px/1 var(--hw); font-size-adjust:.5; cursor:pointer; }
@@ -728,7 +728,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   /* no bottom bar: the filter & view panel peeks from the bottom left, the map from the bottom right, and a ghost arrow floats in the middle */
   :root { --tabs-h:16px; }
   .tabs { display:none !important; }
-  #psort[hidden] { display:block !important; transform-origin:100% 0; transform:translateX(calc(64px - 50vw - 100%)) translateY(calc(100% + var(--tabs-h, 16px) - 118px)) rotate(12deg); cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.6) !important; transition:transform .38s cubic-bezier(.3,1.1,.5,1), opacity .25s; }
+  #psort[hidden] { display:block !important; transform-origin:100% 0; transform:translateX(calc(64px - 50vw - 100%)) translateY(calc(100% + var(--tabs-h, 16px) - 59px)) rotate(12deg); cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.6) !important; transition:transform .38s cubic-bezier(.3,1.1,.5,1), opacity .25s; }
   #psort[hidden] > * { pointer-events:none; }
   body:not(.scrolled) #psort[hidden], body.sheet-open #psort[hidden] { opacity:0; pointer-events:none; }
   #psort { transition:transform .38s cubic-bezier(.3,1.1,.5,1), opacity .25s; }
@@ -3944,7 +3944,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-135 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-136 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
