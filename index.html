@@ -735,8 +735,9 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #psort[hidden] > * { pointer-events:none; }
   body:not(.scrolled) #psort[hidden], body.sheet-open #psort[hidden] { opacity:0; pointer-events:none; }
   #psort { transition:transform .38s cubic-bezier(.3,1.1,.5,1), opacity .25s; }
-  #totop { position:fixed; z-index:64; left:50%; bottom:calc(16px + env(safe-area-inset-bottom)); width:52px; height:52px; margin-left:-26px; display:grid; place-items:center; padding:0; border:0; border-radius:50%; background:rgba(255,255,255,.08); color:rgba(255,255,255,.7); backdrop-filter:blur(2px); box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22); cursor:pointer; transition:opacity .25s, transform .25s; }
-  #totop:active { background:rgba(255,255,255,.18); }
+  #totop { position:fixed; z-index:64; left:50%; bottom:calc(16px + env(safe-area-inset-bottom)); width:52px; height:52px; margin-left:-26px; display:grid; place-items:center; padding:0; border:0; border-radius:50%; background:rgba(20,24,34,.45); color:#fff; backdrop-filter:blur(3px); box-shadow:inset 0 0 0 2.5px rgba(255,255,255,.9), 0 2px 8px rgba(0,0,0,.55); filter:drop-shadow(0 0 1px rgba(0,0,0,.6)); cursor:pointer; transition:opacity .25s, transform .25s; }
+  #totop svg { stroke-width:3; width:26px; height:26px; }
+  #totop:active { background:rgba(255,255,255,.3); }
   body:not(.scrolled) #totop, body.sheet-open #totop { opacity:0; pointer-events:none; transform:translateY(20px); }
   .coverwrap { position:relative; margin:6px 0 84px; }
   @media (max-width: 899px) { .coverwrap { margin:6px 12px 84px; } }
@@ -4021,7 +4022,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-147 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-148 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
