@@ -641,26 +641,27 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .dark .leaflet-control-attribution { background:rgba(38,44,54,.88) !important; color:#8fa6cf !important; } .dark .leaflet-control-attribution a { color:#a9bdf2 !important; }
   /* the top of the page is the cover of a field notes memo book: kraft board, a bold printed title, small print, staples down the spine */
   header.cover { position:relative; display:block; margin:6px 0 14px; padding:16px 56px 14px 34px; border-radius:10px; text-align:center; isolation:isolate;
-    background:linear-gradient(rgba(255,255,255,.22), transparent 30%, rgba(60,35,10,.16)), var(--board), #c8a26a; box-shadow:0 10px 22px rgba(0,0,0,.5), inset 0 0 0 1px rgba(90,55,20,.3); }
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px), #232733; box-shadow:0 10px 24px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12); }
+  header.cover::after { content:''; position:absolute; inset:5px; border:2px dashed rgba(240,215,160,.4); border-radius:7px; pointer-events:none; }
   header.cover::before { content:''; position:absolute; left:11px; top:14px; bottom:14px; width:5px; background:repeating-linear-gradient(0deg, #8d9299 0 14px, transparent 14px 34px); border-radius:2px; box-shadow:1px 1px 1px rgba(0,0,0,.35); z-index:-1; } /* staples */
-  .clabel { color:#3b2b17; text-shadow:0 1px 0 rgba(255,255,255,.28); }
-  .clabel h1 { margin:0; font:800 34px/1.02 'Futura','Century Gothic','Trebuchet MS','Arial Black',sans-serif; letter-spacing:.16em; text-transform:uppercase; font-size-adjust:none; }
+  .clabel { color:#d9b45a; text-shadow:0 -1px 0 rgba(0,0,0,.65); }
+  .clabel h1 { margin:0; font:800 27px/1.1 'Futura','Century Gothic','Trebuchet MS','Arial Black',sans-serif; letter-spacing:.14em; text-transform:uppercase; font-size-adjust:none; }
   .clabel h1 span { display:block; }
-  .clabel p { margin:8px 0 0; font:700 10px/1.45 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; color:#4a3820; font-size-adjust:none; }
-  .clabel #covername { display:block; margin-top:8px; padding:6px 0 4px; border-top:1px solid rgba(59,43,23,.45); border-bottom:1px solid rgba(59,43,23,.45); font:700 20px var(--hw); transform:rotate(-1deg); } .clabel #covername:empty { display:none; }
+  .clabel p { margin:8px 0 0; font:700 10px/1.45 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; color:#b79a55; font-size-adjust:none; }
+  .clabel #covername { display:block; margin-top:8px; padding:6px 0 4px; border-top:1px solid rgba(217,180,90,.4); border-bottom:1px solid rgba(217,180,90,.4); color:#e9e5d6; font:700 20px var(--hw); transform:rotate(-1deg); } .clabel #covername:empty { display:none; }
   header.cover .ibgroup { position:absolute; top:6px; right:6px; flex-direction:column; gap:0; }
   @media (max-width: 899px) { header.cover { margin:6px 12px 14px; } }
-  header.cover #acct, header.cover #share, header.cover .ib, header.cover .ib:hover { color:#3b2b17 !important; }
-  header.cover .ib, header.cover .ib:hover { background:none; border:0; color:#3b2b17; filter:drop-shadow(0 1px 0 rgba(255,255,255,.3)); width:40px; height:40px; }
+  header.cover #acct, header.cover #share, header.cover .ib, header.cover .ib:hover { color:#d9b45a !important; }
+  header.cover .ib, header.cover .ib:hover { background:none; border:0; color:#d9b45a; filter:drop-shadow(0 -1px 0 rgba(0,0,0,.65)); width:40px; height:40px; }
   /* the lines under the title are written on the cover: what the app is doing, the totals, and the filters in use as paper labels */
   header.cover .cnote { margin:10px 0 0; text-align:left; }
   header.cover .cnote:not(:has(.status:not(:empty), #chips:not(:empty), #viewing:not([hidden]), #loadall:not([hidden]))) { display:none; }
-  header.cover .status { margin:0 !important; min-height:0 !important; padding:0 !important; font:700 19px/1.15 var(--hw); font-size-adjust:.5; color:#3b2b17 !important; text-shadow:0 1px 0 rgba(255,255,255,.25); }
-  header.cover .status:empty { display:none; } header.cover .status.error { color:#8e1f14 !important; }
-  header.cover #summary { margin-top:3px !important; font-size:17px; color:#4a3820 !important; }
-  header.cover #viewing { margin:0 0 8px !important; padding:6px 10px; border:1.5px dashed rgba(59,43,23,.6); border-radius:6px; background:rgba(255,255,255,.28); color:#3b2b17; font:700 18px/1.15 var(--hw); }
-  header.cover #viewing button { background:none; color:#3b2b17; border:1.5px solid #3b2b17; font:700 16px var(--hw); }
-  header.cover #loadall { margin:8px 0 0 !important; background:none; border:2px solid #3b2b17; color:#3b2b17; border-radius:7px; font:700 17px var(--hw); text-transform:uppercase; letter-spacing:.05em; }
+  header.cover .status { margin:0 !important; min-height:0 !important; padding:0 !important; font:700 19px/1.15 var(--hw); font-size-adjust:.5; color:#e9e5d6 !important; text-shadow:0 -1px 0 rgba(0,0,0,.5); }
+  header.cover .status:empty { display:none; } header.cover .status.error { color:#ff9a8c !important; }
+  header.cover #summary { margin-top:3px !important; font-size:17px; color:#c9c3ae !important; }
+  header.cover #viewing { margin:0 0 8px !important; padding:6px 10px; border:1.5px dashed rgba(217,180,90,.6); border-radius:6px; background:rgba(255,255,255,.07); color:#e9e5d6; font:700 18px/1.15 var(--hw); }
+  header.cover #viewing button { background:none; color:#d9b45a; border:1.5px solid #d9b45a; font:700 16px var(--hw); }
+  header.cover #loadall { margin:8px 0 0 !important; background:none; border:2px solid #d9b45a; color:#d9b45a; border-radius:7px; font:700 17px var(--hw); text-transform:uppercase; letter-spacing:.05em; }
   header.cover #chips { margin:8px 0 0; gap:8px; }
   header.cover .chip { background:var(--grain), #f6f2e4; color:#27348b; border:0; border-radius:3px; padding:3px 6px 3px 10px; font:700 17px var(--hw); font-size-adjust:.5; box-shadow:0 2px 4px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.1); transform:rotate(-1deg); }
   header.cover .chip:nth-child(even) { transform:rotate(1.2deg); }
@@ -672,7 +673,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="rough" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="3" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3"/></filter></svg>
 <main>
   <header class="top cover">
-    <div class="clabel"><h1><span>iNat</span><span>Viewer</span></h1><p>Field notes · observation book<br>Made from your iNaturalist records</p><span id="covername"></span></div>
+    <div class="clabel"><h1><span>Nature</span><span>Observations</span></h1><p>Field notes · observation book<br>Made from your iNaturalist records</p><span id="covername"></span></div>
     <span class="ibgroup">
       <button class="ib" id="share" aria-label="Share link" title="Share a link to this view" hidden><i data-i="share-2"></i></button>
       <button class="ib" id="acct" aria-label="Account and sync" title="Account &amp; sync" aria-expanded="false"><i data-i="settings"></i></button>
@@ -3832,7 +3833,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-108 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-109 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
