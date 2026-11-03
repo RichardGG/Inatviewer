@@ -445,7 +445,7 @@
   #gal.st-simple .stack .mini img { height:100%; }
   #gal.st-simple .pgrid .tile.piled::before, #gal.st-simple .pgrid .tile.piled::after { inset:0 0 auto 0; height:auto; aspect-ratio:1; } /* the pile sits behind the photo only, never behind the name */
 
-  /* groups as horizontal folder dividers: each group is a full-width card with a tab on its top edge; nested groups lie over their parent at the same width, and every tab sticks to the top (the deepest one covers the others) while its group is on screen */
+  /* groups as horizontal folder dividers: each group is a full-width card with a tab on its top edge; nested groups lie over their parent at the same width, and every tab sticks to the top (every level stacked below its parent; a leaving row slides behind them) while its group is on screen */
   .dvroot { padding:4px 0 6px; }
   .dv { position:relative; margin:0 0 8px; }
   .dvb > .dv { margin-top:6px; }
@@ -455,8 +455,8 @@
   .dv.d3 { --dvc:#faf6e8; --dvfg:#1d2f6b; --dvbg:linear-gradient(rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, #faf6e8; }
   .dv.d4 { --dvc:#e2dbc5; --dvfg:#3a2a14; --dvbg:repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), #e2dbc5; }
   .dv.d5 { --dvc:#b6dcb0; --dvfg:#173a1f; --dvbg:repeating-linear-gradient(135deg, rgba(255,255,255,.3) 0 2px, transparent 2px 5px), #b6dcb0; }
-  /* the header row is the tab on a strip of the parent folder's paper colour (or the desk for the outermost); it sticks; the deepest group's row covers its parents'. A plain strip at the foot of each tab joins the plain band along the folder's top. */
-  .dvh { position:sticky; top:0; z-index:calc(60 + var(--dd)); height:28px; margin:0 0 -1px; background:var(--pbg, var(--desk, #233d2e)); }
+  /* the header row is the tab on a strip of the parent folder's paper colour (or the desk for the outermost); it sticks, every level stacked one row below its parent; a row that scrolls away slides behind its parents' rows. A plain strip at the foot of each tab joins the plain band along the folder's top. */
+  .dvh { position:sticky; top:calc(var(--dd) * 28px); z-index:calc(60 - var(--dd)); height:28px; margin:0 0 -1px; background:var(--pbg, var(--desk, #233d2e)); }
   .dvb { --pbg:var(--dvbg); padding:0 0 6px; border-radius:0 6px 6px 6px; background:var(--dvbg); box-shadow:0 3px 9px rgba(0,0,0,.35); }
   .dvb::before { content:''; display:block; height:6px; background:var(--dvc); border-radius:0 6px 0 0; } /* a plain band along the folder's top edge: the tab's strip joins it */
   .dvb .pgrid, .pgrid.top { align-items:start; } /* no tabs above the photos here: line the photos up by their tops */
@@ -1683,7 +1683,7 @@ function redrawKeep(key, fromBar) {
   const fix = () => {
     const cell = $('gal').querySelector(`.dv[data-key="${CSS.escape(key)}"]`) || $('gal').querySelector(`.cell[data-i="${g.first}"]`);
     if (!cell) return;
-    const d = cell.getBoundingClientRect().top - (barHeight() + (cell.classList.contains('dv') ? 34 : 6));
+    const d = cell.getBoundingClientRect().top - (barHeight() + (cell.classList.contains('dv') ? g.depth * 28 + 6 : 6));
     if (Math.abs(d) > 1) scrollBy(0, d);
   };
   fix();
@@ -3378,7 +3378,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-65 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-66 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
