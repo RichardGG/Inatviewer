@@ -234,6 +234,48 @@
   .chev.rev > .w { filter:drop-shadow(2px 1px 2px rgba(0,0,0,.4)); }
   .narrow { max-width:300px; }
   .narrow .chev { row-gap:2px; }
+
+  /* ---------- bottom bar + paper sheets (phone mock-ups) ---------- */
+  .phones { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:34px 24px; justify-items:center; }
+  .phone { position:relative; width:340px; height:600px; overflow:hidden; border-radius:30px; border:7px solid #0e0e10; background:radial-gradient(circle, rgba(190,225,195,.3) 1.3px, transparent 1.7px) 0 0/22px 22px, var(--grain), #233d2e; box-shadow:0 14px 34px rgba(0,0,0,.5); }
+  .phone .pbg { position:absolute; inset:0; padding:18px 14px; display:grid; grid-template-columns:1fr 1fr; gap:16px; align-content:start; }
+  .phone .pbg .photo { width:auto; margin:0; transform:rotate(-2deg); } .phone .pbg .photo:nth-child(2) { transform:rotate(2deg); } .phone .pbg .photo b { height:34px; line-height:34px; font-size:22px; }
+  .phone .scrim { position:absolute; inset:0; background:rgba(0,0,0,.3); }
+  /* the paper sheet */
+  .msheet { position:absolute; left:8px; right:8px; bottom:96px; padding:16px 16px 18px; border-radius:16px 16px 4px 4px; background:var(--grain), #f6f2e4; color:#27348b; box-shadow:0 -6px 22px rgba(0,0,0,.45), inset 0 8px 10px -8px rgba(0,0,0,.25); max-height:420px; overflow:hidden; }
+  .msheet::before { content:''; position:absolute; left:50%; top:6px; width:44px; height:4px; margin-left:-22px; border-radius:2px; background:rgba(55,80,122,.35); }
+  .msheet h5 { margin:6px 0 8px; font:700 13px 'Trebuchet MS',Arial,sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#37507a; font-size-adjust:none; }
+  .msheet h5 + .chips { margin-top:0; } .msheet .chips + h5 { margin-top:14px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .msheet .line { border-bottom:1px solid #9bb0c6; padding:2px 0 3px; font:700 24px/1.1 var(--hw); }
+  .msheet .mapph { height:150px; background:linear-gradient(135deg,#cfe3c8,#a9c9b4); border:7px solid #fbfaf4; box-shadow:0 3px 8px rgba(0,0,0,.35); position:relative; }
+  .msheet .mapph::after { content:''; position:absolute; left:34%; top:30%; width:70px; height:70px; border-radius:50%; border:3px solid #d9480f; background:rgba(217,72,15,.1); }
+  /* chip styles: an ink stamp, a die-cut sticker, a label-maker strip */
+  .chip { font:700 20px/1 var(--hw); font-size-adjust:.5; cursor:pointer; border:0; background:none; color:#27348b; padding:6px 12px; position:relative; }
+  .v-cloth .chip { border:2.5px solid #27348b; border-radius:7px; opacity:.85; filter:url(#rough); text-transform:uppercase; letter-spacing:.06em; font-size:17px; }
+  .v-cloth .chip.on { background:rgba(250,225,60,.55); opacity:1; box-shadow:inset 0 0 0 1px rgba(27,43,107,.5); }
+  .v-leather .chip { background:#fff; border-radius:16px; box-shadow:0 2px 4px rgba(0,0,0,.35), inset 0 0 0 1px rgba(0,0,0,.08); color:#4a3a2a; }
+  .v-leather .chip.on { background:#ffd54a; color:#4a3000; transform:rotate(-2deg); }
+  .v-leather .chip.on::after { content:'✓'; position:absolute; right:-6px; top:-8px; width:20px; height:20px; border-radius:50%; background:#4a9b50; color:#fff; font:700 14px/20px Arial; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.4); }
+  .v-kraft .chip { background:#1f1f22; color:#f3f3f3; border-radius:2px; text-transform:uppercase; letter-spacing:1px; font-size:14px; white-space:nowrap; box-shadow:inset 0 1px 0 rgba(255,255,255,.28), inset 0 -2px 3px rgba(0,0,0,.6), 0 2px 3px rgba(0,0,0,.4); }
+  .v-kraft .chip.on { background:#a52c2c; }
+  /* the bar */
+  .mbar { position:absolute; left:12px; right:12px; bottom:14px; height:64px; }
+  .mbar .rib { position:absolute; z-index:0; top:-30px; width:26px; height:58px; margin-left:-13px; left:12.5%; transition:left .28s cubic-bezier(.3,1.4,.5,1); background:linear-gradient(90deg, #8e2020, #d8504a 50%, #8e2020); clip-path:polygon(0 0, 50% 20%, 100% 0, 100% 100%, 0 100%); filter:drop-shadow(0 2px 2px rgba(0,0,0,.5)); }
+  .mbar nav { position:absolute; inset:0; z-index:1; display:flex; padding:6px; border-radius:26px; }
+  .mbar button { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; border:0; background:none; cursor:pointer; padding:0; font:700 16px/1.1 var(--hw); font-size-adjust:.5; white-space:nowrap; }
+  .mbar button svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .foil { padding:0 3px 2px; background:linear-gradient(135deg, #f7e6a8, #c8962c 42%, #fbe9ad 58%, #b8821f); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 -1px 0 rgba(0,0,0,.65)) drop-shadow(0 1px 0 rgba(255,255,255,.14)); }
+  .mbar button .ic { display:block; } .mbar button svg { stroke:#d9b45a; filter:drop-shadow(0 -1px 0 rgba(0,0,0,.6)); }
+  .mbar button.on svg, .mbar button.on span { filter:drop-shadow(0 0 5px rgba(255,220,120,.7)); }
+  .v-cloth .mbar nav { background:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px), #232733; box-shadow:0 8px 20px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12); }
+  .v-leather .mbar nav { background:radial-gradient(circle at 20% 30%, rgba(255,255,255,.07) 0 1px, transparent 2px) 0 0/7px 7px, radial-gradient(circle at 60% 70%, rgba(0,0,0,.25) 0 1px, transparent 2px) 0 0/5px 5px, linear-gradient(rgba(255,255,255,.1), transparent 40%, rgba(0,0,0,.3)), #5b3420; box-shadow:0 8px 20px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.18); }
+  .mbar nav::after { content:''; position:absolute; inset:4px; border:2px dashed rgba(240,215,160,.55); border-radius:22px; pointer-events:none; }
+  .v-kraft .mbar nav { background:linear-gradient(rgba(255,255,255,.25), transparent 40%, rgba(60,35,10,.3)), var(--fibre), #c8a26a; box-shadow:0 8px 20px rgba(0,0,0,.5), inset 0 0 0 1px rgba(90,55,20,.35); }
+  .v-kraft .mbar nav::after { border-color:rgba(70,45,20,.45); }
+  .v-kraft .mbar button { color:#3a2a14; } .v-kraft .mbar button svg { stroke:#3a2a14; filter:none; }
+  .v-kraft .mbar button .foil { background:none; -webkit-background-clip:initial; color:#3a2a14; filter:none; }
+  .v-kraft .mbar button.on svg, .v-kraft .mbar button.on span { filter:none; text-decoration:underline wavy rgba(165,44,44,.8); text-underline-offset:3px; }
 </style>
 </head>
 <body>
@@ -412,6 +454,32 @@
     <div class="cell"><div class="manila-folder"><span class="tabbit">Birds</span><div class="back"><div class="sheet">notes on the song…</div><div class="front"></div></div></div><div class="cap">a whole manila folder with a tab</div></div>
     <div class="cell"><div class="dividers"><div class="d" data-t="Birds">Birds</div><div class="d" data-t="Plants">Plants</div><div class="d" data-t="Insects">Insects</div></div><div class="cap">stepped dividers (tabs in three positions)</div></div>
   </div>
+
+  <h2>10 · Bottom bar &amp; sheets (notebook look)</h2>
+  <p class="note">The bar as the notebook's cloth or leather band with gold-foil lettering, and a ribbon bookmark that pokes out of the active button (tap the buttons: the ribbon moves and the paper sheet changes). The sheets are paper pages with printed small-caps headings and handwritten chips. Three bar materials, each with its own chip style.</p>
+  <div class="phones">
+    <div><div class="phone v-cloth" data-v="v-cloth"><div class="pbg"><div class="photo" style="--pic:linear-gradient(135deg,#7ab36a,#2e6b4f)"><div class="img"></div><b>Robin</b></div><div class="photo" style="--pic:linear-gradient(135deg,#6fa8dc,#274b7a)"><div class="img"></div><b>Blue tit</b></div></div><div class="scrim"></div><div class="msheet"></div><div class="mbar"><i class="rib"></i><nav><button data-k="sort" class=on><svg viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg><span class="foil">Taxonomy</span></button><button data-k="filter"><svg viewBox="0 0 24 24"><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"/></svg><span class="foil">Filter</span></button><button data-k="loc"><svg viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg><span class="foil">Location</span></button><button data-k="cmp"><svg viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/></svg><span class="foil">Compare</span></button></nav></div></div><div class="cap">Dark cloth band · ink-stamp chips</div></div>
+    <div><div class="phone v-leather" data-v="v-leather"><div class="pbg"><div class="photo" style="--pic:linear-gradient(135deg,#7ab36a,#2e6b4f)"><div class="img"></div><b>Robin</b></div><div class="photo" style="--pic:linear-gradient(135deg,#6fa8dc,#274b7a)"><div class="img"></div><b>Blue tit</b></div></div><div class="scrim"></div><div class="msheet"></div><div class="mbar"><i class="rib"></i><nav><button data-k="sort" class=on><svg viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg><span class="foil">Taxonomy</span></button><button data-k="filter"><svg viewBox="0 0 24 24"><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"/></svg><span class="foil">Filter</span></button><button data-k="loc"><svg viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg><span class="foil">Location</span></button><button data-k="cmp"><svg viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/></svg><span class="foil">Compare</span></button></nav></div></div><div class="cap">Stitched leather band · sticker chips</div></div>
+    <div><div class="phone v-kraft" data-v="v-kraft"><div class="pbg"><div class="photo" style="--pic:linear-gradient(135deg,#7ab36a,#2e6b4f)"><div class="img"></div><b>Robin</b></div><div class="photo" style="--pic:linear-gradient(135deg,#6fa8dc,#274b7a)"><div class="img"></div><b>Blue tit</b></div></div><div class="scrim"></div><div class="msheet"></div><div class="mbar"><i class="rib"></i><nav><button data-k="sort" class=on><svg viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg><span class="foil">Taxonomy</span></button><button data-k="filter"><svg viewBox="0 0 24 24"><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"/></svg><span class="foil">Filter</span></button><button data-k="loc"><svg viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg><span class="foil">Location</span></button><button data-k="cmp"><svg viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/></svg><span class="foil">Compare</span></button></nav></div></div><div class="cap">Kraft card band · label-maker chips</div></div>
+  </div>
 </main>
+
+<script>
+(() => {
+  const chip = (t, on) => `<button class="chip${on ? ' on' : ''}">${t}</button>`;
+  const T = {
+    sort: () => `<h5>Sort</h5><div class="chips">${chip('Latest')}${chip('Rarest')}${chip('Taxonomy', 1)}${chip('Place')}${chip('Common')}</div><h5>Same species</h5><div class="chips">${chip('Every observation', 1)}${chip('One per species per day')}${chip('One per species')}</div><h5>Order</h5><div class="chips">${chip('Shuffle')}</div>`,
+    filter: () => `<h5>Jump to</h5><div class="line">a group or species…</div><h5>Group</h5><div class="chips">${chip('Birds', 1)}${chip('Mammals')}${chip('Reptiles')}${chip('Insects')}${chip('Plants')}</div><h5>Favourite photos</h5><div class="chips">${chip('Needs favourite')}${chip('Faved by others')}</div><h5>Date</h5><div class="line">All dates ▾</div>`,
+    loc: () => `<h5>Location</h5><div class="mapph"></div><h5>Radius</h5><div class="chips">${chip('5 km')}${chip('10 km', 1)}${chip('25 km')}${chip('Research grade only', 1)}</div>`,
+    cmp: () => `<h5>Compare with</h5><div class="chips">${chip('Me')}${chip('@alex', 1)}${chip('@sam')}</div><h5>Show</h5><div class="chips">${chip('Missing from theirs', 1)}${chip('Seen by both')}</div>`,
+  };
+  document.querySelectorAll('.phone').forEach(ph => {
+    const btns = [...ph.querySelectorAll('.mbar button')], rib = ph.querySelector('.rib'), sheet = ph.querySelector('.msheet');
+    const set = i => { btns.forEach((b, j) => b.classList.toggle('on', i === j)); rib.style.left = (12.5 + 25 * i) + '%'; sheet.innerHTML = T[btns[i].dataset.k](); };
+    btns.forEach((b, i) => b.onclick = () => set(i));
+    set(0);
+  });
+})();
+</script>
 </body>
 </html>
