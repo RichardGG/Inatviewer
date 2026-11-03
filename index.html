@@ -591,6 +591,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbpr .season { margin-top:0; }
   .cntpill { position:absolute; right:6px; bottom:6px; z-index:3; padding:2px 9px 3px; background:#fbf6e2; color:#3a2a14; border-radius:3px; transform:rotate(2.5deg); box-shadow:0 2px 4px rgba(0,0,0,.45);
              font:700 16px/1 var(--hw); font-size-adjust:.5; pointer-events:none; white-space:nowrap; display:flex; align-items:center; gap:4px; } /* a paper sticker with the count */
+  .dvs { position:absolute; right:62px; top:0; z-index:3; width:46px; height:28px; padding:0 8px 0 4px; display:flex; align-items:center; justify-content:center; border:0; border-radius:16px 8px 0 0 / 100% 8px 0 0; background:var(--dvbg); color:var(--dvfg); cursor:pointer; }
+  .dvs.on { box-shadow:inset 0 -3px 0 #c8453b; } .dvs:active { filter:brightness(.93); }
   .dvx, .dvx2 { position:absolute; right:10px; top:0; z-index:3; width:46px; height:28px; padding:0 4px 0 8px; display:flex; align-items:center; justify-content:center; border:0; border-radius:16px 8px 0 0 / 100% 8px 0 0; background:var(--dvbg); color:var(--dvfg); cursor:pointer; } /* a folder tab of its own, mirroring the name tab */
   .dvx:active, .dvx2:active { filter:brightness(.93); }
   .dvx2.on { box-shadow:inset 0 -3px 0 #c8453b; }
@@ -809,6 +811,15 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
       <button class="ib" id="clearcache" aria-label="Clear all cached data" title="Clear all cached data"><i data-i="trash-2"></i></button>
     </div>
     <p id="whoami" hidden></p><span id="recenthead" hidden></span>
+    <div id="stubs" style="display:none"><button id="shuffle" type="button"></button><button id="unshuffle" type="button" hidden></button>
+        <div id="fsCompare" hidden>
+          <h4>Compare</h4>
+          <div id="cmppeople" class="clsrow" role="group" aria-label="People to compare with"></div>
+          <div id="cmpchips" hidden></div>
+          <p class="status" id="cmpnote" style="margin:6px 0 0"></p>
+          <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
+        </div>
+    </div>
     <textarea id="token" hidden aria-hidden="true"></textarea><!-- the API token minted from the iNaturalist login; internal, not edited by hand -->
   </div>
 
@@ -831,8 +842,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
             </span>
             <button type="button" class="vt" id="themebtn" aria-label="Light or dark"></button>
             <button type="button" class="vt" id="stylebtn" aria-label="Polaroid or simple photos"></button>
-            <button type="button" class="vt" id="shuffle" aria-label="Shuffle"></button>
-            <button type="button" class="vt" id="unshuffle" aria-label="Back to the default order" hidden></button>
           </span>
         </div>
         <div id="fsJump">
@@ -858,13 +867,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
         <div id="customdates" class="row" style="margin:8px 0 0" hidden>
           <label class="status">From <input type="date" id="dfrom"></label>
           <label class="status">to <input type="date" id="dto"></label>
-        </div>
-        <div id="fsCompare" hidden>
-          <h4>Compare</h4>
-          <div id="cmppeople" class="clsrow" role="group" aria-label="People to compare with"></div>
-          <div id="cmpchips" hidden></div>
-          <p class="status" id="cmpnote" style="margin:6px 0 0"></p>
-          <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
         </div>
       </div>
       <div class="card" id="areapanel" hidden>
@@ -2070,6 +2072,7 @@ function drawDividers() {
     gal.cells.push({ el: cell, tagGroups: [], path: vis });
   }
   gal.shownTo = i;
+  { const first = root.querySelector('.dvh'); if (first) first.append(shuffleTab()); } // the topmost root folder
   el.replaceChildren(root);
   if (gal.sort === 'place') { const cr = document.createElement('p'); cr.className = 'mapcredit'; cr.innerHTML = 'Maps ' + TILE_ATTR; el.append(cr); }
   if (i < items.length) {
@@ -2093,6 +2096,7 @@ function oneFolder(...kids) {
   const [main, sub] = flatTitle();
   const { el: sec, body } = dvSection({ key: 'flat', rank: 'list', depth: 0, main, sub });
   sec.classList.add('dvroot1'); sec.querySelector('.dvt').title = main;
+  if (view !== 'explore') sec.querySelector('.dvh').append(shuffleTab());
   if (view === 'explore') { // a corner tab: hide the species I have already seen
     const x = document.createElement('button'); x.type = 'button'; x.className = 'dvx2' + (exploreHideSeen ? ' on' : '');
     x.innerHTML = ic(exploreHideSeen ? 'eye-off' : 'eye', 18); x.title = x.ariaLabel = exploreHideSeen ? "Showing only species I haven't seen: tap to show all" : "Hide species I've seen";
@@ -2100,6 +2104,12 @@ function oneFolder(...kids) {
   }
   for (const k of kids) { if (k.classList?.contains('pgrid')) k.classList.add('top'); body.append(k); }
   return [sec];
+}
+// A tab on the topmost folder: shuffle the order (and, once shuffled, go back to the default order).
+function shuffleTab() {
+  const on = !$('unshuffle').hidden, x = document.createElement('button'); x.type = 'button'; x.className = 'dvs' + (on ? ' on' : '');
+  x.innerHTML = ic(on ? 'rotate-ccw' : 'shuffle', 18); x.title = x.ariaLabel = on ? 'Shuffled: tap for the default order' : 'Shuffle the order';
+  return x;
 }
 function drawGallery() {
   if (galGroups === 'dividers' && gal.groups.length) return drawDividers();
@@ -3345,6 +3355,7 @@ function commonTile(it, mine, myPhoto, act = []) {
   return tile;
 }
 $('gal').addEventListener('click', e => {
+  if (e.target.closest('.dvs')) { if ($('unshuffle').hidden) $('shuffle').click(); else $('unshuffle').click(); return; }
   if (!e.target.closest('.dvx2')) return;
   exploreHideSeen = !exploreHideSeen; try { localStorage.setItem('inat_common_hide', exploreHideSeen ? '1' : '0'); } catch {}
   renderExplore();
@@ -4010,7 +4021,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-146 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-147 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
