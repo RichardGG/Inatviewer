@@ -459,12 +459,12 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .dv.d5 { --dvc:#b6dcb0; --dvfg:#173a1f; --dvbg:repeating-linear-gradient(135deg, rgba(255,255,255,.3) 0 2px, transparent 2px 5px), #b6dcb0; }
   /* the header row is the tab on a strip of the parent folder's paper colour (or the desk for the outermost); it sticks, every level stacked one row below its parent; a row that scrolls away slides behind its parents' rows. A plain strip at the foot of each tab joins the plain band along the folder's top. */
   .dvh { position:sticky; top:calc(var(--dd) * 28px); z-index:calc(60 - var(--dd)); height:28px; margin:0 0 -1px; background:var(--pbg, var(--desk, #233d2e)); }
-  .dvb { --pbg:var(--dvbg); padding:0 0 6px; border-radius:0 6px 6px 6px; background:var(--dvbg); box-shadow:0 3px 9px rgba(0,0,0,.35); }
-  .dvb::before { content:''; display:block; height:6px; background:var(--dvc); border-radius:0 6px 0 0; } /* a plain band along the folder's top edge: the tab's strip joins it */
+  .dvb { --pbg:var(--dvbg); padding:0 0 6px; border-radius:0 0 8px 8px; background:var(--dvbg); box-shadow:0 3px 9px rgba(0,0,0,.35); }
+  .dvb::before { content:''; display:block; height:6px; background:var(--dvc); } /* a plain band along the folder's top edge: the tab's strip joins it */
   .dvb .pgrid, .pgrid.top { align-items:start; } /* no tabs above the photos here: line the photos up by their tops */
   .dvb .pgrid { padding:6px 6px 6px; }
-  .dvh::after { content:''; position:absolute; left:0; right:0; bottom:0; height:6px; background:var(--dvc); pointer-events:none; } /* the plain strip, edge to edge, at the foot of the header row */
-  .dvt { position:relative; margin-left:10px; height:28px; padding:0 18px 0 11px; border:0; border-radius:8px 16px 0 0 / 8px 100% 0 0; background:var(--dvbg); color:var(--dvfg);
+  .dvh::after { content:''; position:absolute; left:0; right:0; bottom:0; height:14px; border-radius:10px 10px 0 0; background:var(--dvc); pointer-events:none; z-index:0; } /* the plain strip, edge to edge, at the foot of the header row */
+  .dvt { position:relative; z-index:1; margin-left:10px; height:28px; padding:0 18px 0 11px; border:0; border-radius:8px 16px 0 0 / 8px 100% 0 0; background:var(--dvbg); color:var(--dvfg);
          font:700 16px/22px 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; white-space:nowrap; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
   .dvt small { margin-left:6px; font-size:12px; font-weight:400; opacity:.8; } .dvt small.sci { font-style:italic; }
   .dvt:active { filter:brightness(.95); }
@@ -3639,7 +3639,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-85 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-86 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
