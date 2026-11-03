@@ -606,7 +606,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .gsticker small { margin-left:5px; font-size:12px; font-weight:400; opacity:.75; } .gsticker small.sci { font-style:italic; }
   #gal.st-simple .gsticker { top:6px; left:6px; }
   /* ---------- map controls in the notebook's style: cloth buttons with gold icons, paper popups and search, sticker clusters ---------- */
-  .leaflet-container { font-family:var(--hw); }
+  .leaflet-container { font-family:var(--hw); background:#a8c8f0; } /* the ocean colour of the map tiles, so unloaded or out-of-world areas match it */
   /* map buttons are paper stickers: cream paper, ink icons, a little tilted, each stuck on separately */
   .leaflet-bar { border:0 !important; background:none !important; box-shadow:none !important; overflow:visible; display:flex; flex-direction:column; gap:6px; }
   .leaflet-bar a, .leaflet-bar a:hover { display:flex; align-items:center; justify-content:center; width:38px !important; height:38px !important; line-height:38px; border:0 !important; border-radius:5px !important;
@@ -2476,9 +2476,9 @@ function inkRingPoints(lat, lng, r) {
   const pts = [], cosLat = Math.max(0.01, Math.cos(lat * Math.PI / 180)), t0 = 0.9, turns = 1.09, N = 150;
   for (let i = 0; i <= N; i++) {
     const u = i / N, t = t0 + u * turns * 2 * Math.PI;
-    let k = 1 + 0.03 * Math.sin(3 * t + 0.8) + 0.018 * Math.sin(5 * t + 2.1) + 0.01 * Math.sin(9 * t + 4);
-    if (u > 1 / turns) k += 0.16 * ((u - 1 / turns) / (1 - 1 / turns)); // the second lap drifts outwards: a bad join where the line runs out past its start
-    if (u < 0.06) k -= 0.03 * (1 - u / 0.06); // and the start dips in a little
+    let k = 1 + 0.014 * Math.sin(3 * t + 0.8) + 0.008 * Math.sin(5 * t + 2.1) + 0.004 * Math.sin(9 * t + 4);
+    if (u > 1 / turns) k += 0.07 * ((u - 1 / turns) / (1 - 1 / turns)); // the second lap drifts outwards: a bad join where the line runs out past its start
+    if (u < 0.06) k -= 0.015 * (1 - u / 0.06); // and the start dips in a little
     pts.push([lat + r * k * Math.cos(t) / 111320, lng + r * k * Math.sin(t) / (111320 * cosLat)]);
   }
   return pts;
@@ -3943,7 +3943,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-132 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-133 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
