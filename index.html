@@ -286,7 +286,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   body.stkview #iconbar { background:#f7f3e6; }
   .dark body.stkview { --desk:#233d2e; --dot:rgba(190,225,195,.3); }
   .dark body.stkview #iconbar { background:#1c3326; }
-  #gal { background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
+  #gal { touch-action:pan-y; background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
   /* one strict grid: every Polaroid is a cell; a group's label sits in the cell of its first Polaroid, above it */
   .pgrid { --cols:2; --gx:14px; display:grid; grid-template-columns:repeat(var(--cols), minmax(0, 1fr)); gap:20px 14px; padding:12px 8px 4px; align-items:end; }
   @media (min-width:560px) { .pgrid { --cols:3; --gx:18px; gap:26px 18px; } }
@@ -3857,6 +3857,31 @@ function drawLookChips() {
 }
 $('sizebtn').onclick = e => { e.stopPropagation(); const m = $('sizemenu'); m.hidden = !m.hidden; $('sizebtn').setAttribute('aria-expanded', String(!m.hidden)); };
 document.addEventListener('click', e => { if (!e.target.closest('.vdrop')) { $('sizemenu').hidden = true; $('sizebtn').setAttribute('aria-expanded', 'false'); } });
+// Pinch on the list changes the photo size between XL, L, M and S: spread the fingers for bigger photos, pinch for smaller.
+(() => {
+  const ORDER = ['xl', 'l', 'm', 's'], el = $('gal');
+  const step = d => { // d = +1 smaller photos (more columns), -1 bigger
+    const i = Math.max(0, Math.min(3, ORDER.indexOf(galSize) + d)); if (ORDER[i] === galSize) return false;
+    galSize = ORDER[i]; try { localStorage.setItem('inat_gal_size', galSize); } catch {}
+    applyGalLook(); drawLookChips(); toast(`Photo size ${galSize.toUpperCase()}`); return true;
+  };
+  let base = 0;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  el.addEventListener('touchstart', e => { base = e.touches.length === 2 ? dist(e.touches) : 0; }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || !base) return;
+    const r = dist(e.touches) / base;
+    if (r > 1.3) { step(-1); base = dist(e.touches); } else if (r < 0.77) { step(1); base = dist(e.touches); }
+  }, { passive: true });
+  el.addEventListener('touchend', () => { base = 0; }, { passive: true });
+  // trackpad pinch (ctrl + wheel)
+  let acc = 0, wt;
+  el.addEventListener('wheel', e => {
+    if (!e.ctrlKey) return;
+    e.preventDefault(); acc += e.deltaY; clearTimeout(wt); wt = setTimeout(() => { acc = 0; }, 250);
+    if (acc < -40) { step(-1); acc = 0; } else if (acc > 40) { step(1); acc = 0; }
+  }, { passive: false });
+})();
 $('themebtn').onclick = () => { const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark'; try { localStorage.setItem('inat_theme', next); } catch {} applyTheme(next); drawLookChips(); };
 $('stylebtn').onclick = () => { galStyle = galStyle === 'simple' ? 'polaroid' : 'simple'; try { localStorage.setItem('inat_gal_style', galStyle); } catch {} applyGalLook(); drawLookChips(); };
 function syncRecentTools() {
@@ -3944,7 +3969,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-136 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-137 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
