@@ -131,7 +131,7 @@
   .swipe-prev #gal, .swipe-prev #explore { animation:slideInL .22s ease-out; }
   #controls { margin:0 0 6px; }
   #iconbar { position:sticky; top:0; z-index:60; display:flex; align-items:center; gap:2px; margin:0 -16px 8px; padding:0 10px; flex-wrap:wrap; background:var(--card); border-top:1px solid var(--line); border-bottom:1px solid var(--line); transition:top .22s ease, box-shadow .2s; }
-  body.vexplore #bsearch, body.vexplore #areabtn, body.vexplore #brare, body.vexplore #bcmp, body.vexplore #bfav { display:none !important; }
+  body.vexplore #bcmp { display:none !important; }
   #iconbar.stuck { box-shadow:0 2px 8px rgba(0,0,0,.18); }
   .ibgroup { display:inline-flex; gap:2px; align-items:center; }
   .sp1 { flex:1; }
@@ -338,7 +338,7 @@
   .fpanel[hidden], #areapanel[hidden] { display:none; }
   .fpanel h4 { margin:14px 0 6px; font-size:18px; } .fpanel h4:first-child { margin-top:0; }
   #sheetbg { position:fixed; inset:0; z-index:68; background:rgba(0,0,0,.28); } #sheetbg[hidden] { display:none; }
-  body.vexplore #areabtn { display:none; }
+  .seentag { position:absolute; top:6px; right:6px; z-index:2; width:26px; height:26px; border-radius:50%; background:#4a9b50; color:#fff; display:grid; place-items:center; font-size:15px; box-shadow:0 1px 3px rgba(0,0,0,.5); pointer-events:none; }
   .pgrid .tile.piled::before, .pgrid .tile.piled::after { content:''; position:absolute; inset:0; z-index:-1; background:#fbfaf4; border-radius:3px; box-shadow:0 2px 6px rgba(0,0,0,.35); }
   .pgrid .tile.piled::before { transform:rotate(4deg) translate(4px, 2px); } .pgrid .tile.piled::after { transform:rotate(-3.5deg) translate(-4px, 3px); }
 </style>
@@ -460,6 +460,26 @@
         <p class="status" id="cmpnote" style="margin:6px 0 0"></p>
         <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
       </div>
+      <div class="card fpanel" id="pexplore" hidden>
+        <h4>Location for Common</h4>
+        <p class="status" style="margin:0 0 8px">Tap the map, search for a place, or use your location. Common lists the most observed species there and which ones you have seen.</p>
+      <div id="expmapwrap">
+        <div id="expmap"></div>
+        <div id="expsearch">
+          <button type="button" id="expsbtn" aria-label="Search for a place" title="Search for a place"><i data-i="search" data-s="18"></i></button>
+          <input type="search" id="expq" placeholder="Town, park, address, region…" autocomplete="off" spellcheck="false" hidden>
+          <div id="expsug" hidden></div>
+        </div>
+        <div id="exphist" hidden></div>
+      </div>
+        <div id="exppills"></div>
+        <div class="row" style="margin:6px 0 4px">
+          <label class="status"><input type="checkbox" id="expres" checked> Research grade only</label>
+          <label class="status"><input type="checkbox" id="expunseen"> Hide species I've seen</label>
+        </div>
+        <p id="expnote" class="status"></p>
+        <button class="secondary" id="exprefresh" hidden style="margin-top:6px">Refresh from iNaturalist</button>
+      </div>
       <div class="card" id="areapanel" hidden>
         <p class="status" style="margin:0 0 8px">Pan and zoom the map: the orange circle always fits the current view. Turn the filter on and only observations inside the circle are shown in every view.</p>
         <div id="areamap"></div>
@@ -476,26 +496,7 @@
     </div>
     <div id="pathbar" hidden><div class="pbin"></div></div>
     <div class="card" id="gal"></div>
-    <div class="card" id="explore" hidden>
-      <div id="expmapwrap">
-        <div id="expmap"></div>
-        <div id="expsearch">
-          <button type="button" id="expsbtn" aria-label="Search for a place" title="Search for a place"><i data-i="search" data-s="18"></i></button>
-          <input type="search" id="expq" placeholder="Town, park, address, region…" autocomplete="off" spellcheck="false" hidden>
-          <div id="expsug" hidden></div>
-        </div>
-        <div id="exphist" hidden></div>
-      </div>
-      <div id="exppills"></div>
-      <div class="row" style="margin:6px 0 4px">
-        <label class="status"><input type="checkbox" id="expres" checked> Research grade only</label>
-        <label class="status"><input type="checkbox" id="expunseen"> Not yet seen by me</label>
-      </div>
-      <p id="expnote" class="status"></p>
-      <div id="explist"></div>
-      <button class="secondary" id="exprefresh" hidden style="margin-top:10px">Refresh from iNaturalist</button>
-      <button class="secondary" id="expmore" hidden style="margin-top:10px">Show more</button>
-    </div>
+    <button class="secondary" id="expmore" hidden style="margin:12px 12px 0">Show more</button>
   </div>
 <div id="sheetbg" hidden></div>
 </main>
@@ -1915,10 +1916,11 @@ async function openAreaPanel(open) {
 }
 // Bottom bar: Sort, Filter and Compare open a sheet each (one at a time); Location opens the map sheet.
 const PANELS = { bsort: 'psort', bfilter: 'pfilter', bcmp: 'pcmp' };
-const anyPanelOpen = () => Object.values(PANELS).some(p => !$(p).hidden) || !$('areapanel').hidden;
+const anyPanelOpen = () => Object.values(PANELS).some(p => !$(p).hidden) || !$('areapanel').hidden || !$('pexplore').hidden;
 function closePanels(except) {
   for (const [btn, pan] of Object.entries(PANELS)) if (pan !== except) { $(pan).hidden = true; $(btn).classList.remove('open'); }
   if (except !== 'areapanel' && !$('areapanel').hidden) { openAreaPanel(false); $('areabtn').classList.remove('open'); }
+  if (except !== 'pexplore' && !$('pexplore').hidden) { $('pexplore').hidden = true; $('areabtn').classList.remove('open'); }
   $('sheetbg').hidden = !anyPanelOpen();
 }
 for (const [btn, pan] of Object.entries(PANELS)) {
@@ -1931,7 +1933,15 @@ for (const [btn, pan] of Object.entries(PANELS)) {
     if (opening && btn === 'bfilter') { $('fsJump').hidden = $('fsFav').hidden = view === 'explore'; }
   };
 }
+// Location: in Common it is the place picker (map, search, recent searches, radius); in the other sorts it is the circle that filters my observations.
 $('areabtn').onclick = () => {
+  if (view === 'explore') {
+    closePanels('pexplore');
+    const opening = $('pexplore').hidden;
+    $('pexplore').hidden = !opening; $('areabtn').classList.toggle('open', opening); $('sheetbg').hidden = !opening;
+    if (opening) initExpMap();
+    return;
+  }
   closePanels('areapanel');
   const opening = $('areapanel').hidden;
   openAreaPanel(opening); $('areabtn').classList.toggle('open', opening); $('sheetbg').hidden = !opening;
@@ -2020,7 +2030,7 @@ let browse = null, browseFrom = null;
 const markBrow = (el, tid, oid) => { el.dataset.brow = tid; if (oid != null) el.dataset.oid = oid; };
 document.addEventListener('click', e => { browseFrom = e.target.closest ? e.target.closest('[data-brow]') : null; setTimeout(() => { browseFrom = null; }, 0); }, true);
 function buildBrowse(from) {
-  const box = from.closest('#gal, #explore, #results');
+  const box = from.closest('#gal, #results');
   if (!box) return null;
   const items = [...box.querySelectorAll('[data-brow]')].filter(n => n.offsetParent || n === from)
     .map(n => ({ tid: +n.dataset.brow, oid: n.dataset.oid || '', node: n }));
@@ -2817,52 +2827,60 @@ function renderExplore() {
   drawExpCircle();
 
   const sel = explore.selected === 'r' ? radiusSel : [...explore.chain, ...explore.extra].find(p => p.id === explore.selected);
-  const list = $('explist');
-  list.replaceChildren();
-  $('expmore').hidden = true;
+  const host = $('gal');
+  const draw = nodes => { // Common draws into the gallery
+    if (view !== 'explore') return;
+    Object.assign(gal, { items: [], groups: [], cells: [], drawnSort: '' }); $('pathbar').hidden = true;
+    host.replaceChildren(...nodes);
+  };
+  const msg = (text, chooseBtn) => {
+    const p = document.createElement('p'); p.className = 'status'; p.style.padding = '18px 14px'; p.textContent = text;
+    const nodes = [p];
+    if (chooseBtn) { const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Choose a location'; b.style.margin = '0 14px'; b.onclick = () => $('areabtn').click(); nodes.push(b); }
+    draw(nodes);
+  };
+  $('expmore').hidden = true; $('exprefresh').hidden = true;
   if (!sel) {
     $('expnote').textContent = 'Choose a location to see the most observed species there, and which ones you have seen.';
+    msg('Common lists the most observed species around a place, and which of them you have seen.', true);
     return;
   }
-  const mine = mySpeciesCounts(), myPhoto = myPhotoBySpecies(), mode = $('expunseen').checked ? 'unseen' : 'all';
-  const rows = explore.items.filter(it => {
-    const seen = mine.has(it.taxon.id);
-    return mode === 'all' || (mode === 'seen') === seen;
-  });
+  const mine = mySpeciesCounts(), myPhoto = myPhotoBySpecies(), hideSeen = $('expunseen').checked;
+  const rows = explore.items.filter(it => !hideSeen || !mine.has(it.taxon.id));
   const seenN = explore.items.filter(it => mine.has(it.taxon.id)).length;
   $('expnote').textContent = explore.err ? explore.err
     : explore.loading && !explore.items.length ? `Loading species for ${sel.name}…`
     : `${sel.name}: ${explore.total.toLocaleString()} species. You've seen ${seenN} of the top ${explore.items.length} shown.` +
       (explore.cachedAt ? ` Saved ${ago(new Date(explore.cachedAt).toISOString())}.` : '') +
-      (myObs().length ? '' : isOther() ? ' (Open the compare panel to load your own observations and see which you have seen.)' : ' (Load your observations to see which you have seen.)');
-  const frag = document.createDocumentFragment();
-  for (const it of rows) {
-    const t = it.taxon, n = mine.get(t.id);
-    const row = document.createElement('div'); row.className = 'xrow'; markBrow(row, t.id);
-    const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy';
-    const mp = myPhoto.get(t.id);
-    const src = mp ? sized(mp.url, 'medium') : (t.default_photo?.medium_url || t.default_photo?.square_url);
-    if (mp) { img.className = 'mineimg'; img.title = 'Your photo'; }
-    if (src) img.src = src;
-    const info = document.createElement('div'); info.className = 'xi';
-    const a = document.createElement('a');
-    a.href = `https://www.inaturalist.org/taxa/${t.id}`; a.target = '_blank'; a.rel = 'noopener';
-    speciesLink(a, t.id);
-    if (t.preferred_common_name) a.append(t.preferred_common_name + ' ');
-    const sci = document.createElement('span'); sci.className = 'sci'; sci.textContent = t.name; a.append(sci);
-    const c = document.createElement('span'); c.className = 'count'; c.style.marginLeft = '0';
-    c.textContent = `${it.count.toLocaleString()} observations here`;
-    const badge = document.createElement('span');
-    badge.className = n ? 'seen' : 'unseen';
-    badge.textContent = n ? `✓ Seen · ${n} obs` : 'Not yet seen';
-    info.append(a, c, badge);
-    row.append(img, info); frag.append(row);
+      (myObs().length ? '' : isOther() ? ' (Open Compare to load your own observations and see which you have seen.)' : ' (Load your observations to see which you have seen.)');
+  if (!rows.length) {
+    msg(explore.err ? explore.err : explore.loading ? `Loading species for ${sel.name}…` : explore.items.length ? 'Nothing to show for this filter.' : `No species found for ${sel.name}.`);
+  } else {
+    const grid = document.createElement('div'); grid.className = 'pgrid';
+    for (const it of rows) { const cell = document.createElement('div'); cell.className = 'cell'; cell.append(commonTile(it, mine, myPhoto)); grid.append(cell); }
+    draw([grid]);
   }
-  list.append(frag);
-  if (!rows.length && !explore.loading && !explore.err) list.textContent = 'Nothing to show for this filter.';
   $('exprefresh').hidden = !explore.cachedAt || explore.loading;
   $('expmore').hidden = explore.loading || explore.items.length >= explore.total;
   $('expmore').textContent = `Show more (${explore.total - explore.items.length} left)`;
+}
+// One Polaroid for a species in Common: my own favourite photo if I have one, otherwise iNaturalist's; a green tick when I have seen it.
+function commonTile(it, mine, myPhoto) {
+  const t = it.taxon, n = mine.get(t.id), mp = myPhoto.get(t.id);
+  const tile = document.createElement('div'); tile.className = 'tile'; markBrow(tile, t.id);
+  tile.style.setProperty('--rot', ((Math.imul(t.id, 2654435761) >>> 0) % 1300 / 100 - 6.5).toFixed(2) + 'deg');
+  tile.title = `${t.preferred_common_name || t.name} · ${it.count.toLocaleString()} observations here${n ? ` · you have seen it (${n})` : ''}`;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'Open species');
+  const src = mp ? sized(mp.url, 'medium') : (t.default_photo?.medium_url || t.default_photo?.square_url || '');
+  if (src) { const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.src = src; b.append(im); }
+  if (n) { const k = document.createElement('span'); k.className = 'seentag'; k.textContent = '✓'; k.title = `You have seen this (${n})`; b.append(k); }
+  b.onclick = () => openSpecies(t.id);
+  const cap = document.createElement('a');
+  cap.className = 'cap'; cap.href = `https://www.inaturalist.org/taxa/${t.id}`; cap.target = '_blank'; cap.rel = 'noopener';
+  speciesLink(cap, t.id);
+  const sp = document.createElement('span'); sp.textContent = t.preferred_common_name || t.name; cap.append(sp); capObserver.observe(cap);
+  tile.append(b, cap);
+  return tile;
 }
 $('expmore').onclick = () => loadExplore(true);
 $('exprefresh').onclick = () => { explore.cachedAt = null; loadExplore(); };
@@ -3049,7 +3067,7 @@ function refreshViewing() {
   }
   $('share').hidden = !(other || state.user?.login || meLogin);
   if (favMode && !favModes().some(m => m[0] === favMode)) { favMode = ''; drawFilterChips(); drawChips(); } // e.g. a filter that only exists for my own observations
-  $('bcmp').hidden = !other; // comparing only makes sense while viewing someone else
+  $('bcmp').hidden = !(other || candidates().length);
   $('loadall').hidden = state.complete !== false;
   $('loadall').textContent = `Load full history${state.total ? ` (${state.total.toLocaleString()} observations)` : ''}`;
 }
@@ -3114,15 +3132,14 @@ function setView(v) {
   if (v !== 'recent' && raritySort) { raritySort = ''; try { localStorage.removeItem('inat_rsort'); } catch {} }
   try { localStorage.setItem(VIEW_KEY, v); } catch {}
   const g = isGal(v);
-  $('gal').hidden = !g;
   $('pathbar').hidden = true;
-  $('explore').hidden = v !== 'explore';
-  document.body.classList.toggle('stkview', g); // the dot-grid desk behind the Polaroids
+  if (!g) { Object.assign(gal, { items: [], groups: [], cells: [], drawnSort: '' }); } else $('expmore').hidden = true;
+  document.body.classList.toggle('stkview', true); // the dot-grid desk behind the Polaroids
   document.body.classList.toggle('vexplore', v === 'explore'); // Common keeps only the date and group filters
   $('locTools').hidden = v !== 'place';
   closePanels();
   syncRecentTools(); updateSortUi();
-  if (v === 'explore') { initExpMap(); drawChips(); renderExplore(); if (explore.selected && !explore.items.length && !explore.loading) loadExplore(); }
+  if (v === 'explore') { initExpMap(); drawChips(); renderExplore(); if (explore.selected && !explore.items.length && !explore.loading) loadExplore(); else if (!explore.selected) setTimeout(() => { if (view === 'explore' && $('pexplore').hidden) $('areabtn').click(); }, 150); }
   if (state.obs.length) show();
   // each sort keeps its own scroll position (re-applied once more next frame in case layout settles late)
   const y = scrollPos[v] || 0;
@@ -3426,7 +3443,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-42 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-43 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

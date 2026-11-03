@@ -28,19 +28,19 @@ Fallback: paste a JWT from https://www.inaturalist.org/users/api_token.
 
 The page is an installable web app (`manifest.webmanifest`, `sw.js`): use "Add to Home screen" / "Install" in the browser.
 The service worker caches the app itself, Leaflet, map tiles and photos, so the app opens without a connection and shows
-your cached observations. iNaturalist API calls are never cached by the service worker. Recent Nearby searches
-are stored separately (IndexedDB key `nearby`, up to 15) and can be reopened from the history button on the Nearby map.
+your cached observations. iNaturalist API calls are never cached by the service worker. Recent Common searches
+are stored separately (IndexedDB key `nearby`, up to 15) and can be reopened from the history button in the Location sheet.
 Bump `VER` in `sw.js` to force the cached libraries, tiles and photos to be dropped.
 
 ## Controls
 
 A bottom bar has the main controls; each opens a sheet above it.
 
-- **Sort**: *Latest* (grouped by year, month, day), *Rarest* (species with the fewest iNaturalist observations first), *Taxonomy*, *Place* and *Common* (the most observed species around a place, the former Nearby screen).
+- **Sort**: *Latest* (grouped by year, month, day), *Rarest* (species with the fewest iNaturalist observations first), *Taxonomy*, *Place* and *Common* (the most observed species around a place, shown as Polaroids with a green tick on the ones you have seen).
   For Latest and Rarest, *Same species* chooses between every observation, one per species per day, or one per species (grouped entries look like a small pile of Polaroids). *Shuffle* randomises the order.
 - **Filter**: jump to a group or species, group (birds, plants…), favourite-photo status, and date.
-- **Location**: a map where the orange circle filters your observations to the area in view.
-- **Compare**: only while viewing someone else's observations (species missing from yours, or seen by both).
+- **Location**: in the observation sorts, a map where the orange circle filters your observations to the area in view; in Common, the place picker (tap the map, search for a place or use your location; radius or iNaturalist place; recent searches; research grade only; hide species you've seen).
+- **Compare**: species missing from another person's list, or seen by both (available from your own account and while viewing someone else).
 
 Every photo is a Polaroid (white frame, handwritten name in Caveat, a small random tilt fixed per observation) in one strict grid. A group is not a row in between: its overlapping
 chevron tab (graph paper, linen and denim in turn by level) sits above the first Polaroid of the group. Tap a tab to collapse every group of its level into a small overlapping stack of Polaroids (collapsing a group collapses everything inside it; tapping again expands one level; the group you tapped stays where it is on screen).
