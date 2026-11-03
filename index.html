@@ -445,17 +445,21 @@
   #gal.st-simple .stack .mini img { height:100%; }
   #gal.st-simple .pgrid .tile.piled::before, #gal.st-simple .pgrid .tile.piled::after { inset:0 0 auto 0; height:auto; aspect-ratio:1; } /* the pile sits behind the photo only, never behind the name */
 
-  /* groups as horizontal folder dividers: each group is a card across the page with a tab on its top edge; nested groups sit inside and their tabs step across */
-  .dvroot { padding:38px 2px 6px; }
-  .dv { position:relative; margin:0 0 14px; }
-  .dvb > .dv { margin-top:33px; }
+  /* groups as horizontal folder dividers: each group is a full-width card with a tab on its top edge; nested groups lie over their parent at the same width, and every tab sticks to the top (deeper ones stack beneath) while its group is on screen */
+  .dvroot { padding:4px 0 6px; }
+  .dv { position:relative; margin:0 0 8px; }
+  .dvb > .dv { margin-top:6px; }
   .dv.d0 { --dvfg:#1d2f6b; --dvbg:linear-gradient(rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, #faf6e8; }
   .dv.d1 { --dvfg:#3a2a14; --dvbg:repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), #e2dbc5; }
   .dv.d2 { --dvfg:#173a1f; --dvbg:repeating-linear-gradient(135deg, rgba(255,255,255,.3) 0 2px, transparent 2px 5px), #b6dcb0; }
-  .dvb { padding:5px 3px 6px; border-radius:3px 9px 9px 9px; background:var(--dvbg); box-shadow:0 3px 9px rgba(0,0,0,.4); }
-  .dvb .pgrid { padding:8px 3px 6px; }
-  .dvt { position:absolute; z-index:3; top:-30px; left:calc(8px + var(--dd) * 78px); height:30px; padding:1px 24px 0 14px; border:0; border-radius:10px 22px 0 0 / 10px 100% 0 0; background:var(--dvbg); color:var(--dvfg);
-         font:700 19px/30px 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; white-space:nowrap; cursor:pointer; box-shadow:-3px -2px 5px -3px rgba(0,0,0,.4); user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
+  .dv.d3 { --dvfg:#1d2f6b; --dvbg:linear-gradient(rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, #faf6e8; }
+  .dv.d4 { --dvfg:#3a2a14; --dvbg:repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), #e2dbc5; }
+  .dv.d5 { --dvfg:#173a1f; --dvbg:repeating-linear-gradient(135deg, rgba(255,255,255,.3) 0 2px, transparent 2px 5px), #b6dcb0; }
+  .dvh { position:sticky; top:calc(var(--dd) * 28px + 4px); z-index:calc(60 - var(--dd)); height:30px; margin:0 0 -1px; pointer-events:none; }
+  .dvb { padding:0 0 6px; border-radius:0 8px 8px 8px; background:var(--dvbg); box-shadow:0 -2px 6px rgba(0,0,0,.28), 0 3px 9px rgba(0,0,0,.4); }
+  .dvb .pgrid { padding:12px 6px 6px; }
+  .dvt { position:relative; pointer-events:auto; margin-left:10px; height:30px; padding:1px 24px 0 14px; border:0; border-radius:10px 22px 0 0 / 10px 100% 0 0; background:var(--dvbg); color:var(--dvfg);
+         font:700 19px/29px 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; white-space:nowrap; cursor:pointer; box-shadow:-3px -2px 5px -3px rgba(0,0,0,.45), 0 3px 6px -3px rgba(0,0,0,.4); user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
   .dvt small { margin-left:8px; font-size:14px; font-weight:400; opacity:.8; } .dvt small.sci { font-style:italic; }
   .dvt:active { filter:brightness(.95); }
 </style>
@@ -1572,13 +1576,14 @@ let galGroups = 'dividers'; // how groups are shown: 'tabs' (chevron tabs above 
 try { if (localStorage.getItem('inat_gal_groups') === 'tabs') galGroups = 'tabs'; } catch {}
 // A divider section: a card with a folder tab on its top edge; sections nest, and their tabs step across the page by level.
 function dvSection(g) {
-  const sec = document.createElement('section'); sec.className = 'dv d' + (g.depth % 3); sec.dataset.key = g.key; sec.style.setProperty('--dd', g.depth % 3);
+  const sec = document.createElement('section'); sec.className = 'dv d' + (g.depth % 3); sec.dataset.key = g.key; sec.style.setProperty('--dd', g.depth);
   const t = document.createElement('button'); t.type = 'button'; t.className = 'dvt'; t.dataset.key = g.key; t.dataset.rank = g.rank;
   t.title = `${g.rank}: ${g.main}${g.sub ? ' (' + g.sub + ')' : ''} · tap to ${collapsed[gal.sort].has(g.key) ? 'expand' : 'collapse'} every ${g.rank}`;
   const b = document.createElement('b'); b.textContent = g.main; t.append(b);
   if (g.sub) { const sm = document.createElement('small'); sm.textContent = g.sub; if (gal.sort === 'tree') sm.className = 'sci'; t.append(sm); }
   const body = document.createElement('div'); body.className = 'dvb';
-  sec.append(t, body);
+  const head = document.createElement('div'); head.className = 'dvh'; head.append(t);
+  sec.append(head, body);
   return { el: sec, body };
 }
 function drawDividers() {
@@ -1674,7 +1679,7 @@ function redrawKeep(key, fromBar) {
   const fix = () => {
     const cell = $('gal').querySelector(`.dv[data-key="${CSS.escape(key)}"]`) || $('gal').querySelector(`.cell[data-i="${g.first}"]`);
     if (!cell) return;
-    const d = cell.getBoundingClientRect().top - (barHeight() + (cell.classList.contains('dv') ? 40 : 6));
+    const d = cell.getBoundingClientRect().top - (barHeight() + (cell.classList.contains('dv') ? g.depth * 28 + 6 : 6));
     if (Math.abs(d) > 1) scrollBy(0, d);
   };
   fix();
@@ -1709,7 +1714,7 @@ const schedulePath = () => { if (!pathFrame) pathFrame = requestAnimationFrame(u
 function updatePath() {
   pathFrame = 0;
   const pb = $('pathbar'), cells = gal.cells;
-  if (!isGal(view) || !cells.length) { pb.hidden = true; return; }
+  if (!isGal(view) || !cells.length || galGroups === 'dividers') { pb.hidden = true; return; }
   const ref = barHeight() + 2;
   let lo = 0, hi = cells.length - 1, best = -1; // the last cell whose top has scrolled up under the bar
   while (lo <= hi) { const mid = (lo + hi) >> 1; if (cells[mid].el.getBoundingClientRect().top <= ref) { best = mid; lo = mid + 1; } else hi = mid - 1; }
@@ -3369,7 +3374,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-59 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-60 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
