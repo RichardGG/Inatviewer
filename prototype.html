@@ -276,6 +276,36 @@
   .v-kraft .mbar button { color:#3a2a14; } .v-kraft .mbar button svg { stroke:#3a2a14; filter:none; }
   .v-kraft .mbar button .foil { background:none; -webkit-background-clip:initial; color:#3a2a14; filter:none; }
   .v-kraft .mbar button.on svg, .v-kraft .mbar button.on span { filter:none; text-decoration:underline wavy rgba(165,44,44,.8); text-underline-offset:3px; }
+
+  /* ---------- lightbox mock-ups ---------- */
+  .lb { position:relative; width:340px; height:600px; overflow:hidden; border-radius:30px; border:7px solid #0e0e10; box-shadow:0 14px 34px rgba(0,0,0,.5); }
+  .lb .x { position:absolute; z-index:9; top:14px; left:14px; width:36px; height:36px; display:grid; place-items:center; }
+  .lb .x svg { width:26px; height:26px; stroke:#d9b45a; fill:none; stroke-width:2.2; stroke-linecap:round; filter:drop-shadow(0 -1px 0 rgba(0,0,0,.7)); }
+  .lb .cnt { position:absolute; z-index:9; top:20px; right:16px; font:700 20px var(--hw); color:#d9b45a; }
+  .lb .hint { color:#e9e5d6; position:absolute; z-index:9; bottom:14px; left:0; right:0; text-align:center; font:700 17px var(--hw); opacity:.75; }
+  /* 1 · a print on the desk */
+  .lb1 { background:radial-gradient(circle, rgba(190,225,195,.3) 1.3px, transparent 1.7px) 0 0/22px 22px, var(--grain), #233d2e; }
+  .lb1 .pile { position:absolute; left:26px; right:26px; top:92px; height:380px; }
+  .lb1 .pr { position:absolute; inset:0; background:#fbfaf4; padding:14px 14px 0; box-shadow:0 8px 20px rgba(0,0,0,.55); }
+  .lb1 .pr.b2 { transform:rotate(5deg) translate(10px, 6px); } .lb1 .pr.b1 { transform:rotate(-3.5deg) translate(-8px, 4px); }
+  .lb1 .pr.top { transform:rotate(-1.2deg); z-index:3; }
+  .lb1 .pr .img { aspect-ratio:1; background:var(--pic); position:relative; overflow:hidden; } .lb1 .pr .img::after { content:''; position:absolute; inset:0; background:radial-gradient(circle at 50% 40%, rgba(255,255,255,.55) 0 18%, transparent 19%); }
+  .lb1 .pr .hw { padding:8px 4px 0; font:700 27px/1.05 var(--hw); color:#252a33; } .lb1 .pr .hw small { display:block; font-size:19px; font-weight:400; opacity:.75; }
+  .lb1 .arrow { position:absolute; z-index:9; top:50%; width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,.35); display:grid; place-items:center; color:#d9b45a; font:700 22px var(--hw); }
+  .lb1 .pgdots { position:absolute; z-index:9; bottom:46px; left:0; right:0; text-align:center; } .lb1 .pgdots i { display:inline-block; width:8px; height:8px; margin:0 3px; border-radius:50%; background:rgba(255,255,255,.35); } .lb1 .pgdots i.on { background:#d9b45a; }
+  /* 2 · a page in a photo album */
+  .lb2 { background:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px), #232733; }
+  .lb2 .page { position:absolute; left:14px; right:14px; top:62px; bottom:50px; background:var(--grain), #1b1b1f; border-radius:6px; box-shadow:inset 0 0 0 1px #000, 0 6px 16px rgba(0,0,0,.5); }
+  .lb2 .page::before { content:''; position:absolute; inset:5px; border:2px dashed rgba(240,215,160,.3); border-radius:4px; }
+  .lb2 .ph { position:absolute; left:28px; right:28px; top:34px; aspect-ratio:1; background:var(--pic); box-shadow:0 4px 12px rgba(0,0,0,.7); }
+  .lb2 .ph::after { content:''; position:absolute; inset:0; background:radial-gradient(circle at 50% 40%, rgba(255,255,255,.55) 0 18%, transparent 19%); }
+  .lb2 .ph i { position:absolute; width:34px; height:34px; background:#0a0a0c; box-shadow:1px 2px 3px rgba(0,0,0,.6); z-index:2; }
+  .lb2 .ph i:nth-child(1) { left:-6px; top:-6px; clip-path:polygon(0 0, 100% 0, 0 100%); } .lb2 .ph i:nth-child(2) { right:-6px; top:-6px; clip-path:polygon(0 0, 100% 0, 100% 100%); }
+  .lb2 .ph i:nth-child(3) { left:-6px; bottom:-6px; clip-path:polygon(0 0, 100% 100%, 0 100%); } .lb2 .ph i:nth-child(4) { right:-6px; bottom:-6px; clip-path:polygon(100% 0, 100% 100%, 0 100%); }
+  .lb2 .cap { position:absolute; left:26px; right:26px; bottom:26px; font:700 26px/1.05 var(--hw); color:#e9e5d6; transform:rotate(-1deg); } .lb2 .cap small { display:block; font-size:19px; font-weight:400; opacity:.7; }
+  .lb2 .curl { position:absolute; right:14px; bottom:50px; width:54px; height:54px; background:linear-gradient(315deg, #2a2a30 50%, #4a4a52 50%); border-radius:0 0 6px 0; box-shadow:-3px -3px 6px rgba(0,0,0,.5); clip-path:polygon(100% 0, 100% 100%, 0 100%); z-index:4; }
+  .lb2 .tabs2 { position:absolute; left:14px; right:14px; bottom:10px; display:flex; justify-content:center; gap:6px; }
+  .lb2 .tabs2 i { width:34px; height:5px; border-radius:2px; background:rgba(217,180,90,.3); } .lb2 .tabs2 i.on { background:#d9b45a; }
 </style>
 </head>
 <body>
@@ -461,6 +491,20 @@
     <div><div class="phone v-cloth" data-v="v-cloth"><div class="pbg"><div class="photo" style="--pic:linear-gradient(135deg,#7ab36a,#2e6b4f)"><div class="img"></div><b>Robin</b></div><div class="photo" style="--pic:linear-gradient(135deg,#6fa8dc,#274b7a)"><div class="img"></div><b>Blue tit</b></div></div><div class="scrim"></div><div class="msheet"></div><div class="mbar"><i class="rib"></i><nav><button data-k="sort" class=on><svg viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg><span class="foil">Taxonomy</span></button><button data-k="filter"><svg viewBox="0 0 24 24"><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"/></svg><span class="foil">Filter</span></button><button data-k="loc"><svg viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg><span class="foil">Location</span></button><button data-k="cmp"><svg viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/></svg><span class="foil">Compare</span></button></nav></div></div><div class="cap">Dark cloth band · ink-stamp chips</div></div>
     <div><div class="phone v-leather" data-v="v-leather"><div class="pbg"><div class="photo" style="--pic:linear-gradient(135deg,#7ab36a,#2e6b4f)"><div class="img"></div><b>Robin</b></div><div class="photo" style="--pic:linear-gradient(135deg,#6fa8dc,#274b7a)"><div class="img"></div><b>Blue tit</b></div></div><div class="scrim"></div><div class="msheet"></div><div class="mbar"><i class="rib"></i><nav><button data-k="sort" class=on><svg viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg><span class="foil">Taxonomy</span></button><button data-k="filter"><svg viewBox="0 0 24 24"><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"/></svg><span class="foil">Filter</span></button><button data-k="loc"><svg viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg><span class="foil">Location</span></button><button data-k="cmp"><svg viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/></svg><span class="foil">Compare</span></button></nav></div></div><div class="cap">Stitched leather band · sticker chips</div></div>
     <div><div class="phone v-kraft" data-v="v-kraft"><div class="pbg"><div class="photo" style="--pic:linear-gradient(135deg,#7ab36a,#2e6b4f)"><div class="img"></div><b>Robin</b></div><div class="photo" style="--pic:linear-gradient(135deg,#6fa8dc,#274b7a)"><div class="img"></div><b>Blue tit</b></div></div><div class="scrim"></div><div class="msheet"></div><div class="mbar"><i class="rib"></i><nav><button data-k="sort" class=on><svg viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg><span class="foil">Taxonomy</span></button><button data-k="filter"><svg viewBox="0 0 24 24"><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"/></svg><span class="foil">Filter</span></button><button data-k="loc"><svg viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg><span class="foil">Location</span></button><button data-k="cmp"><svg viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/></svg><span class="foil">Compare</span></button></nav></div></div><div class="cap">Kraft card band · label-maker chips</div></div>
+  </div>
+
+  <h2>11 · Lightbox (full-screen photo)</h2>
+  <p class="note">Two ways to show a photo full screen with a physical feel. Both keep the photo as large as possible, keep the gold-foil close button from the notebook cover, and swipe between an observation's photos.</p>
+  <div class="phones">
+    <div><div class="lb lb1"><div class="x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div><div class="cnt">1/3</div>
+      <div class="pile"><div class="pr b2" style="--pic:linear-gradient(135deg,#caa44a,#6b4d1a)"><div class="img"></div></div><div class="pr b1" style="--pic:linear-gradient(135deg,#6fa8dc,#274b7a)"><div class="img"></div></div>
+        <div class="pr top" style="--pic:linear-gradient(135deg,#7ab36a,#2e6b4f)"><div class="img"></div><div class="hw">Robin<small>10 March 2026 · Hyde Park</small></div></div></div>
+      <div class="arrow" style="left:6px">‹</div><div class="arrow" style="right:6px">›</div><div class="pgdots"><i class="on"></i><i></i><i></i></div><div class="hint">swipe: the next print lands on top</div></div>
+      <div class="cap">1 · A print on the desk (the next ones lie underneath)</div></div>
+    <div><div class="lb lb2"><div class="x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div><div class="cnt">1/3</div>
+      <div class="page"><div class="ph" style="--pic:linear-gradient(135deg,#7ab36a,#2e6b4f)"><i></i><i></i><i></i><i></i></div><div class="cap">Robin<small>10 March 2026 · Hyde Park</small></div><span class="curl"></span></div>
+      <div class="tabs2"><i class="on"></i><i></i><i></i></div></div>
+      <div class="cap">2 · A page in a photo album (photo corners; swipe turns the page, the corner curls)</div></div>
   </div>
 </main>
 
