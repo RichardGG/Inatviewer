@@ -471,6 +471,8 @@
   .strip img { flex:none; width:58px; height:58px; box-sizing:border-box; object-fit:cover; border-radius:3px; background:#d9d9d2; box-shadow:0 1px 4px rgba(0,0,0,.4); }
   #gal.st-polaroid .strip img { border:3px solid #fbfaf4; border-bottom-width:9px; }
   .strip .sn { margin-left:auto; flex:none; min-width:28px; padding:2px 8px; border-radius:12px; background:rgba(0,0,0,.65); color:#fff; font-size:14px; text-align:center; }
+  /* desktop: nested folders are inset a little on each side, so the edges of the folders they lie over show; on mobile they stay edge to edge */
+  @media (min-width: 800px) { .dvb > .dv { margin-left:18px; margin-right:18px; } .dvroot { padding:4px 6px 6px; } }
 </style>
 </head>
 <body>
@@ -3416,7 +3418,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-67 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-68 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
