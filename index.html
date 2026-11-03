@@ -1861,7 +1861,7 @@ function renderGallery(obs) {
   if (galMerge > 1) {
     const cnt = new Map();
     for (const it of gal.items) for (const g of it.path) cnt.set(g, (cnt.get(g) || 0) + 1);
-    for (const it of gal.items) { const k = it.path.findIndex(g => cnt.get(g) < galMerge); if (k >= 0) { it.tag = it.path[k]; it.path = it.path.slice(0, k); } }
+    for (const it of gal.items) { const k = it.path.findIndex((g, j) => j > 0 && cnt.get(g) < galMerge); if (k >= 0) { it.tag = it.path[k]; it.path = it.path.slice(0, k); } }
   }
   gal.groups = []; gal.byKey = new Map();
   gal.items.forEach((it, i) => {
@@ -3840,7 +3840,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-111 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-112 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
