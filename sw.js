@@ -1,6 +1,6 @@
 // Makes iNat Viewer installable and usable offline: the app shell, Leaflet, map tiles and photos are cached.
 // iNaturalist API calls are not handled here; the page keeps its own data in IndexedDB.
-const VER = 'v2'; // v2: map tiles now come from MapTiler
+const VER = 'v3'; // v3: new theme colour
 const SHELL = `shell-${VER}`, TILES = `tiles-${VER}`, PHOTOS = `photos-${VER}`;
 const KEEP = [SHELL, TILES, PHOTOS];
 const SHELL_FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
