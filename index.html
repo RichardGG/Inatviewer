@@ -289,28 +289,28 @@
   @media (min-width:1400px) { .pgrid { --cols:6; } }
   .cell { min-width:0; display:flex; flex-direction:column; justify-content:flex-end; scroll-margin-top:calc(var(--bar-h, 0px) + 60px); }
   .cell .tags { display:flex; flex-flow:row wrap; align-items:stretch; gap:1px 0; margin:0 0 -5px; padding:4px 0 0 13px; width:calc(var(--span, 1) * 100% + (var(--span, 1) - 1) * var(--gx, 14px)); position:relative; z-index:3; }
-  .pgrid .tile { position:relative; z-index:4; aspect-ratio:auto; background:#fbfaf4; border-radius:3px; overflow:visible; padding:9px 9px 0;
+  .pgrid .tile { position:relative; z-index:4; aspect-ratio:auto; background:#fbfaf4; border-radius:3px; overflow:visible; padding:var(--pad, 9px) var(--pad, 9px) 0;
                  box-shadow:0 4px 12px rgba(0,0,0,.38), 0 1px 2px rgba(0,0,0,.28); transform:rotate(var(--rot, 0deg)); transition:transform .15s; }
   .pgrid .tile:hover { transform:rotate(0deg) scale(1.03); z-index:4; }
   .pgrid .tile .pic { position:relative; inset:auto; display:block; width:100%; height:auto; aspect-ratio:1; background:#d9d9d2; overflow:hidden; cursor:pointer; }
   .pgrid .tile img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; } /* out of flow, so whether a photo has loaded never changes the layout */
-  .pgrid .tile .cap { position:static; display:flex; align-items:center; justify-content:center; background:none; text-shadow:none; color:#252a33; padding:0 5px; height:58px; line-height:1.02; text-align:center;
-                      font:700 26px/1.02 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; white-space:normal; overflow:hidden; transform:rotate(-1deg); }
+  .pgrid .tile .cap { position:static; display:flex; align-items:center; justify-content:center; background:none; text-shadow:none; color:#252a33; padding:0 5px; height:var(--caph, 58px); line-height:1.02; text-align:center;
+                      font:700 var(--capfs, 26px)/1.02 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; white-space:normal; overflow:hidden; transform:rotate(-1deg); }
   .pgrid .tile .cap span { display:block; max-width:100%; word-break:break-word; }
   .pgrid .tile .cap:hover { text-decoration:none; color:#1f5a2a; }
   /* coloured typewriter stickers; the common name large, the scientific name small underneath */
   :root { --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .25  0 0 0 0 .2  0 0 0 0 .1  0 0 0 .4 -.1'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"); }
   :root { --board:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='120'><filter id='c' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.9 .06' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .2  0 0 0 0 .08  0 0 0 .9 -.28'/></filter><rect width='100%25' height='100%25' filter='url(%23c)'/></svg>"); }
   /* group tabs: overlapping chevrons, graph paper, linen and denim in turn by level */
-  .tw { display:flex; max-width:100%; position:relative; margin-left:-13px; filter:drop-shadow(-2px 1px 2px rgba(0,0,0,.45)); }
+  .tw { display:flex; flex:none; position:relative; margin-left:-13px; filter:drop-shadow(-2px 1px 2px rgba(0,0,0,.45)); }
   .tag { --tc:#35568a; margin:0; display:flex; flex-direction:column; justify-content:center; flex:1; max-width:100%; text-align:left; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation;
          font:700 15px/1 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; padding:3px 22px 8px 19px; border:0; border-radius:0; position:relative;
          clip-path:polygon(0 0, calc(100% - 13px) 0, 100% 50%, calc(100% - 13px) 100%, 0 100%); }
   .tag.m0 { color:#1d2f6b; background:linear-gradient(rgba(60,100,160,.35) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(60,100,160,.35) 1px, transparent 1px) 0 0/10px 10px, #faf6e8; }
   .tag.m1 { color:#3a2a14; background:repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), #d9d2bd; }
   .tag.m2 { color:#173a1f; background:repeating-linear-gradient(135deg, rgba(255,255,255,.28) 0 2px, transparent 2px 5px), #a6d3a0; } /* light green denim */
-  .tag b { display:block; font-weight:700; font-size:15px; line-height:1; overflow-wrap:anywhere; }
-  .tag small { display:block; margin-top:0; font-size:11px; font-weight:400; opacity:.88; overflow-wrap:anywhere; }
+  .tag b { display:block; white-space:nowrap; font-weight:700; font-size:15px; line-height:1; overflow-wrap:anywhere; }
+  .tag small { display:block; white-space:nowrap; margin-top:0; font-size:11px; font-weight:400; opacity:.88; overflow-wrap:anywhere; }
   .tag small.sci { font-style:italic; }
   .tag:active { filter:brightness(.94); }
   .tag.flash { animation:flash 1.8s ease-out; }
@@ -427,6 +427,19 @@
   .msug:empty { display:none; }
   .msug button { display:flex; flex-direction:column; align-items:flex-start; width:100%; text-align:left; background:#fff; color:#222; border:0; border-top:1px solid #eee; border-radius:0; padding:7px 10px; font-size:15px; }
   .msug button small { color:#666; font-size:11px; }
+
+  /* View options: photo size (1, 2, 3 or 4 columns on a phone) and style (Polaroid or simple squares) */
+  #gal.sz-xl .pgrid { --cols:1; gap:34px 14px; } #gal.sz-l .pgrid { --cols:2; } #gal.sz-m .pgrid { --cols:3; gap:18px 10px; } #gal.sz-s .pgrid { --cols:4; gap:14px 8px; padding:10px 6px 4px; }
+  #gal.sz-xl { --pad:12px; --caph:84px; --capfs:38px; } #gal.sz-m { --pad:7px; --caph:46px; --capfs:20px; } #gal.sz-s { --pad:5px; --caph:36px; --capfs:15px; }
+  @media (min-width:560px) { #gal.sz-xl .pgrid { --cols:2; } #gal.sz-l .pgrid { --cols:3; } #gal.sz-m .pgrid { --cols:4; } #gal.sz-s .pgrid { --cols:5; } }
+  @media (min-width:800px) { #gal.sz-xl .pgrid { --cols:3; } #gal.sz-l .pgrid { --cols:4; } #gal.sz-m .pgrid { --cols:5; } #gal.sz-s .pgrid { --cols:6; } }
+  @media (min-width:1100px) { #gal.sz-xl .pgrid { --cols:4; } #gal.sz-l .pgrid { --cols:5; } #gal.sz-m .pgrid { --cols:6; } #gal.sz-s .pgrid { --cols:8; } }
+  #gal.st-simple .pgrid .tile { background:none; box-shadow:none; padding:0; border-radius:0; transform:none; }
+  #gal.st-simple .pgrid .tile:hover { transform:none; }
+  #gal.st-simple .pgrid .tile .pic { border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.35); background:#2b3a32; }
+  #gal.st-simple .pgrid .tile .cap { display:block; height:auto; padding:5px 2px 0; text-align:left; color:var(--fg); transform:none; overflow:visible; line-height:1.05; }
+  #gal.st-simple .pgrid .tile .cap:hover { color:var(--accent); }
+  #gal.st-simple .pgrid .tile.piled::before, #gal.st-simple .pgrid .tile.piled::after { background:rgba(255,255,255,.55); border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,.3); }
 </style>
 </head>
 <body>
@@ -490,7 +503,7 @@
   <div id="results" hidden>
     <div class="tabs" role="toolbar" aria-label="Sort, filter and location">
       <i class="rib"></i>
-      <button id="bsort" aria-label="Sort"><i data-i="arrow-up-down"></i><span id="sortlabel" class="vh">Latest</span></button>
+      <button id="bsort" aria-label="View"><i data-i="eye"></i><span id="sortlabel" class="vh">Latest</span></button>
       <button id="bfilter" aria-label="Filter"><i data-i="filter"></i><span class="vh">Filter</span></button>
       <button id="areabtn" aria-label="Location" aria-expanded="false"><i data-i="map-pin"></i><span class="vh">Location</span></button>
       <button id="bcmp" aria-label="Compare" hidden><i data-i="git-compare"></i><span class="vh">Compare</span></button>
@@ -512,6 +525,10 @@
           <h4>Common</h4>
           <div id="commonchips" class="clsrow" role="group" aria-label="Options for the Common sort"></div>
         </div>
+        <h4>Style</h4>
+        <div id="stylechips" class="clsrow" role="group" aria-label="Photo style"></div>
+        <h4>Size</h4>
+        <div id="sizechips" class="clsrow" role="group" aria-label="Photo size"></div>
         <h4>Order</h4>
         <div class="clsrow">
           <button type="button" class="cls" id="shuffle">Shuffle</button>
@@ -608,7 +625,7 @@ const KEY = 'inat_token';
 const SHOWN_RANKS = new Set(['kingdom','phylum','class','order','family','genus']);
 const $ = id => document.getElementById(id);
 // Lucide icons (https://lucide.dev, ISC licence), inlined so there is no network dependency.
-const ICONS = {"filter":"<path d=\"M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z\"/>","images":"<path d=\"M18 22H4a2 2 0 0 1-2-2V6\"/> <path d=\"m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18\"/> <circle cx=\"12\" cy=\"8\" r=\"2\"/> <rect width=\"16\" height=\"16\" x=\"6\" y=\"2\" rx=\"2\"/>","arrow-up-down":"<path d=\"m21 16-4 4-4-4\"/> <path d=\"M17 20V4\"/> <path d=\"m3 8 4-4 4 4\"/> <path d=\"M7 4v16\"/>","clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","palette":"<path d=\"M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\"/> <circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","scissors":"<circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M8.12 8.12 12 12\"/> <path d=\"M20 4 8.12 15.88\"/> <circle cx=\"6\" cy=\"18\" r=\"3\"/> <path d=\"M14.8 14.8 20 20\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
+const ICONS = {"eye":"<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","filter":"<path d=\"M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z\"/>","images":"<path d=\"M18 22H4a2 2 0 0 1-2-2V6\"/> <path d=\"m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18\"/> <circle cx=\"12\" cy=\"8\" r=\"2\"/> <rect width=\"16\" height=\"16\" x=\"6\" y=\"2\" rx=\"2\"/>","arrow-up-down":"<path d=\"m21 16-4 4-4-4\"/> <path d=\"M17 20V4\"/> <path d=\"m3 8 4-4 4 4\"/> <path d=\"M7 4v16\"/>","clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","palette":"<path d=\"M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\"/> <circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","scissors":"<circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M8.12 8.12 12 12\"/> <path d=\"M20 4 8.12 15.88\"/> <circle cx=\"6\" cy=\"18\" r=\"3\"/> <path d=\"M14.8 14.8 20 20\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
 ICONS.heart = '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>';
 ICONS['share-2'] = "<circle cx=\"18\" cy=\"5\" r=\"3\"/> <circle cx=\"6\" cy=\"12\" r=\"3\"/> <circle cx=\"18\" cy=\"19\" r=\"3\"/> <line x1=\"8.59\" x2=\"15.42\" y1=\"13.51\" y2=\"17.49\"/> <line x1=\"15.41\" x2=\"8.59\" y1=\"6.51\" y2=\"10.49\"/>";
 ICONS['git-compare'] = "<circle cx=\"18\" cy=\"18\" r=\"3\"/> <circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M13 6h3a2 2 0 0 1 2 2v7\"/> <path d=\"M11 18H8a2 2 0 0 1-2-2V9\"/>";
@@ -1454,9 +1471,9 @@ function recentItems(obs) {
 function fitCaption(cap) {
   const span = cap.firstElementChild;
   if (!span || !cap.clientHeight) return; // not laid out yet (hidden tab): the observer below calls this again when it is
-  let size = 26;
+  let size = parseFloat(getComputedStyle(cap).getPropertyValue('--capfs')) || 26;
   cap.style.fontSize = size + 'px';
-  while (span.scrollHeight > cap.clientHeight + 1 && size > 12) { size -= 1; cap.style.fontSize = size + 'px'; }
+  while (span.scrollHeight > cap.clientHeight + 1 && size > 10) { size -= 1; cap.style.fontSize = size + 'px'; }
 }
 const capObserver = new ResizeObserver(es => { for (const e of es) fitCaption(e.target); });
 if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('.pgrid .tile .cap').forEach(fitCaption));
@@ -3185,7 +3202,28 @@ function drawGroupChips() {
     box.append(b);
   }
 }
+let galStyle = 'polaroid', galSize = 'l';
+try { if (localStorage.getItem('inat_gal_style') === 'simple') galStyle = 'simple'; const z = localStorage.getItem('inat_gal_size'); if (['xl', 'l', 'm', 's'].includes(z)) galSize = z; } catch {}
+function applyGalLook() {
+  const g = $('gal');
+  g.classList.remove('sz-xl', 'sz-l', 'sz-m', 'sz-s', 'st-polaroid', 'st-simple');
+  g.classList.add('sz-' + galSize, 'st-' + galStyle);
+  requestAnimationFrame(() => { if (typeof spanTags === 'function') spanTags(); document.querySelectorAll('.pgrid .tile .cap').forEach(fitCaption); schedulePath(); });
+}
+function drawLookChips() {
+  const mk = (box, items, cur, set) => {
+    box.replaceChildren();
+    for (const [k, label] of items) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (cur === k ? ' on' : ''); b.textContent = label; b.setAttribute('aria-pressed', String(cur === k));
+      b.onclick = () => { set(k); applyGalLook(); drawLookChips(); };
+      box.append(b);
+    }
+  };
+  mk($('stylechips'), [['polaroid', 'Polaroid'], ['simple', 'Simple']], galStyle, k => { galStyle = k; try { localStorage.setItem('inat_gal_style', k); } catch {} });
+  mk($('sizechips'), [['xl', 'XL'], ['l', 'L'], ['m', 'M'], ['s', 'S']], galSize, k => { galSize = k; try { localStorage.setItem('inat_gal_size', k); } catch {} });
+}
 function syncRecentTools() {
+  drawLookChips();
   drawCommonChips();
   $('unshuffle').hidden = shuffleSeed == null && recentSeed == null;
   $('shuffle').classList.toggle('on', !$('unshuffle').hidden);
@@ -3262,11 +3300,12 @@ document.addEventListener('click', e => { if (!e.target.closest('#jumpwrap')) $(
 
 
 
+applyGalLook();
 setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-53 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-55 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
