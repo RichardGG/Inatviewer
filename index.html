@@ -588,7 +588,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .pmap[hidden] { display:none; }
   .ptiles img { position:absolute; width:256px; height:256px; max-width:none; user-select:none; }
   .pdots { position:absolute; inset:0; pointer-events:none; } .pdots circle { fill:#e8590c; stroke:#fff; stroke-width:1.5; }
-  .pat { position:absolute; right:4px; bottom:2px; font:10px Arial, sans-serif; color:#333; background:rgba(255,255,255,.7); padding:0 4px; border-radius:2px; }
+  .mapcredit { margin:6px 12px 0; font:11px Arial, sans-serif; color:var(--muted); text-align:right; } .mapcredit a { color:inherit; }
   .dark .ptiles { filter:brightness(.72) contrast(1.05) saturate(.75); }
   /* a group too small for a folder: a paper sticker stuck on the photo */
   .gsticker { position:absolute; z-index:6; top:-9px; left:6px; max-width:92%; padding:2px 9px 3px; background:#ffe27a; color:#3a2a14; border-radius:3px; transform:rotate(-2.5deg); box-shadow:0 2px 4px rgba(0,0,0,.4);
@@ -1871,8 +1871,7 @@ function fillPlaceMap(el) {
   }
   const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'); svg.setAttribute('class', 'pdots'); svg.setAttribute('width', W); svg.setAttribute('height', PMAP_H);
   for (const [la, ln] of pts) { const [x, y] = mercator(la, ln, z), c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', Math.round(x - ox)); c.setAttribute('cy', Math.round(y - oy)); c.setAttribute('r', 3.6); svg.append(c); }
-  const at = document.createElement('span'); at.className = 'pat'; at.textContent = '© MapTiler © OpenStreetMap';
-  frag.append(tiles, svg, at);
+  frag.append(tiles, svg); // the map credit is shown once, under the list, not on every map
   el.replaceChildren(frag);
 }
 const pmapObserver = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) fillPlaceMap(e.target); }, { rootMargin: '500px 0px' });
@@ -1905,6 +1904,7 @@ function drawDividers() {
   }
   gal.shownTo = i;
   el.replaceChildren(root);
+  if (gal.sort === 'place') { const cr = document.createElement('p'); cr.className = 'mapcredit'; cr.innerHTML = 'Maps ' + TILE_ATTR; el.append(cr); }
   if (i < items.length) {
     const more = document.createElement('button'); more.className = 'secondary'; more.style.margin = '12px 0 0';
     more.textContent = `Show more (${items.length - i} left)`;
@@ -3754,7 +3754,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-98 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-99 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
