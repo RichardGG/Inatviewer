@@ -758,6 +758,10 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #login .uactions { display:flex; justify-content:space-between; margin:16px 0 0; padding-top:10px; border-top:2px solid #27348b; }
   #login .uactions .ib { width:44px; height:44px; background:none; border:0; color:#27348b; }
   .dark #login .usearch, .dark #login .uactions { border-color:#a9bdf2; } .dark #login .usearch i, .dark #login .pname, .dark #login .person .ib, .dark #login .uactions .ib { color:#a9bdf2; } .dark #login .person { border-top-color:rgba(169,189,242,.25); } .dark #login .person.cur { background:rgba(250,225,60,.15); }
+  /* the observer's profile picture, stuck on the cover as a round sticker above the title */
+  .coverava { align-self:center; margin:0 0 16px; padding:0; border:0; background:none; cursor:pointer; transform:rotate(-5deg); filter:drop-shadow(0 3px 5px rgba(0,0,0,.6)); }
+  .coverava[hidden] { display:none; }
+  .coverava .ava { position:static; display:block; width:84px; height:84px; border:5px solid #fbf6e2; font-size:38px; line-height:74px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); }
 </style>
 </head>
 <body>
@@ -766,6 +770,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   <div class="coverwrap">
   <nav class="marks" id="marks" aria-label="Sort"></nav>
   <header class="top cover">
+    <button type="button" id="coverava" class="coverava" aria-label="Observers" title="Switch user, search or share" hidden></button>
     <div class="clabel"><h1><span>Nature</span><span>Observations</span></h1><p>Field notes · observation book<br>Made from your iNaturalist records</p><button type="button" id="covername" aria-haspopup="dialog" title="Switch user, search or share"></button></div>
     <button id="acct" aria-label="Account and sync" aria-expanded="false" hidden></button>
     <button type="button" id="signin" class="signin" hidden>Sign in</button>
@@ -1344,7 +1349,7 @@ function setPanel(open) {
   if (open && typeof renderPeople === 'function') renderPeople();
 }
 $('acct').onclick = () => setPanel($('login').hidden);
-$('covername').onclick = () => setPanel(true);
+$('covername').onclick = $('coverava').onclick = () => setPanel(true);
 $('signin').onclick = () => oauthLogin();
 $('lclose').onclick = $('loginbg').onclick = () => setPanel(false);
 addEventListener('keydown', e => { if (e.key === 'Escape' && !$('login').hidden) setPanel(false); });
@@ -3138,7 +3143,7 @@ function speciesIdOf(o) {
   return o.anc.find(id => state.names[id]?.rank === 'species') || null;
 }
 // "Mine" for Nearby's seen/not-seen badges: the logged-in user's observations (the comparison dataset while viewing someone else).
-const myObs = () => isOther() ? mine.obs : state.obs;
+const myObs = () => state.obs; // whoever is being viewed: their photos and ticks (when it is someone else, that is their observations, not mine)
 function mySpeciesCounts() {
   const m = new Map();
   for (const o of myObs()) { const id = speciesIdOf(o) ?? o.tid; m.set(id, (m.get(id) || 0) + 1); }
@@ -3265,7 +3270,7 @@ function renderExplore() {
     : explore.loading && !explore.items.length ? `Loading species ${where}…`
     : `${explore.total.toLocaleString()} species ${where}. You've seen ${seenN} of the top ${explore.items.length} shown.` +
       (explore.cachedAt ? ` Saved ${ago(new Date(explore.cachedAt).toISOString())}.` : '') +
-      (myObs().length ? '' : isOther() ? ' (Open Compare to load your own observations and see which you have seen.)' : ' (Load your observations to see which you have seen.)');
+      (myObs().length ? '' : ' (Load observations to see which you have seen.)');
   if (!rows.length) {
     draw([para(explore.err ? explore.err : explore.loading ? note : explore.items.length ? 'Nothing to show for this filter.' : `No species found ${where}.`)]);
   } else {
@@ -3293,7 +3298,7 @@ function commonTile(it, mine, myPhoto, act = []) {
     if (act.length) {
       b.classList.add('cmp'); b.style.setProperty('--n', act.length + 1);
       const cell = (child, login) => { const c = document.createElement('span'); c.className = 'cph'; c.append(child); if (login) c.append(avatarBadge(login)); return c; };
-      b.append(cell(shown, n ? (meLogin || state.user?.login) : ''));
+      b.append(cell(shown, n ? (state.user?.login || viewLogin || meLogin) : ''));
       for (const p of act) {
         const url = partnerPhoto(p, t.id), who = '@' + p.login;
         if (url) { const pim = document.createElement('img'); pim.alt = ''; pim.loading = 'lazy'; pim.src = sized(url, 'medium'); pim.title = who; b.append(cell(pim, p.login)); }
@@ -3301,7 +3306,7 @@ function commonTile(it, mine, myPhoto, act = []) {
       }
     } else b.append(shown);
   }
-  if (n) { const k = document.createElement('span'); k.className = 'seentag'; k.textContent = '✓'; k.title = `You have seen this (${n})`; b.append(k); }
+  if (n) { const k = document.createElement('span'); k.className = 'seentag'; k.textContent = '✓'; k.title = `Seen (${n})`; b.append(k); }
   { const c = document.createElement('span'); c.className = 'cntpill'; c.innerHTML = ic('eye', 15) + ' ' + fmtCount(it.count); c.title = `${it.count.toLocaleString()} observations here in this area`; b.append(c); }
   b.onclick = () => openSpecies(t.id);
   const cap = document.createElement('a');
@@ -3505,7 +3510,9 @@ function refreshViewing() {
     if (meLogin) { const b = document.createElement('button'); b.className = 'secondary'; b.textContent = 'Back to mine'; b.onclick = () => { location.href = redirectUri(); }; box.append(b); }
   }
   $('share').hidden = !(other || state.user?.login || meLogin);
-  { const who = state.user?.login || (other ? viewLogin : meLogin); $('covername').textContent = who ? `of @${who}` : 'Tap to log in'; }
+  { const who = state.user?.login || (other ? viewLogin : meLogin); $('covername').textContent = who ? `of @${who}` : 'Tap to log in';
+    const ca = $('coverava'); ca.hidden = !who;
+    if (who && ca.dataset.who !== lc(who)) { ca.dataset.who = lc(who); ca.replaceChildren(avatarBadge(who)); } }
   if (favMode && !favModes().some(m => m[0] === favMode)) { favMode = ''; drawFilterChips(); drawChips(); } // e.g. a filter that only exists for my own observations
   $('fsCompare').hidden = !(other || candidates().length); // comparing needs someone to compare with
   $('loadall').hidden = state.complete !== false;
@@ -3981,7 +3988,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-143 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-144 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
