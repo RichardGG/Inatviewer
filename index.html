@@ -1829,6 +1829,11 @@ function dvSection(g) {
 const moreObserver = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting && !e.target.hidden && !e.target.disabled) e.target.click(); }, { rootMargin: '900px 0px' });
 function autoMore(btn) { moreObserver.observe(btn); }
 // ---- Place: each folder has a small map of where its observations were made (OpenStreetMap tiles, drawn only when the folder is near the screen) ----
+// Every map uses MapTiler's Outdoor style. The key is restricted to this site's address in the MapTiler account, so it is safe to keep in the page.
+const MAPTILER_KEY = 'kBNkKHFaPRllwNFiz6hf';
+const tileUrl = (z, x, y) => `https://api.maptiler.com/maps/outdoor-v4/${z}/${x}/${y}.png?key=${MAPTILER_KEY}`;
+const TILE_TEMPLATE = tileUrl('{z}', '{x}', '{y}');
+const TILE_ATTR = '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 const PMAP_H = 96;
 const mercator = (lat, lng, z) => { const n = 256 * 2 ** z, r = lat * Math.PI / 180; return [(lng + 180) / 360 * n, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n]; };
 function placeMap(g) {
@@ -1853,13 +1858,13 @@ function fillPlaceMap(el) {
   for (let ty = Math.floor(oy / 256); ty <= Math.floor((oy + PMAP_H) / 256); ty++) for (let tx = Math.floor(ox / 256); tx <= Math.floor((ox + W) / 256); tx++) {
     if (ty < 0 || ty >= n) continue;
     const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.draggable = false;
-    im.src = `https://tile.openstreetmap.org/${z}/${((tx % n) + n) % n}/${ty}.png`;
+    im.src = tileUrl(z, ((tx % n) + n) % n, ty);
     im.style.cssText = `left:${Math.round(tx * 256 - ox)}px;top:${Math.round(ty * 256 - oy)}px`;
     tiles.append(im);
   }
   const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'); svg.setAttribute('class', 'pdots'); svg.setAttribute('width', W); svg.setAttribute('height', PMAP_H);
   for (const [la, ln] of pts) { const [x, y] = mercator(la, ln, z), c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', Math.round(x - ox)); c.setAttribute('cy', Math.round(y - oy)); c.setAttribute('r', 3.6); svg.append(c); }
-  const at = document.createElement('span'); at.className = 'pat'; at.textContent = '© OpenStreetMap';
+  const at = document.createElement('span'); at.className = 'pat'; at.textContent = '© MapTiler © OpenStreetMap';
   frag.append(tiles, svg, at);
   el.replaceChildren(frag);
 }
@@ -2422,8 +2427,8 @@ async function openAreaPanel(open) {
   try { await ensureLeaflet(); } catch (e) { log(String(e), 'e'); return status(`Map library failed to load: ${e.message}`, true); }
   if (!areaMap) {
     areaMap = L.map('areamap', { preferCanvas: true, worldCopyJump: true });
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    L.tileLayer(TILE_TEMPLATE, {
+      maxZoom: 19, attribution: TILE_ATTR,
     }).addTo(areaMap);
     areaCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40, showCoverageOnHover: false });
     areaMap.addLayer(areaCluster);
@@ -2880,7 +2885,7 @@ async function openSpecies(id, focusObs, ctx) {
   try { await ensureLeaflet(); } catch (e) { mapBox.append(el('p', 'status error', 'Map failed to load.')); return; }
   if (!detail.isOpen || !mapDiv.isConnected) return;
   const m = L.map(mapDiv, { worldCopyJump: true, preferCanvas: true });
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(m);
+  L.tileLayer(TILE_TEMPLATE, { maxZoom: 19, attribution: TILE_ATTR }).addTo(m);
   const heat = L.tileLayer(`https://api.inaturalist.org/v1/colored_heatmap/{z}/{x}/{y}.png?taxon_id=${id}`, { opacity: 0.7, maxNativeZoom: 12 });
   heat.addTo(m);
   heat.on('tileerror', () => log(`range overlay tile failed for taxon ${id}`, 'w'));
@@ -3734,7 +3739,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-94 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-95 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
