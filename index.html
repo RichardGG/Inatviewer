@@ -698,6 +698,12 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #login pre { color:#27348b; background:transparent; border-color:#9bb0c6; }
   .dark #login { background:var(--grain), #262c36 !important; color:#a9bdf2; } .dark #login .lt { color:#8fa6cf; } .dark #login, .dark #login label, .dark #login strong, .dark #login .status, .dark #login summary, .dark #login a, .dark #login input, .dark #login textarea, .dark #login .ltools .ib, .dark #login pre { color:#a9bdf2; }
   .dark #login .lhead { border-bottom-color:#a9bdf2; } .dark #login button:not(.ib), .dark #login .secondary { border-color:#a9bdf2; color:#a9bdf2; } .dark #login input, .dark #login textarea { border-bottom-color:#4a5873; }
+  /* sign in: a paper sticker stuck on the cover */
+  .signin { align-self:center; margin:26px auto 0; padding:12px 34px 14px; background:var(--grain), #fbf6e2; color:#27348b; border:0; border-radius:4px; transform:rotate(-2.5deg); box-shadow:0 4px 10px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.12);
+            font:700 30px/1 var(--hw); font-size-adjust:.5; cursor:pointer; position:relative; }
+  .signin::before { content:''; position:absolute; inset:4px; border:1.5px dashed rgba(39,52,139,.4); pointer-events:none; }
+  .signin:active { transform:rotate(-1deg) scale(.98); }
+  .signin[hidden] { display:none; }
 </style>
 </head>
 <body>
@@ -706,6 +712,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   <header class="top cover">
     <div class="clabel"><h1><span>Nature</span><span>Observations</span></h1><p>Field notes · observation book<br>Made from your iNaturalist records</p><button type="button" id="covername" aria-haspopup="dialog" title="Switch user, search or share"></button></div>
     <button id="acct" aria-label="Account and sync" aria-expanded="false" hidden></button>
+    <button type="button" id="signin" class="signin" hidden>Sign in</button>
     <div class="cnote">
       <div id="viewing" class="banner" hidden></div>
       <div id="status" class="status" role="status"></div>
@@ -722,22 +729,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
       <button id="oauth" style="width:100%;padding:12px;font-size:16px">Log in with iNaturalist</button>
       <p class="status" id="whoami" style="margin:6px 0 0"></p>
     </div>
-    <details id="manual" style="margin:12px 0 0;padding:0;border:0">
-      <summary class="status">Or use an API token / OAuth settings</summary>
-      <label for="token"><strong>API token (JWT)</strong></label>
-      <p class="status" style="margin:4px 0 8px">
-        Log in to iNaturalist, then open
-        <a href="https://www.inaturalist.org/users/api_token" target="_blank" rel="noopener">inaturalist.org/users/api_token</a>
-        and paste the token below. Tokens expire after 24 hours. It is stored only in this browser's localStorage.
-      </p>
-      <textarea id="token" placeholder="eyJhbGciOi..." spellcheck="false"></textarea>
-      <label for="clientid" style="display:block;margin-top:10px"><strong>OAuth client ID</strong></label>
-      <p class="status" style="margin:4px 0 8px">
-        Register an app at <a href="https://www.inaturalist.org/oauth/applications/new" target="_blank" rel="noopener">inaturalist.org/oauth/applications/new</a>
-        (not confidential) with redirect URI <code id="redirecturi"></code>, then paste its Client ID.
-      </p>
-      <input id="clientid" spellcheck="false" style="width:100%;padding:8px;font:12px monospace;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">
-    </details>
+    <textarea id="token" hidden aria-hidden="true"></textarea><!-- the API token minted from the iNaturalist login; internal, not edited by hand -->
     <div class="row">
       <button id="load" title="Fetch only observations newer than the cache; reuses cached taxonomy">Check for new observations</button>
       <button id="forget" class="secondary">Log out</button>
@@ -754,12 +746,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
       <p class="status" style="margin:2px 0 6px">Observations cached in this browser. They load instantly; clearing one just means downloading it again next time.</p></div>
     <div id="recentusers"></div>
     <p class="status" id="favhint" hidden>Your cached observations don't include iNaturalist favourites yet. Use "Re-download observations" once to read them; favourited photos then become the thumbnails.</p>
-    <details style="margin:10px 0 0;padding:0;border:0" id="logwrap">
-      <summary class="status">Debug log</summary>
-      <div class="row"><button class="secondary" id="copylog">Copy log</button>
-        <button class="secondary" id="clearcache">Clear all cached data</button></div>
-      <pre id="log"></pre>
-    </details>
+    <div class="row" style="margin:14px 0 0"><button class="secondary" id="clearcache">Clear all cached data</button></div>
   </div>
 
   <div id="results" hidden>
@@ -917,14 +904,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ---------- logging ----------
 function log(msg, level) {
-  const line = `${new Date().toISOString().slice(11, 23)} ${msg}`;
-  (level === 'e' ? console.error : level === 'w' ? console.warn : console.log)('[inat]', msg);
-  const pre = $('log');
-  const s = document.createElement('div');
-  if (level) s.className = level;
-  s.textContent = line;
-  pre.append(s);
-  pre.scrollTop = pre.scrollHeight;
+  (level === 'e' ? console.error : level === 'w' ? console.warn : console.log)('[inat]', msg); // the console is the only log now
 }
 window.addEventListener('error', e => log(`window error: ${e.message} @ ${e.filename}:${e.lineno}`, 'e'));
 window.addEventListener('unhandledrejection', e => log(`unhandled rejection: ${e.reason?.stack || e.reason}`, 'e'));
@@ -940,17 +920,12 @@ const OAUTH = {
 };
 const OAUTH_KEY = 'inat_oauth', CLIENT_KEY = 'inat_client_id';
 const redirectUri = () => location.origin + location.pathname;
-const clientId = () => { try { return localStorage.getItem(CLIENT_KEY) || OAUTH.clientId; } catch { return OAUTH.clientId; } };
+const clientId = () => OAUTH.clientId;
 const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const rand = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
 
 async function oauthLogin() {
-  const id = ($('clientid').value || clientId()).trim();
-  if (!id) {
-    $('manual').open = true; $('clientid').focus();
-    return status('Enter your OAuth client ID first (see the box below), or paste an API token instead.', true);
-  }
-  try { localStorage.setItem(CLIENT_KEY, id); } catch {}
+  const id = clientId();
   const verifier = rand(48), st = rand(16);
   const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
   try { sessionStorage.setItem('inat_pkce', JSON.stringify({ verifier, st })); sessionStorage.setItem('inat_resume', location.search); } catch (e) { log('sessionStorage failed: ' + e, 'e'); }
@@ -988,8 +963,7 @@ async function oauthCallback() {
     await mintJwt(access);
   } catch (e) {
     log(`oauth callback failed: ${e.stack || e}`, 'e');
-    status(`${e.message}. If this was a network/CORS error, use the API-token option instead.`, true);
-    $('logwrap').open = true;
+    status(`${e.message}. Please try signing in again.`, true);
   }
   return true;
 }
@@ -1024,11 +998,18 @@ async function ensureFreshJwt() {
 }
 function authLabel() {
   let access = ''; try { access = localStorage.getItem(OAUTH_KEY) || ''; } catch {}
-  $('whoami').textContent = access ? 'Signed in with iNaturalist (token refreshes automatically).'
-    : $('token').value.trim() ? 'Using a pasted API token (expires after 24h).' : '';
-  $('oauth').textContent = access ? 'Log in again with iNaturalist' : 'Log in with iNaturalist';
+  $('whoami').textContent = access ? 'Signed in with iNaturalist.' : '';
+  $('oauth').textContent = access ? 'Sign in again' : 'Sign in with iNaturalist';
+  syncSignin();
 }
 
+// The cover shows a paper "Sign in" sticker until someone is signed in (or a shared link is being viewed).
+function syncSignin() {
+  let access = ''; try { access = localStorage.getItem(OAUTH_KEY) || ''; } catch {}
+  const out = !access && !isOther();
+  $('signin').hidden = !out;
+  $('covername').hidden = out;
+}
 // ---------- token (localStorage) ----------
 const store = {
   get() { try { return localStorage.getItem(KEY) || ''; } catch { return ''; } },
@@ -1326,6 +1307,7 @@ function setPanel(open) {
 }
 $('acct').onclick = () => setPanel($('login').hidden);
 $('covername').onclick = () => setPanel(true);
+$('signin').onclick = () => oauthLogin();
 $('lclose').onclick = $('loginbg').onclick = () => setPanel(false);
 addEventListener('keydown', e => { if (e.key === 'Escape' && !$('login').hidden) setPanel(false); });
 
@@ -1354,7 +1336,7 @@ async function api(path, token, opts = {}) {
     if (res.ok) { const txt = await res.text(); try { return txt ? JSON.parse(txt) : {}; } catch { return {}; } }
     const body = (await res.text().catch(() => '')).slice(0, 300);
     log(`  body: ${body}`, 'e');
-    if (res.status === 401 || res.status === 403) throw new Error('Token rejected or expired. Get a fresh one and paste it again.');
+    if (res.status === 401 || res.status === 403) throw new Error('Your sign-in has expired. Please sign in again.');
     if (res.status === 429) apiStats.limited++;
     if (res.status === 429 || res.status >= 500) {
       if (attempt < 3) { log(`  retrying in ${2 * attempt}s`, 'w'); await sleep(2000 * attempt); continue; }
@@ -2216,7 +2198,6 @@ async function ensurePlaces() {
   } catch (e) {
     log(`places lookup failed: ${e.stack || e}`, 'e');
     status(e.message + ' Places fetched so far were saved; reopen this view to resume.', true);
-    $('logwrap').open = true;
   } finally {
     placeLoading = false;
   }
@@ -3620,7 +3601,7 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
   try { await ensureFreshJwt(); } catch (e) { log(`jwt refresh failed: ${e}`, 'e'); }
   const token = $('token').value.trim().replace(/^Bearer\s+/i, '');
   const other = isOther();
-  if (!token && !other) return status(state.obs.length ? 'Showing cached data (no token to refresh).' : 'Log in with iNaturalist (or paste an API token) first.', true);
+  if (!token && !other) return status(state.obs.length ? 'Showing cached data (no token to refresh).' : 'Sign in with iNaturalist first.', true);
   if (token) store.set(token);
   setBusy(true);
   try {
@@ -3680,7 +3661,6 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
     let msg = e.message;
     if (other && !token && /Token rejected/.test(msg)) msg = 'iNaturalist needs a login to read observations. Log in (⚙) and try again.';
     status(msg + (state.obs.length ? ' Progress was saved; click Load to resume.' : ''), true);
-    $('logwrap').open = true;
   } finally {
     setBusy(false);
   }
@@ -3713,13 +3693,10 @@ $('forget').onclick = () => {
   authLabel(); status('Logged out (cached observations kept).');
 };
 $('oauth').onclick = oauthLogin;
-$('redirecturi').textContent = redirectUri();
-$('clientid').value = clientId();
 $('clearcache').onclick = async () => {
   await idb.clear(); state = { user: null, obs: [], complete: true, total: null, names: {}, places: {}, updated: null }; people = []; partners = []; cmpData = new Map(); mine = { obs: [] }; renderPeople();
   $('results').hidden = true; log('all cached data cleared'); status('Cache cleared.');
 };
-$('copylog').onclick = () => navigator.clipboard?.writeText($('log').innerText).then(() => status('Log copied.'));
 // Hold a group heading: collapse every group of the same rank (or expand them all if it was already collapsed).
 const PLURAL = { year: 'years', month: 'months', day: 'days', kingdom: 'kingdoms', phylum: 'phyla', class: 'classes', order: 'orders', family: 'families', genus: 'genera',
   continent: 'continents', country: 'countries', county: 'counties', city: 'cities', area: 'areas' };
@@ -3875,7 +3852,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-115 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-116 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
@@ -3891,8 +3868,8 @@ drawChips();
   if (cached) $('token').value = cached;
   authLabel();
   let hasOauth = false; try { hasOauth = !!localStorage.getItem(OAUTH_KEY); } catch {}
-  setPanel(!(cached || hasOauth) && !isOther()); // collapsed once signed in (or when just viewing a shared link)
-  if (cached || hasOauth || isOther()) refresh().then(authLabel);
+  syncSignin();
+  if (hasOauth || isOther()) refresh().then(authLabel);
   else if (state.obs.length) status('Showing cached data. Log in to refresh.');
 })();
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
