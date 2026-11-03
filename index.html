@@ -508,7 +508,7 @@
     <div class="tabs" role="toolbar" aria-label="Sort, filter and location">
       <i class="rib"></i>
       <button id="bsort" aria-label="View"><i data-i="eye"></i><span id="sortlabel" class="vh">Latest</span></button>
-      <button id="bfilter" aria-label="Filter"><i data-i="filter"></i><span class="vh">Filter</span></button>
+      <button id="bfilter" aria-label="Filter"><i data-i="search"></i><span class="vh">Filter</span></button>
       <button id="areabtn" aria-label="Location" aria-expanded="false"><i data-i="map-pin"></i><span class="vh">Location</span></button>
       <button id="bcmp" aria-label="Compare" hidden><i data-i="git-compare"></i><span class="vh">Compare</span></button>
     </div>
@@ -520,7 +520,6 @@
       <div class="card fpanel" id="psort" hidden>
         <h4>Sort</h4>
         <div id="sortchips" class="clsrow" role="group" aria-label="Sort the photos"></div>
-        <p class="status" style="margin:6px 0 0">Latest groups by date, Rarest puts the species with the fewest iNaturalist observations first, Taxonomy and Place group by the tree of life and by where they were seen, and Common lists the most observed species around a place.</p>
         <div id="fsGroupMode">
           <h4>Same species</h4>
           <div id="gmodechips" class="clsrow" role="group" aria-label="How to group observations of the same species"></div>
@@ -574,7 +573,6 @@
         <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
       </div>
       <div class="card" id="areapanel" hidden>
-        <p class="status" style="margin:0 0 8px">Pan and zoom the map: the orange circle always fits the current view. While the filter is on, only observations inside the circle are shown, and Common lists the species seen inside it. Use the search and target buttons to jump to a place.</p>
         <div id="areamap"></div>
         <div class="row">
           <label style="display:flex;align-items:center;gap:8px;flex:1;min-width:150px"><input type="checkbox" id="follow"> Filter to the map view</label>
@@ -3309,7 +3307,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-56 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-57 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
