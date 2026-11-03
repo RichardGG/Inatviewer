@@ -407,7 +407,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbpl .banner { margin:12px 0 0; padding:10px 14px 14px; border:0; background:linear-gradient(170deg, #fff3a0, #f7e271); color:#4a3a00; font:700 19px/1.15 var(--hw); font-size-adjust:.5; box-shadow:0 6px 8px -4px rgba(0,0,0,.45); transform:rotate(1.2deg); max-width:340px; }
   .nbpl .banner button { background:none; color:#4a3a00; border:1px solid #4a3a00; font:700 16px var(--hw); }
   /* the photo: a print pasted onto the page with tape */
-  .herobox { position:relative; max-width:none !important; margin:22px 0 0; }
+  .herobox { position:relative; max-width:none !important; margin:20px 0 22px; }
   .herobox::before { content:''; position:absolute; z-index:4; top:-12px; left:50%; width:92px; height:26px; margin-left:-46px; transform:rotate(-3deg); background:repeating-linear-gradient(45deg, #f3b6c6 0 8px, #fbe3ea 8px 16px); opacity:.92; box-shadow:0 1px 2px rgba(0,0,0,.25); }
   .carousel { background:#fbfaf4; padding:9px; border-radius:2px; box-shadow:0 4px 12px rgba(0,0,0,.38), 0 1px 2px rgba(0,0,0,.28); transform:rotate(-1deg); }
   .cslide { height:min(46vh, 380px); background:#d9d9d2; }
@@ -2690,7 +2690,8 @@ async function openSpecies(id, focusObs, ctx) {
   let taxonPhoto = '';
   const heroBox = el('div', 'herobox');
   const nameV = field('Name', hint.common || hint.name || ''), sciV = field('Scientific', hint.common ? hint.name : '');
-  left.append(formHead, form, desc, heroBox);
+  left.append(formHead, form, desc);
+  form.append(heroBox); // the photo sits right under the name and scientific name
   const placeLabel = o => { const c = placeChain(o).filter(x => x !== UNKNOWN_LOC); return c.length ? PLACE_META.get(c[c.length - 1]).name : ''; };
   let mineGrid = null, banner = null;
 
@@ -2774,7 +2775,6 @@ async function openSpecies(id, focusObs, ctx) {
   const tags = el('div', 'nbtags');
   const addTag = (txt, warn) => tags.append(el('div', 'nbchk' + (warn ? ' warn' : '') + (txt.startsWith('✗') ? ' no' : ''), txt.replace(/^[✓✗] /, '')));
   if (t) {
-    field('Rank', t.rank);
     if (!t.status?.name && t.threatened) addTag('threatened', true);
     if (t.extinct) addTag('extinct', true);
     if (t.endemic) addTag('endemic');
@@ -3754,7 +3754,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-96 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-97 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
