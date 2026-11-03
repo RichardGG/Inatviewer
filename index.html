@@ -570,6 +570,13 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .seg button { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 4px 6px; border:0; border-radius:0; background:none; color:#27348b; font:700 17px var(--hw); }
   .seg button + button { border-left:2px solid #27348b; }
   .seg button.on { background:rgba(250,225,60,.55); }
+  .vdrop { position:relative; }
+  .vmenu { position:absolute; right:0; top:50px; z-index:5; min-width:120px; padding:6px; border:2.5px solid #27348b; border-radius:12px; background:var(--grain), #f6f2e4; box-shadow:0 8px 20px rgba(0,0,0,.4); }
+  .vmenu[hidden] { display:none; }
+  .vmenu button { display:flex; align-items:center; gap:12px; width:100%; padding:7px 10px; border:0; border-radius:8px; background:none; color:#27348b; font:700 20px var(--hw); text-align:left; }
+  .vmenu button.on { background:rgba(250,225,60,.55); }
+  .dark .vmenu { border-color:#a9bdf2; background:var(--grain), #262c36; } .dark .vmenu button { color:#a9bdf2; } .dark .vmenu button.on { background:rgba(250,225,60,.45); }
+  .vt .glyph { width:24px; height:18px; gap:2px; }
   .glyph { display:grid; grid-template-columns:repeat(var(--c), 1fr); grid-template-rows:repeat(2, 1fr); gap:3px; width:38px; height:30px; }
   .glyph i { display:block; background:currentColor; opacity:.75; border-radius:2px; }
   .dark .seg { border-color:#a9bdf2; } .dark .seg button { color:#a9bdf2; } .dark .seg button + button { border-left-color:#a9bdf2; } .dark .seg button.on { background:rgba(250,225,60,.45); }
@@ -672,6 +679,10 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
         <div class="vhead">
           <span class="vtitle">View</span>
           <span class="vtools">
+            <span class="vdrop">
+              <button type="button" class="vt" id="sizebtn" aria-label="Photo size" aria-haspopup="true" aria-expanded="false"></button>
+              <div class="vmenu" id="sizemenu" role="menu" hidden></div>
+            </span>
             <button type="button" class="vt" id="themebtn" aria-label="Light or dark"></button>
             <button type="button" class="vt" id="stylebtn" aria-label="Polaroid or simple photos"></button>
             <button type="button" class="vt" id="shuffle" aria-label="Shuffle"></button>
@@ -680,8 +691,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
         </div>
         <h4>Sort</h4>
         <div id="sortchips" class="clsrow" role="group" aria-label="Sort the photos"></div>
-        <h4>Size</h4>
-        <div id="sizechips" class="seg" role="group" aria-label="Photo size"></div>
         <div id="fsMerge">
           <h4>Small groups</h4>
           <div id="mergechips" class="clsrow" role="group" aria-label="Fold small groups into the folder above"></div>
@@ -3671,16 +3680,19 @@ function drawLookChips() {
     b.onclick = () => { galMerge = n; try { localStorage.setItem('inat_merge', String(n)); } catch {} drawLookChips(); show(true); };
     mb.append(b);
   }
-  const box = $('sizechips'); box.replaceChildren();
-  for (const [k, label, cols] of [['xl', 'XL', 1], ['l', 'L', 2], ['m', 'M', 3], ['s', 'S', 4]]) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = galSize === k ? 'on' : ''; b.setAttribute('aria-pressed', String(galSize === k)); b.title = `${cols} column${cols > 1 ? 's' : ''} on a phone`;
-    const g = document.createElement('span'); g.className = 'glyph'; g.style.setProperty('--c', cols);
-    for (let i = 0; i < cols * 2; i++) g.append(document.createElement('i'));
-    b.append(g, label);
-    b.onclick = () => { galSize = k; try { localStorage.setItem('inat_gal_size', k); } catch {} applyGalLook(); drawLookChips(); };
-    box.append(b);
+  const glyph = cols => { const g = document.createElement('span'); g.className = 'glyph'; g.style.setProperty('--c', cols); for (let i = 0; i < cols * 2; i++) g.append(document.createElement('i')); return g; };
+  const SIZES = [['xl', 'XL', 1], ['l', 'L', 2], ['m', 'M', 3], ['s', 'S', 4]], cur = SIZES.find(x => x[0] === galSize);
+  const btn = $('sizebtn'); btn.replaceChildren(glyph(cur[2])); btn.title = `Photo size ${cur[1]}: ${cur[2]} column${cur[2] > 1 ? 's' : ''} on a phone`;
+  const menu = $('sizemenu'); menu.replaceChildren();
+  for (const [k, label, cols] of SIZES) {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitemradio'); b.setAttribute('aria-checked', String(galSize === k)); b.className = galSize === k ? 'on' : '';
+    b.append(glyph(cols), label);
+    b.onclick = () => { galSize = k; try { localStorage.setItem('inat_gal_size', k); } catch {} menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); applyGalLook(); drawLookChips(); };
+    menu.append(b);
   }
 }
+$('sizebtn').onclick = e => { e.stopPropagation(); const m = $('sizemenu'); m.hidden = !m.hidden; $('sizebtn').setAttribute('aria-expanded', String(!m.hidden)); };
+document.addEventListener('click', e => { if (!e.target.closest('.vdrop')) { $('sizemenu').hidden = true; $('sizebtn').setAttribute('aria-expanded', 'false'); } });
 $('themebtn').onclick = () => { const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark'; try { localStorage.setItem('inat_theme', next); } catch {} applyTheme(next); drawLookChips(); };
 $('stylebtn').onclick = () => { galStyle = galStyle === 'simple' ? 'polaroid' : 'simple'; try { localStorage.setItem('inat_gal_style', galStyle); } catch {} applyGalLook(); drawLookChips(); };
 function syncRecentTools() {
@@ -3767,7 +3779,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-100 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-101 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
