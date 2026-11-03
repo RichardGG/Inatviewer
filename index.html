@@ -641,8 +641,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
         </div>
         <h4>Appearance</h4>
         <div id="themechips" class="clsrow" role="group" aria-label="Light or dark"></div>
-        <h4>Groups</h4>
-        <div id="groupchips" class="clsrow" role="group" aria-label="How groups are shown"></div>
         <h4>Style</h4>
         <div id="stylechips" class="clsrow" role="group" aria-label="Photo style"></div>
         <h4>Size</h4>
@@ -1730,8 +1728,7 @@ function renderGallery(obs) {
   if (!gal.items.length) { gal.cells = []; el.replaceChildren(); $('pathbar').hidden = true; return; }
   drawGallery();
 }
-let galGroups = 'dividers'; // how groups are shown: 'tabs' (chevron tabs above the first photo of a group) or 'dividers' (the group splits the page into a horizontal folder-divider section)
-try { if (localStorage.getItem('inat_gal_groups') === 'tabs') galGroups = 'tabs'; } catch {}
+const galGroups = 'dividers'; // groups are always folder dividers (the old chevron-tab layout is still in the code but unused)
 // A divider section: a card with a folder tab on its top edge; sections nest, and their tabs step across the page by level.
 // A collapsed group in the dividers layout: small photos sampled evenly across the group, as many as fit the width, and the count at the end.
 const STRIP_PX = 58;
@@ -3525,7 +3522,6 @@ function drawLookChips() {
   };
   let theme = 'auto'; try { theme = localStorage.getItem('inat_theme') || 'auto'; } catch {}
   mk($('themechips'), [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']], theme, k => { try { localStorage.setItem('inat_theme', k); } catch {} applyTheme(k); });
-  mk($('groupchips'), [['dividers', 'Dividers'], ['tabs', 'Tabs']], galGroups, k => { galGroups = k; try { localStorage.setItem('inat_gal_groups', k); } catch {} if (isGal(view) && gal.items.length) drawGallery(); });
   mk($('stylechips'), [['polaroid', 'Polaroid'], ['simple', 'Simple']], galStyle, k => { galStyle = k; try { localStorage.setItem('inat_gal_style', k); } catch {} });
   mk($('sizechips'), [['xl', 'XL'], ['l', 'L'], ['m', 'M'], ['s', 'S']], galSize, k => { galSize = k; try { localStorage.setItem('inat_gal_size', k); } catch {} });
 }
@@ -3612,7 +3608,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-78 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-79 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
