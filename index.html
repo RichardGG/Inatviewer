@@ -743,6 +743,19 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #totop:active { background:rgba(255,255,255,.3); }
   body:not(.scrolled) #totop, body.sheet-open #totop { opacity:0; pointer-events:none; transform:translateY(20px); }
   .coverwrap { position:relative; margin:6px 0 84px; }
+  /* the page under the cover stays put while the cover scrolls away, then scrolls once the cover is ~60% gone */
+  #results { margin-top:calc(-1 * var(--stage-top, 0px)); display:flow-root; }
+  #content { position:sticky; top:0; padding-top:var(--gap, 0px); }
+  #pinroom { height:var(--s0, 0px); } /* the room below the pinned content is how far the cover has to scroll before the content moves */
+  .coverwrap { z-index:5; }
+  #welcome { position:relative; margin:64px 14px 22px; padding:16px 16px 12px; background:#fbf6e6 var(--grain, none); color:#2a2418; border-radius:3px; box-shadow:0 2px 3px rgba(0,0,0,.25), 0 10px 22px -8px rgba(0,0,0,.4); transform:rotate(-.6deg); }
+  .dark #welcome { background:#d9d1b8; }
+  #welcome:empty { display:none; }
+  #welcome::before { content:''; position:absolute; top:-10px; left:50%; width:84px; height:22px; margin-left:-42px; background:rgba(230,215,160,.72); transform:rotate(2deg); box-shadow:0 1px 2px rgba(0,0,0,.2); }
+  #welcome h2 { margin:0; font:700 34px/1 var(--hw); color:var(--wc, #c8453b); }
+  #welcome p { margin:2px 0 6px; font:22px/1.05 var(--hw); opacity:.8; }
+  #welcome svg { display:block; width:100%; height:auto; overflow:visible; }
+  #welcome text { font-family:var(--hw); fill:#2a2418; }
   @media (max-width: 899px) { .coverwrap { margin:6px 12px 84px; } }
   header.cover { margin:0 !important; z-index:1; }
   .marks { z-index:0 !important; }
@@ -887,7 +900,9 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
       </div>
       </div>
     </div>
-    </div><!-- /controls -->
+    <!-- /controls -->
+    <div id="content">
+    <section id="welcome" aria-live="polite"></section>
     <div id="locTools" class="row" style="margin:0 0 10px" hidden>
       <span id="locnote" class="status"></span>
     </div>
@@ -895,6 +910,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
     <div class="card" id="gal"></div>
     <button class="secondary" id="expmore" hidden style="margin:12px 12px 0">Show more</button>
     <button class="secondary" id="exprefresh" hidden style="margin:12px 12px 0">Refresh from iNaturalist</button>
+    </div><!-- /content -->
+    <div id="pinroom" aria-hidden="true"></div>
   </div>
 <div id="sheetbg" hidden></div>
 <button type="button" id="totop" aria-label="Back to the top" title="Back to the top"><i data-i="chevron-up"></i></button>
@@ -3344,6 +3361,7 @@ function renderExplore() {
     if (view !== 'explore') return;
     Object.assign(gal, { items: [], groups: [], cells: [], drawnSort: '' }); $('pathbar').hidden = true;
     host.replaceChildren(...nodes.filter(Boolean));
+    renderWelcome(); layoutStage();
   };
   const para = text => { $('summary').textContent = text; return null; }; // Common's note is written on the cover with the other totals
   $('expmore').hidden = true; $('exprefresh').hidden = true;
@@ -3754,12 +3772,96 @@ function updateFavHint() {
   $('favhint').hidden = !missing;
   if (missing && !favHintToasted) { favHintToasted = true; toast('Re-download observations (⚙) to use your iNaturalist favourites'); }
 }
+
+// ---------- welcome page + cover-reveal layout ----------
+function layoutStage() {
+  const w = document.querySelector('.coverwrap'), h = document.querySelector('header.cover'), r = $('results');
+  if (!w || !h || !r || r.hidden) { r && r.style.removeProperty('--stage-top'); return; }
+  const mb = parseFloat(getComputedStyle(w).marginBottom) || 0;
+  const bottom = w.getBoundingClientRect().bottom + scrollY;            // where the cover ends
+  const s0 = Math.round(h.offsetHeight * 0.6);                          // the content starts moving once 60% of the cover has gone
+  r.style.setProperty('--stage-top', Math.round(bottom + mb) + 'px');
+  r.style.setProperty('--s0', s0 + 'px');
+  r.style.setProperty('--gap', Math.max(0, Math.round(bottom - s0)) + 'px');
+}
+new ResizeObserver(layoutStage).observe(document.querySelector('header.cover'));
+addEventListener('resize', layoutStage);
+// Hand-drawn chart pieces: wobbly pencil lines from a fixed seed so redraws do not shimmer
+function wob(seed) { let x = seed * 9301 + 49297; return () => ((x = (x * 9301 + 49297) % 233280) / 233280 - .5); }
+function pencil(x1, y1, x2, y2, r, w = 1.5) {
+  const mx = (x1 + x2) / 2 + r() * 3, my = (y1 + y2) / 2 + r() * 3;
+  return `<path d="M${x1 + r() * 2},${y1 + r() * 2} Q${mx},${my} ${x2 + r() * 2},${y2 + r() * 2}" fill="none" stroke="#2a2418" stroke-width="${w}" stroke-linecap="round" opacity=".8"/>`;
+}
+function inkBar(x, y, w, h, col, r) { // a hatched, slightly crooked box
+  let o = `<path d="M${x + r() * 2},${y + r() * 2} L${x + w + r() * 2},${y + r() * 2} L${x + w + r() * 2},${y + h + r() * 2} L${x + r() * 2},${y + h + r() * 2} Z" fill="${col}" fill-opacity=".28" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>`;
+  for (let i = 4; i < w + h - 2; i += 6) { const ax = Math.min(x + i, x + w), ay = y + Math.max(0, i - w), bx = Math.max(x, x + i - h), by = Math.min(y + i, y + h); o += `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="${col}" stroke-width="1" opacity=".55"/>`; }
+  return o;
+}
+const escTxt = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function hbars(rows, col, seed = 3) { // rows: [{label, value, text?, hi?}]
+  const r = wob(seed), W = 320, L = 108, rh = 26, H = rows.length * rh + 10, max = Math.max(1, ...rows.map(x => x.value));
+  let o = pencil(L, 2, L, H - 4, r, 1.8);
+  rows.forEach((d, i) => {
+    const y = 6 + i * rh, w = Math.max(4, (W - L - 52) * d.value / max);
+    o += `<text x="${L - 6}" y="${y + 16}" text-anchor="end" font-size="18">${escTxt(d.label.length > 15 ? d.label.slice(0, 14) + '…' : d.label)}</text>`;
+    o += inkBar(L + 2, y + 2, w, rh - 8, d.hi ? '#3f8f52' : col, r);
+    o += `<text x="${L + 8 + w}" y="${y + 17}" font-size="18">${escTxt(d.text ?? d.value.toLocaleString())}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart">${o}</svg>`;
+}
+function vbars(rows, col, seed = 5) {
+  const r = wob(seed), W = 320, H = 140, base = H - 24, n = rows.length, bw = (W - 20) / n, max = Math.max(1, ...rows.map(x => x.value));
+  let o = pencil(8, base + 2, W - 4, base + 2, r, 1.8);
+  rows.forEach((d, i) => {
+    const h = d.value ? Math.max(5, (base - 22) * d.value / max) : 0, x = 12 + i * bw;
+    if (h) o += inkBar(x, base - h, bw - 6, h, col, r);
+    if (d.value && (d.value === max || n <= 6)) o += `<text x="${x + (bw - 6) / 2}" y="${base - h - 4}" text-anchor="middle" font-size="16">${d.value}</text>`;
+    o += `<text x="${x + (bw - 6) / 2}" y="${H - 6}" text-anchor="middle" font-size="16">${escTxt(d.label)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart">${o}</svg>`;
+}
+function renderWelcome() {
+  const el = $('welcome'); if (!el) return;
+  const id = sortId(), col = MARK_COLORS[id] || '#c8453b', label = (SORTS.find(x => x[0] === id) || ['', ''])[1];
+  let sub = '', chart = '';
+  try {
+    if (view === 'explore') {
+      if (!explore.items.length) { el.replaceChildren(); return; }
+      const mine = mySpeciesCounts(), seen = explore.items.filter(it => mine.has(it.taxon.id)).length;
+      sub = area ? `${explore.total.toLocaleString()} species around here, ${seen} of the top ${explore.items.length} already in your notebook` : '';
+      chart = hbars(explore.items.slice(0, 6).map(it => ({ label: it.taxon.preferred_common_name || it.taxon.name, value: it.count, hi: mine.has(it.taxon.id), text: fmtCount(it.count) })), col, 7);
+    } else {
+      const obs = filteredObs(); if (!obs.length) { el.replaceChildren(); return; }
+      const sp = new Set(obs.map(o => o.tid)).size;
+      if (id === 'recent') {
+        const now = new Date(), months = [];
+        for (let i = 11; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); months.push({ k: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'), label: 'JFMAMJJASOND'[d.getMonth()], value: 0 }); }
+        const by = new Map(months.map(m => [m.k, m]));
+        for (const o of obs) { const m = by.get((o.date || '').slice(0, 7)); if (m) m.value++; }
+        const tot = months.reduce((a, m) => a + m.value, 0);
+        sub = `${obs.length.toLocaleString()} observations of ${sp.toLocaleString()} species, ${tot.toLocaleString()} in the last year`;
+        chart = vbars(months, col, 5);
+      } else if (id === 'rare') {
+        const rows = gal.items.slice(0, 6).map(it => ({ it, r: rarityOf(it.o) })).filter(x => x.r).map(x => ({ label: x.it.o.common || x.it.o.name, value: Math.log10(1 + x.r.n), text: fmtCount(x.r.n) }));
+        sub = 'The species with the fewest observations on iNaturalist worldwide';
+        chart = rows.length >= 2 ? hbars(rows, col, 9) : '';
+      } else {
+        const dmin = [...new Set(gal.groups.map(g => g.depth))].sort((x, y) => x - y).find(d => gal.groups.filter(g => g.depth === d).length > 1);
+        const top = gal.groups.filter(g => g.depth === dmin).map(g => ({ label: g.main, value: g.last - g.first + 1 })).sort((a, b) => b.value - a.value).slice(0, 6);
+        sub = `${sp.toLocaleString()} species from ${obs.length.toLocaleString()} observations`;
+        chart = top.length > 1 ? hbars(top, col, id === 'tree' ? 11 : 13) : '';
+      }
+    }
+  } catch (e) { log('welcome: ' + e.message, 'w'); }
+  el.style.setProperty('--wc', col);
+  el.innerHTML = `<h2>${escTxt(label)}</h2>${sub ? `<p>${escTxt(sub)}</p>` : ''}${chart}`;
+}
 function show(keepStatus) {
   refreshViewing();
   if (view === 'explore') {
     drawChips();
     if (area && expFilterKey() !== explore.fkey) loadExplore(); else renderExplore();
-    $('results').hidden = false; return; }
+    $('results').hidden = false; layoutStage(); return; }
   if (!state.obs.length) return;
   const t0 = performance.now();
   syncYearOptions();
@@ -3787,6 +3889,7 @@ function show(keepStatus) {
     $('gal').replaceChildren(empty); $('pathbar').hidden = true;
   }
   $('results').hidden = false;
+  renderWelcome(); layoutStage();
   $('summary').textContent = `${species} species · ${obs.length}${filtered ? ` of ${state.obs.length}` : ''} identified observations${state.complete === false ? ` · newest ${state.obs.length}${state.total ? ' of ' + state.total.toLocaleString() : ''}` : ''}`;
   $('summary').title = state.updated ? `Updated ${new Date(state.updated).toLocaleString()}` : ''; // kept out of the sticky bar's text to save height
   log(`rendered in ${Math.round(performance.now() - t0)}ms (${species} species)`);
@@ -4075,7 +4178,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-156 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-157 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
