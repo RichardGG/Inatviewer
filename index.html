@@ -659,19 +659,19 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   header.cover #acct, header.cover #share, header.cover .ib, header.cover .ib:hover { color:#d9b45a !important; }
   header.cover .ib, header.cover .ib:hover { background:none; border:0; color:#d9b45a; filter:drop-shadow(0 -1px 0 rgba(0,0,0,.65)); width:40px; height:40px; }
   /* the lines under the title are written on the cover: what the app is doing, the totals, and the filters in use as paper labels */
-  header.cover .cnote { margin:auto 0 0; padding-top:14px; text-align:left; }
-  header.cover .cnote:not(:has(.status:not(:empty), #chips:not(:empty), #viewing:not([hidden]), #loadall:not([hidden]))) { display:none; }
-  header.cover .status { margin:0 !important; min-height:0 !important; padding:0 !important; font:700 12px/1.5 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; font-size-adjust:none; color:#e9e5d6 !important; text-shadow:0 -1px 0 rgba(0,0,0,.5); }
-  header.cover .status:empty { display:none; } header.cover .status.error { color:#ff9a8c !important; }
-  header.cover #summary { margin-top:4px !important; color:#b79a55 !important; }
-  header.cover #viewing { margin:0 0 8px !important; padding:6px 10px; border:1.5px dashed rgba(217,180,90,.6); border-radius:6px; background:rgba(255,255,255,.07); color:#e9e5d6; font:700 12px/1.5 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; }
-  header.cover #viewing button { background:none; color:#d9b45a; border:1.5px solid #d9b45a; font:700 11px 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; text-transform:uppercase; }
-  header.cover #loadall { margin:8px 0 0 !important; background:none; border:2px solid #d9b45a; color:#d9b45a; border-radius:7px; font:700 11px 'Trebuchet MS', Arial, sans-serif; text-transform:uppercase; letter-spacing:.12em; padding:6px 12px; }
-  header.cover #chips { margin:8px 0 0; gap:8px; }
-  header.cover .chip { background:var(--grain), #f6f2e4; color:#27348b; border:0; border-radius:3px; padding:3px 6px 3px 10px; font:700 12px 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; font-size-adjust:none; box-shadow:0 2px 4px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.1); transform:rotate(-1deg); }
-  header.cover .chip:nth-child(even) { transform:rotate(1.2deg); }
-  header.cover .chip button { color:#37507a; padding:0 4px; }
-  header.cover .chip svg { color:#27348b; }
+  #welcome .cnote { margin:auto 0 0; padding-top:14px; text-align:left; }
+  #welcome .cnote:not(:has(.status:not(:empty), #chips:not(:empty), #viewing:not([hidden]), #loadall:not([hidden]))) { display:none; }
+  #welcome .status { margin:0 !important; min-height:0 !important; padding:0 !important; font:700 12px/1.5 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; font-size-adjust:none; color:#e9e5d6 !important; text-shadow:0 -1px 0 rgba(0,0,0,.5); }
+  #welcome .status:empty { display:none; } #welcome .status.error { color:#ff9a8c !important; }
+  #welcome #summary { margin-top:4px !important; color:#b79a55 !important; }
+  #welcome #viewing { margin:0 0 8px !important; padding:6px 10px; border:1.5px dashed rgba(217,180,90,.6); border-radius:6px; background:rgba(255,255,255,.07); color:#e9e5d6; font:700 12px/1.5 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; }
+  #welcome #viewing button { background:none; color:#d9b45a; border:1.5px solid #d9b45a; font:700 11px 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; text-transform:uppercase; }
+  #welcome #loadall { margin:8px 0 0 !important; background:none; border:2px solid #d9b45a; color:#d9b45a; border-radius:7px; font:700 11px 'Trebuchet MS', Arial, sans-serif; text-transform:uppercase; letter-spacing:.12em; padding:6px 12px; }
+  #welcome #chips { margin:8px 0 0; gap:8px; }
+  #welcome .chip { background:var(--grain), #f6f2e4; color:#27348b; border:0; border-radius:3px; padding:3px 6px 3px 10px; font:700 12px 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; font-size-adjust:none; box-shadow:0 2px 4px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.1); transform:rotate(-1deg); }
+  #welcome .chip:nth-child(even) { transform:rotate(1.2deg); }
+  #welcome .chip button { color:#37507a; padding:0 4px; }
+  #welcome .chip svg { color:#27348b; }
   /* every text block inside the right page is a whole number of 30px rows, so no margin may break the rhythm */
   .nbpr h3 { margin:0 !important; line-height:30px; }
   .nbpr p, .nbpr .status { margin:0 !important; }
@@ -681,7 +681,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbpr .nbmap, .nbpr > div { padding:0; }
   .clabel #covername { display:block; width:100%; background:none; border:0; border-top:1px solid rgba(217,180,90,.4); border-bottom:1px solid rgba(217,180,90,.4); border-radius:0; cursor:pointer; text-decoration:none; color:#e9e5d6; }
   .clabel #covername:active { background:rgba(255,255,255,.06); }
-  header.cover #summary { text-align:center; }
+  #welcome #summary { text-align:left; }
   header.cover { padding-right:34px; }
   /* the bottom bar slides in once you have scrolled off the top of the cover */
   .tabs { transition:transform .3s ease, opacity .25s; }
@@ -746,12 +746,21 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   /* the page under the cover stays put while the cover scrolls away, then scrolls once the cover is ~60% gone */
   #results { margin-top:calc(-1 * var(--stage-top, 0px)); display:flow-root; }
   #content { position:sticky; top:0; padding-top:var(--gap, 0px); }
+  /* the page: grid paper that runs from under the cover to the bottom */
+  #results { background-color:#efe9d4; background-image:linear-gradient(rgba(60,100,140,.2) 1px, transparent 1px), linear-gradient(90deg, rgba(60,100,140,.2) 1px, transparent 1px); background-size:24px 24px; background-position:-1px -1px; }
+  .dark #results { background-color:#1c2622; background-image:linear-gradient(rgba(140,190,220,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(140,190,220,.12) 1px, transparent 1px); }
+  #welcome { display:flex; flex-direction:column; box-sizing:border-box; min-height:var(--s0, 0px); margin:0; padding:64px 18px 18px; background:none; box-shadow:none; transform:none; color:#2a2418; border-radius:0; position:relative; }
+  .dark #welcome { background:none; color:#e9e5d6; }
+  #welcome::before { display:none; }
+  .dark #welcome text { fill:#e9e5d6; }
+  #welcome .status { color:#2a2418 !important; text-shadow:none !important; font-size:13px !important; }
+  #welcome #summary { color:#6b5a2a !important; }
+  .dark #welcome .status { color:#e9e5d6 !important; } .dark #welcome #summary { color:#b79a55 !important; }
+  #welcome #viewing { color:#2a2418; border-color:rgba(60,50,20,.5); background:rgba(255,255,255,.4); } .dark #welcome #viewing { color:#e9e5d6; }
+  #welcome #viewing button, #welcome #loadall { color:#6b4a00; border-color:#6b4a00; } .dark #welcome #viewing button, .dark #welcome #loadall { color:#d9b45a; border-color:#d9b45a; }
+  #welcome .chip { box-shadow:0 1px 3px rgba(0,0,0,.35); }
   #pinroom { height:var(--s0, 0px); } /* the room below the pinned content is how far the cover has to scroll before the content moves */
   .coverwrap { z-index:5; }
-  #welcome { position:relative; margin:64px 14px 22px; padding:16px 16px 12px; background:#fbf6e6 var(--grain, none); color:#2a2418; border-radius:3px; box-shadow:0 2px 3px rgba(0,0,0,.25), 0 10px 22px -8px rgba(0,0,0,.4); transform:rotate(-.6deg); }
-  .dark #welcome { background:#d9d1b8; }
-  #welcome:empty { display:none; }
-  #welcome::before { content:''; position:absolute; top:-10px; left:50%; width:84px; height:22px; margin-left:-42px; background:rgba(230,215,160,.72); transform:rotate(2deg); box-shadow:0 1px 2px rgba(0,0,0,.2); }
   #welcome h2 { margin:0; font:700 34px/1 var(--hw); color:var(--wc, #c8453b); }
   #welcome p { margin:2px 0 6px; font:22px/1.05 var(--hw); opacity:.8; }
   #welcome svg { display:block; width:100%; height:auto; overflow:visible; }
@@ -783,11 +792,11 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .coverava[hidden] { display:none; }
   .coverava .ava { position:static; display:block; width:64px; height:64px; border:4px solid #fbf6e2; font-size:30px; line-height:56px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); }
   /* a person being compared: a paper chip on the cover with their picture, a three-state eye and an x */
-  header.cover .chip.pchip { padding:3px 4px 3px 4px; gap:6px; }
+  #welcome .chip.pchip { padding:3px 4px 3px 4px; gap:6px; }
   .pchip .ava { position:static; width:24px; height:24px; font-size:13px; line-height:20px; flex:none; }
   .pchip .eyebtn { padding:0 5px; color:#27348b; border-radius:10px; } .pchip.m-off .eyebtn { opacity:.4; }
   .pchip.m-seen .eyebtn { background:rgba(74,155,80,.4); } .pchip.m-unseen .eyebtn { background:rgba(200,69,59,.35); }
-  header.cover .chip.pchip.m-off { opacity:.8; }
+  #welcome .chip.pchip.m-off { opacity:.8; }
   /* edge to edge: the page draws under the status and navigation bars (their colour is the desk's, set by the theme-color tag) and keeps clear of notches and gesture bars */
   html { background:var(--desk, #f1ecdc); }
   .dark html, html.dark { background:#233d2e; }
@@ -806,13 +815,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
       <button type="button" id="coverava" class="coverava" aria-label="Observers" title="Switch user, search or share" hidden></button></div>
     <button id="acct" aria-label="Account and sync" aria-expanded="false" hidden></button>
     <button type="button" id="signin" class="signin" hidden>Sign in</button>
-    <div class="cnote">
-      <div id="viewing" class="banner" hidden></div>
-      <div id="status" class="status" role="status"></div>
-      <div id="summary" class="status"></div>
-      <button class="secondary" id="loadall" hidden>Load full history</button>
-      <div id="chips"></div>
-    </div>
   </header>
   </div>
 
@@ -902,7 +904,15 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
     </div>
     <!-- /controls -->
     <div id="content">
-    <section id="welcome" aria-live="polite"></section>
+    <section id="welcome"><div id="whead" aria-live="polite"></div><div id="wchart"></div>
+<div class="cnote">
+      <div id="viewing" class="banner" hidden></div>
+      <div id="status" class="status" role="status"></div>
+      <div id="summary" class="status"></div>
+      <button class="secondary" id="loadall" hidden>Load full history</button>
+      <div id="chips"></div>
+    </div>
+</section>
     <div id="locTools" class="row" style="margin:0 0 10px" hidden>
       <span id="locnote" class="status"></span>
     </div>
@@ -3821,17 +3831,17 @@ function vbars(rows, col, seed = 5) {
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart">${o}</svg>`;
 }
 function renderWelcome() {
-  const el = $('welcome'); if (!el) return;
+  const el = $('whead'), ch = $('wchart'); if (!el) return;
   const id = sortId(), col = MARK_COLORS[id] || '#c8453b', label = (SORTS.find(x => x[0] === id) || ['', ''])[1];
   let sub = '', chart = '';
   try {
     if (view === 'explore') {
-      if (!explore.items.length) { el.replaceChildren(); return; }
+      if (!explore.items.length) { el.replaceChildren(); ch.replaceChildren(); return; }
       const mine = mySpeciesCounts(), seen = explore.items.filter(it => mine.has(it.taxon.id)).length;
       sub = area ? `${explore.total.toLocaleString()} species around here, ${seen} of the top ${explore.items.length} already in your notebook` : '';
       chart = hbars(explore.items.slice(0, 6).map(it => ({ label: it.taxon.preferred_common_name || it.taxon.name, value: it.count, hi: mine.has(it.taxon.id), text: fmtCount(it.count) })), col, 7);
     } else {
-      const obs = filteredObs(); if (!obs.length) { el.replaceChildren(); return; }
+      const obs = filteredObs(); if (!obs.length) { el.replaceChildren(); ch.replaceChildren(); return; }
       const sp = new Set(obs.map(o => o.tid)).size;
       if (id === 'recent') {
         const now = new Date(), months = [];
@@ -3846,15 +3856,16 @@ function renderWelcome() {
         sub = 'The species with the fewest observations on iNaturalist worldwide';
         chart = rows.length >= 2 ? hbars(rows, col, 9) : '';
       } else {
-        const dmin = [...new Set(gal.groups.map(g => g.depth))].sort((x, y) => x - y).find(d => gal.groups.filter(g => g.depth === d).length > 1);
-        const top = gal.groups.filter(g => g.depth === dmin).map(g => ({ label: g.main, value: g.last - g.first + 1 })).sort((a, b) => b.value - a.value).slice(0, 6);
+        const want = id === 'place' ? 'country' : 'class', byRank = gal.groups.filter(g => g.rank === want);
+        let top = byRank.map(g => ({ label: g.main, value: g.last - g.first + 1 })).sort((a, b) => b.value - a.value).slice(0, 6);
+        if (top.length < 2) { const dmin = [...new Set(gal.groups.map(g => g.depth))].sort((x, y) => x - y).find(d => gal.groups.filter(g => g.depth === d).length > 1); top = gal.groups.filter(g => g.depth === dmin).map(g => ({ label: g.main, value: g.last - g.first + 1 })).sort((a, b) => b.value - a.value).slice(0, 6); }
         sub = `${sp.toLocaleString()} species from ${obs.length.toLocaleString()} observations`;
         chart = top.length > 1 ? hbars(top, col, id === 'tree' ? 11 : 13) : '';
       }
     }
   } catch (e) { log('welcome: ' + e.message, 'w'); }
-  el.style.setProperty('--wc', col);
-  el.innerHTML = `<h2>${escTxt(label)}</h2>${sub ? `<p>${escTxt(sub)}</p>` : ''}${chart}`;
+  $('welcome').style.setProperty('--wc', col);
+  el.innerHTML = `<h2>${escTxt(label)}</h2>${sub ? `<p>${escTxt(sub)}</p>` : ''}`; ch.innerHTML = chart;
 }
 function show(keepStatus) {
   refreshViewing();
@@ -4178,7 +4189,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-157 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-158 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
