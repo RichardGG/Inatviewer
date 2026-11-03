@@ -581,8 +581,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbpr .season { margin-top:0; }
   .cntpill { position:absolute; right:6px; bottom:6px; z-index:3; padding:2px 9px 3px; background:#fbf6e2; color:#3a2a14; border-radius:3px; transform:rotate(2.5deg); box-shadow:0 2px 4px rgba(0,0,0,.45);
              font:700 16px/1 var(--hw); font-size-adjust:.5; pointer-events:none; white-space:nowrap; display:flex; align-items:center; gap:4px; } /* a paper sticker with the count */
-  .dvx { position:absolute; right:8px; top:2px; z-index:3; width:30px; height:24px; padding:0; display:grid; place-items:center; border:0; border-radius:12px; background:rgba(0,0,0,.18); color:var(--dvfg); cursor:pointer; }
-  .dvx:active { background:rgba(0,0,0,.32); }
+  .dvx { position:absolute; right:10px; top:0; z-index:3; width:46px; height:28px; padding:0 4px 0 8px; display:flex; align-items:center; justify-content:center; border:0; border-radius:16px 8px 0 0 / 100% 8px 0 0; background:var(--dvbg); color:var(--dvfg); cursor:pointer; } /* a folder tab of its own, mirroring the name tab */
+  .dvx:active { filter:brightness(.93); }
   /* place folders: a small map across the top of each folder */
   .pmap { position:relative; height:96px; margin:0 0 4px; overflow:hidden; background:#cfd8c8; box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); }
   .pmap[hidden] { display:none; }
@@ -3754,7 +3754,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-97 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-98 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
