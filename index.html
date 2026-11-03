@@ -327,18 +327,37 @@
   #pathbar .pbin { position:absolute; left:0; right:0; top:26px; display:flex; align-items:stretch; flex-wrap:wrap; gap:0; padding:0 0 0 13px; gap:0; }
   #pathbar .tag { max-width:100%; }
   /* bottom bar: sort, filter, location, compare; each opens a sheet above it */
-  .tabs { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom)); width:min(calc(100% - 24px), 520px); z-index:70; display:flex; gap:4px; padding:6px;
-          background:var(--card); border:1px solid var(--line); border-radius:30px; box-shadow:0 6px 22px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.2); }
-  .tabs button { flex:1; display:flex; flex-direction:column; align-items:center; gap:1px; border:0; border-radius:24px; background:transparent; color:var(--muted); padding:7px 2px 7px; font-size:14px; position:relative; }
+  .tabs { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(14px + env(safe-area-inset-bottom)); width:min(calc(100% - 28px), 440px); z-index:70; display:flex; gap:2px; padding:6px; isolation:isolate; }
+  /* the notebook's cloth band: woven dark fabric with a stitched edge, gold-foil icons, and a ribbon bookmark poking out above the open button */
+  .tabs::before { content:''; position:absolute; inset:0; z-index:0; border-radius:28px; background:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px), #232733; box-shadow:0 8px 20px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12); }
+  .tabs::after { content:''; position:absolute; inset:4px; z-index:0; border:2px dashed rgba(240,215,160,.5); border-radius:24px; pointer-events:none; }
+  .tabs .rib { position:absolute; z-index:-1; top:8px; left:50%; width:26px; height:56px; margin-left:-13px; opacity:0; transition:left .28s cubic-bezier(.3,1.4,.5,1), top .22s, opacity .15s; background:linear-gradient(90deg, #8e2020, #d8504a 50%, #8e2020); clip-path:polygon(0 0, 50% 20%, 100% 0, 100% 100%, 0 100%); filter:drop-shadow(0 2px 2px rgba(0,0,0,.5)); pointer-events:none; }
+  .tabs .rib.show { top:-24px; opacity:1; }
+  .tabs button { position:relative; z-index:1; flex:1; display:flex; align-items:center; justify-content:center; height:46px; border:0; border-radius:20px; background:transparent; color:#d9b45a; padding:0; }
   .tabs button[hidden] { display:none; }
-  .tabs button.open { background:color-mix(in srgb, var(--accent) 20%, transparent); color:var(--accent); font-weight:700; }
-  .tabs button.has::after { content:''; position:absolute; top:5px; left:calc(50% + 10px); width:9px; height:9px; border-radius:50%; background:var(--accent); border:2px solid var(--card); }
+  .tabs button svg { filter:drop-shadow(0 -1px 0 rgba(0,0,0,.65)) drop-shadow(0 1px 0 rgba(255,255,255,.12)); width:26px; height:26px; }
+  .tabs button.open svg { filter:drop-shadow(0 0 6px rgba(255,220,120,.75)) drop-shadow(0 -1px 0 rgba(0,0,0,.65)); color:#ffe9a8; }
+  .tabs button.has::after { content:''; position:absolute; top:6px; left:calc(50% + 11px); width:9px; height:9px; border-radius:50%; background:#ffe9a8; border:2px solid #232733; }
+  .vh { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
   .tabs i { display:inline-flex; }
   main { padding-bottom:calc(110px + env(safe-area-inset-bottom)); }
   #toast { bottom:calc(100px + env(safe-area-inset-bottom)) !important; }
   .fpanel, #areapanel { position:fixed; left:50%; transform:translateX(-50%); bottom:var(--tabs-h, 58px); width:min(100%, 900px); max-height:min(72vh, calc(100vh - var(--tabs-h, 58px) - 24px)); overflow:auto; z-index:69; margin:0; border-radius:16px 16px 0 0; border-bottom:0; box-shadow:0 -8px 24px rgba(0,0,0,.3); padding:14px 14px 18px; }
   .fpanel[hidden], #areapanel[hidden] { display:none; }
-  .fpanel h4 { margin:14px 0 6px; font-size:18px; } .fpanel h4:first-child { margin-top:0; }
+  .fpanel h4 { margin:20px 0 8px; font-size:18px; } .fpanel h4:first-child { margin-top:0; }
+  /* sheets are paper pages: printed small-caps headings, handwritten values, ink-stamp chips */
+  .fpanel, #areapanel, #pexplore { background:var(--grain), #f6f2e4 !important; color:#27348b; border:0 !important; border-radius:18px 18px 4px 4px; padding-top:22px !important; box-shadow:0 -6px 22px rgba(0,0,0,.45), inset 0 8px 10px -8px rgba(0,0,0,.25) !important; }
+  .fpanel::before, #areapanel::before { content:''; position:absolute; left:50%; top:7px; width:44px; height:4px; margin-left:-22px; border-radius:2px; background:rgba(55,80,122,.35); }
+  .fpanel h4 { font:700 13px 'Trebuchet MS', Arial, sans-serif; font-size-adjust:none; letter-spacing:.14em; text-transform:uppercase; color:#37507a; }
+  .fpanel .status, #areapanel .status { color:#5a6590; }
+  .fpanel .cls { border:2.5px solid #27348b; border-radius:7px; background:none; color:#27348b; opacity:.88; text-transform:uppercase; letter-spacing:.05em; font-size:15px; padding:5px 11px; filter:url(#rough); }
+  .fpanel .cls.on { background:rgba(250,225,60,.55); opacity:1; border-color:#27348b; color:#1b2b6b; }
+  .fpanel .cls.fav { border-style:solid; }
+  .fpanel select, .fpanel input[type=date], .fpanel input[type=search], #jump { background:transparent !important; color:#27348b !important; border:0 !important; border-bottom:1px solid #9bb0c6 !important; border-radius:0 !important; font:700 22px var(--hw) !important; padding:4px 0 !important; }
+  .fpanel .pill { background:#fff; color:#27348b; border-color:#9bb0c6; } .fpanel .pill small { color:#5a6590; }
+  .fpanel .pill.on { background:rgba(250,225,60,.7); border-color:#27348b; color:#1b2b6b; } .fpanel .pill.on small { color:#37507a; }
+  .fpanel #jumpsug { background:#fbfaf4; }
+  #areamap, #expmap { border:7px solid #fbfaf4; border-radius:2px; box-shadow:0 3px 8px rgba(0,0,0,.35); }
   #sheetbg { position:fixed; inset:0; z-index:68; background:rgba(0,0,0,.28); } #sheetbg[hidden] { display:none; }
   .seentag { position:absolute; top:6px; right:6px; z-index:2; width:26px; height:26px; border-radius:50%; background:#4a9b50; color:#fff; display:grid; place-items:center; font-size:15px; box-shadow:0 1px 3px rgba(0,0,0,.5); pointer-events:none; }
   .pgrid .tile.piled::before, .pgrid .tile.piled::after { content:''; position:absolute; inset:0; z-index:-1; background:#fbfaf4; border-radius:3px; box-shadow:0 2px 6px rgba(0,0,0,.35); }
@@ -405,6 +424,7 @@
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="rough" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="3" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3"/></filter></svg>
 <main>
   <header class="top">
     <h1>iNat Viewer</h1>
@@ -463,10 +483,11 @@
 
   <div id="results" hidden>
     <div class="tabs" role="toolbar" aria-label="Sort, filter and location">
-      <button id="bsort" aria-label="Sort"><i data-i="arrow-up-down"></i><span id="sortlabel">Latest</span></button>
-      <button id="bfilter" aria-label="Filter"><i data-i="filter"></i><span>Filter</span></button>
-      <button id="areabtn" aria-label="Location" aria-expanded="false"><i data-i="map-pin"></i><span>Location</span></button>
-      <button id="bcmp" aria-label="Compare" hidden><i data-i="git-compare"></i><span>Compare</span></button>
+      <i class="rib"></i>
+      <button id="bsort" aria-label="Sort"><i data-i="arrow-up-down"></i><span id="sortlabel" class="vh">Latest</span></button>
+      <button id="bfilter" aria-label="Filter"><i data-i="filter"></i><span class="vh">Filter</span></button>
+      <button id="areabtn" aria-label="Location" aria-expanded="false"><i data-i="map-pin"></i><span class="vh">Location</span></button>
+      <button id="bcmp" aria-label="Compare" hidden><i data-i="git-compare"></i><span class="vh">Compare</span></button>
     </div>
     <div id="controls">
     <div id="summary" class="status"></div>
@@ -3189,7 +3210,7 @@ function applyUrlState() {
 const scrollPos = {}; // scroll offset remembered per tab
 const SORTS = [['recent', 'Latest'], ['rare', 'Rarest'], ['tree', 'Taxonomy'], ['place', 'Place'], ['explore', 'Common']];
 const sortId = () => view === 'recent' && raritySort ? 'rare' : view;
-function updateSortUi() { $('sortlabel').textContent = SORTS.find(x => x[0] === sortId())[1]; }
+function updateSortUi() { const name = SORTS.find(x => x[0] === sortId())[1]; $('sortlabel').textContent = name; $('bsort').setAttribute('aria-label', `Sort: ${name}`); }
 function setView(v) {
   if (v !== view) scrollPos[view] = scrollY;
   view = v;
@@ -3234,6 +3255,14 @@ function drawSortChips() {
 // the sheets sit just above the floating bar: --tabs-h is the distance from the bottom of the screen to the top of the bar, plus a small gap
 const syncTabsHeight = () => { const r = document.querySelector('.tabs').getBoundingClientRect(); if (r.height) document.documentElement.style.setProperty('--tabs-h', Math.round(innerHeight - r.top + 8) + 'px'); };
 new ResizeObserver(syncTabsHeight).observe(document.querySelector('.tabs'));
+// the ribbon bookmark pokes out above whichever button has its sheet open
+function syncRibbon() {
+  const tabs = document.querySelector('.tabs'), rib = tabs.querySelector('.rib'), on = tabs.querySelector('button.open');
+  rib.classList.toggle('show', !!on);
+  if (on) rib.style.left = (on.offsetLeft + on.offsetWidth / 2) + 'px';
+}
+new MutationObserver(syncRibbon).observe(document.querySelector('.tabs'), { subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
+addEventListener('resize', syncRibbon);
 addEventListener('resize', syncTabsHeight);
 let favHintToasted = false;
 function updateFavHint() {
@@ -3510,7 +3539,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-49 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-50 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
