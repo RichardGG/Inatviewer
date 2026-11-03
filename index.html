@@ -449,17 +449,19 @@
   .dvroot { padding:4px 0 6px; }
   .dv { position:relative; margin:0 0 8px; }
   .dvb > .dv { margin-top:6px; }
-  .dv.d0 { --dvfg:#1d2f6b; --dvbg:linear-gradient(rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, #faf6e8; }
-  .dv.d1 { --dvfg:#3a2a14; --dvbg:repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), #e2dbc5; }
-  .dv.d2 { --dvfg:#173a1f; --dvbg:repeating-linear-gradient(135deg, rgba(255,255,255,.3) 0 2px, transparent 2px 5px), #b6dcb0; }
-  .dv.d3 { --dvfg:#1d2f6b; --dvbg:linear-gradient(rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, #faf6e8; }
-  .dv.d4 { --dvfg:#3a2a14; --dvbg:repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), #e2dbc5; }
-  .dv.d5 { --dvfg:#173a1f; --dvbg:repeating-linear-gradient(135deg, rgba(255,255,255,.3) 0 2px, transparent 2px 5px), #b6dcb0; }
-  /* the header row is the tab on a strip of the parent folder's paper (or the desk for the outermost); it sticks, deeper ones stack beneath. Fixed backgrounds keep every pattern lined up between tab, strip and folder. */
-  .dvh { position:sticky; top:calc(var(--dd) * 22px); z-index:calc(60 - var(--dd)); height:22px; margin:0 0 -1px; background:var(--pbg, var(--desk, #233d2e)); background-attachment:fixed; }
-  .dvb { --pbg:var(--dvbg); padding:0 0 6px; border-radius:0 6px 6px 6px; background:var(--dvbg); background-attachment:fixed; box-shadow:0 3px 9px rgba(0,0,0,.35); }
-  .dvb .pgrid { padding:12px 6px 6px; }
-  .dvt { position:relative; margin-left:10px; height:22px; padding:0 18px 0 11px; border:0; border-radius:8px 16px 0 0 / 8px 100% 0 0; background:var(--dvbg); background-attachment:fixed; color:var(--dvfg);
+  .dv.d0 { --dvc:#faf6e8; --dvfg:#1d2f6b; --dvbg:linear-gradient(rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, #faf6e8; }
+  .dv.d1 { --dvc:#e2dbc5; --dvfg:#3a2a14; --dvbg:repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), #e2dbc5; }
+  .dv.d2 { --dvc:#b6dcb0; --dvfg:#173a1f; --dvbg:repeating-linear-gradient(135deg, rgba(255,255,255,.3) 0 2px, transparent 2px 5px), #b6dcb0; }
+  .dv.d3 { --dvc:#faf6e8; --dvfg:#1d2f6b; --dvbg:linear-gradient(rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, #faf6e8; }
+  .dv.d4 { --dvc:#e2dbc5; --dvfg:#3a2a14; --dvbg:repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), #e2dbc5; }
+  .dv.d5 { --dvc:#b6dcb0; --dvfg:#173a1f; --dvbg:repeating-linear-gradient(135deg, rgba(255,255,255,.3) 0 2px, transparent 2px 5px), #b6dcb0; }
+  /* the header row is the tab on a strip of the parent folder's paper colour (or the desk for the outermost); it sticks, deeper ones stack beneath. A plain strip at the foot of each tab joins the plain band along the folder's top. */
+  .dvh { position:sticky; top:calc(var(--dd) * 24px); z-index:calc(60 - var(--dd)); height:28px; margin:0 0 -1px; background:var(--pbg, var(--desk, #233d2e)); }
+  .dvb { --pbg:var(--dvc); padding:0 0 6px; border-radius:0 6px 6px 6px; background:var(--dvbg); box-shadow:0 3px 9px rgba(0,0,0,.35); }
+  .dvb::before { content:''; display:block; height:6px; background:var(--dvc); border-radius:0 6px 0 0; } /* a plain band along the folder's top edge: the tab's strip joins it */
+  .dvb .pgrid { padding:6px 6px 6px; }
+  .dvt::after { content:''; position:absolute; left:0; right:0; bottom:0; height:6px; background:var(--dvc); }
+  .dvt { position:relative; margin-left:10px; height:28px; padding:0 18px 0 11px; border:0; border-radius:8px 16px 0 0 / 8px 100% 0 0; background:var(--dvbg); color:var(--dvfg);
          font:700 16px/22px 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; white-space:nowrap; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
   .dvt small { margin-left:6px; font-size:12px; font-weight:400; opacity:.8; } .dvt small.sci { font-style:italic; }
   .dvt:active { filter:brightness(.95); }
@@ -1680,7 +1682,7 @@ function redrawKeep(key, fromBar) {
   const fix = () => {
     const cell = $('gal').querySelector(`.dv[data-key="${CSS.escape(key)}"]`) || $('gal').querySelector(`.cell[data-i="${g.first}"]`);
     if (!cell) return;
-    const d = cell.getBoundingClientRect().top - (barHeight() + (cell.classList.contains('dv') ? g.depth * 22 + 6 : 6));
+    const d = cell.getBoundingClientRect().top - (barHeight() + (cell.classList.contains('dv') ? g.depth * 24 + 6 : 6));
     if (Math.abs(d) > 1) scrollBy(0, d);
   };
   fix();
@@ -3375,7 +3377,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-61 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-63 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
