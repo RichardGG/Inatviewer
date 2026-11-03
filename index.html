@@ -845,8 +845,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
           <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
         </div>
         <div id="fsCommon">
-          <h4>Common</h4>
-          <div id="commonchips" class="clsrow" role="group" aria-label="Options for the Common sort"></div>
+          <h4>Nearby</h4>
+          <div id="commonchips" class="clsrow" role="group" aria-label="Options for the Nearby sort"></div>
         </div>
       </div>
       <div class="card" id="areapanel" hidden>
@@ -2053,7 +2053,7 @@ function drawDividers() {
 }
 // A flat list (Rarest, a shuffle, Common) sits in one folder with no tab, so the background matches the grouped sorts.
 function flatTitle() {
-  if (view === 'explore') return ['Common', area ? `within ${fmtDist(Math.min(area.r, 100000))}` : ''];
+  if (view === 'explore') return ['Nearby', area ? `within ${fmtDist(Math.min(area.r, 100000))}` : ''];
   if (raritySort) return ['Rarest', 'fewest observations worldwide'];
   if (shuffleSeed != null || recentSeed != null) return ['Shuffled', ''];
   return [SORTS.find(x => x[0] === view)?.[1] || 'Photos', ''];
@@ -2473,19 +2473,22 @@ function viewportCircle() {
 }
 // A hand-drawn ring: a slightly uneven outline with dashes of varied length, no fill.
 function inkRingPoints(lat, lng, r) {
-  const pts = [], cosLat = Math.max(0.01, Math.cos(lat * Math.PI / 180));
-  for (let i = 0; i < 120; i++) {
-    const t = i / 120 * 2 * Math.PI, k = 1 + 0.028 * Math.sin(3 * t + 0.8) + 0.018 * Math.sin(5 * t + 2.1) + 0.01 * Math.sin(9 * t + 4);
+  const pts = [], cosLat = Math.max(0.01, Math.cos(lat * Math.PI / 180)), t0 = 0.9, turns = 1.09, N = 150;
+  for (let i = 0; i <= N; i++) {
+    const u = i / N, t = t0 + u * turns * 2 * Math.PI;
+    let k = 1 + 0.03 * Math.sin(3 * t + 0.8) + 0.018 * Math.sin(5 * t + 2.1) + 0.01 * Math.sin(9 * t + 4);
+    if (u > 1 / turns) k += 0.16 * ((u - 1 / turns) / (1 - 1 / turns)); // the second lap drifts outwards: a bad join where the line runs out past its start
+    if (u < 0.06) k -= 0.03 * (1 - u / 0.06); // and the start dips in a little
     pts.push([lat + r * k * Math.cos(t) / 111320, lng + r * k * Math.sin(t) / (111320 * cosLat)]);
   }
   return pts;
 }
-const INK_RING = { color: '#27348b', weight: 3.5, dashArray: '16 7 5 9 24 8 9 7 3 10', lineCap: 'round', lineJoin: 'round', fill: false, interactive: false, className: 'inkring' };
+const INK_RING = { color: '#27348b', weight: 3.5, lineCap: 'round', lineJoin: 'round', fill: false, interactive: false, className: 'inkring' };
 function drawArea(a = area) {
   $('radiuslabel').textContent = a ? fmtDist(a.r) + ' radius' : '';
   if (!areaMap) return;
   if (!a) { if (areaCircle) { areaCircle.remove(); areaCircle = null; } return; }
-  if (!areaCircle) areaCircle = L.polygon(inkRingPoints(a.lat, a.lng, a.r), INK_RING).addTo(areaMap);
+  if (!areaCircle) areaCircle = L.polyline(inkRingPoints(a.lat, a.lng, a.r), INK_RING).addTo(areaMap);
   else areaCircle.setLatLngs(inkRingPoints(a.lat, a.lng, a.r));
 }
 // Run a programmatic map move without it being treated as the user changing the filter.
@@ -3165,7 +3168,7 @@ async function exploreFromObs(o) {
 // The circle as a layer for another map (the species page frames the area that was searched).
 function nearbyAreaLayer() {
   if (!area) return null;
-  const layer = L.polygon(inkRingPoints(area.lat, area.lng, area.r), INK_RING);
+  const layer = L.polyline(inkRingPoints(area.lat, area.lng, area.r), INK_RING);
   return { layer, bounds: L.latLng(area.lat, area.lng).toBounds(area.r * 2) };
 }
 
@@ -3223,7 +3226,7 @@ function renderExplore() {
   $('expmore').hidden = true; $('exprefresh').hidden = true;
   if (!area) {
     const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Choose a location'; b.style.margin = '0 14px'; b.onclick = () => $('areabtn').click();
-    draw([para('Common lists the most observed species around a place, and which of them you have seen. Pan the map in Location to choose the place.'), b]);
+    draw([para('Nearby lists the most observed species around a place, and which of them you have seen. Pan the map in Location to choose the place.'), b]);
     return;
   }
   const mine = mySpeciesCounts(), myPhoto = myPhotoBySpecies();
@@ -3533,7 +3536,7 @@ function applyUrlState() {
 }
 
 const scrollPos = {}; // scroll offset remembered per tab
-const SORTS = [['recent', 'Latest'], ['rare', 'Rarest'], ['tree', 'Taxonomy'], ['place', 'Place'], ['explore', 'Common']];
+const SORTS = [['recent', 'Latest'], ['rare', 'Rarest'], ['tree', 'Taxonomy'], ['place', 'Place'], ['explore', 'Nearby']];
 const sortId = () => view === 'recent' && raritySort ? 'rare' : view;
 const MARK_COLORS = { recent: '#c8453b', rare: '#7b4fb0', tree: '#3f8f52', place: '#2f78b8', explore: '#d9952f' };
 let bmPending = false;
@@ -3940,7 +3943,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-131 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-132 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

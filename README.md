@@ -25,7 +25,7 @@ The OAuth access token is exchanged for the 24h API JWT and re-exchanged automat
 
 The page is an installable web app (`manifest.webmanifest`, `sw.js`): use "Add to Home screen" / "Install" in the browser.
 The service worker caches the app itself, Leaflet, map tiles and photos, so the app opens without a connection and shows
-your cached observations. iNaturalist API calls are never cached by the service worker. Recent Common searches
+your cached observations. iNaturalist API calls are never cached by the service worker. Recent Nearby searches
 are stored separately (IndexedDB key `nearby`, up to 15) and can be reopened from the history button in the Location sheet.
 Bump `VER` in `sw.js` to force the cached libraries, tiles and photos to be dropped.
 
@@ -33,12 +33,12 @@ Bump `VER` in `sw.js` to force the cached libraries, tiles and photos to be drop
 
 A bottom bar has the main controls; each opens a sheet above it.
 
-- **Sort**: *Latest* (grouped by year, month, day), *Rarest* (species with the fewest iNaturalist observations first), *Taxonomy*, *Place* and *Common* (the most observed species inside the Location circle, shown as Polaroids with a green tick on the ones you have seen; "hide species I've seen" and "research grade only" are in the Sort sheet).
+- **Sort**: *Latest* (grouped by year, month, day), *Rarest* (species with the fewest iNaturalist observations first), *Taxonomy*, *Place* and *Nearby* (the most observed species inside the Location circle, shown as Polaroids with a green tick on the ones you have seen; "hide species I've seen" and "research grade only" are in the Sort sheet).
   For Latest and Rarest, *Same species* chooses between every observation, one per species per day, or one per species (grouped entries look like a small pile of Polaroids). *Shuffle* randomises the order.
 - **Filter**: jump to a group or species, group (birds, plants…), favourite-photo status, and date.
-- **Location**: one map for every sort. The orange circle is the current view of the map; it filters your observations to the area and is the area Common searches (within 100 km). Buttons on the map jump to your location or search for a place by name.
+- **Location**: one map for every sort. The orange circle is the current view of the map; it filters your observations to the area and is the area Nearby searches (within 100 km). Buttons on the map jump to your location or search for a place by name.
 - **Small groups**: a group with fewer than 3 photos gets no folder of its own. Its photos join the folder above, each with a yellow sticker naming the group. The decision is made from the current counts, so a big group (parrots) keeps its folder while a small one (spiders) is folded in.
-- **Infinite scroll**: the gallery and Common load the next page by themselves as you near the bottom. Rarest, a shuffle and Common sit in one folder with its own tab; Rarest shows each species' worldwide iNaturalist observation count and Common shows how many observations of it there are in the area.
+- **Infinite scroll**: the gallery and Nearby load the next page by themselves as you near the bottom. Rarest, a shuffle and Nearby sit in one folder with its own tab; Rarest shows each species' worldwide iNaturalist observation count and Nearby shows how many observations of it there are in the area.
 - **Place maps**: in the Place sort every folder (country, state, county, city…) has a small map across its top, zoomed to fit where its observations were made, with an orange dot for each (MapTiler Outdoor tiles, loaded only for folders near the screen).
 - **View** (the eye): style, size, groups and *Appearance* (Auto follows the device, or force Light or Dark; dark mode has its own dark folder, notebook and sheet textures).
 - **Compare** (a section of the View sheet): species missing from another person's list, or seen by both (available from your own account and while viewing someone else).
