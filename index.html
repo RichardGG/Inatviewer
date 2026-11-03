@@ -3740,7 +3740,7 @@ async function refresh({ full = false, retried = false, moreHistory = false } = 
     show();
     renderPeople();
     if (favChanges) toast(`${favChanges} change${favChanges > 1 ? 's' : ''} picked up from iNaturalist`);
-    status(fresh.length ? `Done. ${fresh.length} new observations.` : state.complete ? 'Done. Already up to date.' : `Done. Showing the newest ${state.obs.length}${state.total ? ` of ${state.total}` : ''}.`);
+    status(fresh.length ? `Done. ${fresh.length} new observations.` : state.complete ? '' : `Done. Showing the newest ${state.obs.length}${state.total ? ` of ${state.total}` : ''}.`);
   } catch (e) {
     log(`refresh failed: ${e.stack || e}`, 'e');
     if (!retried && /Token rejected/.test(e.message) && localStorage.getItem(OAUTH_KEY)) {
@@ -3944,7 +3944,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-134 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-135 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
