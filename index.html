@@ -712,7 +712,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #areapanel::before { display:none; }
   #areapanel .amwrap { position:relative; }
   #areapanel #areamap { border:0; box-shadow:none; height:min(62vh, 560px); }
-  #areapanel[hidden] { display:block !important; transform-origin:0 0; transform:translateX(calc(50vw - 64px)) translateY(calc(100% + var(--tabs-h, 70px) - 150px)) rotate(-12deg); cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.6) !important; }
+  #areapanel[hidden] { display:block !important; transform-origin:0 0; transform:translateX(calc(50vw - 64px)) translateY(calc(100% + var(--tabs-h, 70px) - 118px)) rotate(-12deg); cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.6) !important; }
   #areapanel[hidden] > * { pointer-events:none; }
   body:not(.scrolled) #areapanel[hidden], body.sheet-open #areapanel[hidden] { opacity:0; pointer-events:none; }
   .onlyhere { position:absolute; z-index:1200; left:10px; bottom:30px; display:flex; align-items:center; gap:8px; padding:5px 12px 6px 8px; background:var(--grain), #fbf6e2; color:#27348b; border-radius:3px; transform:rotate(-1.5deg); box-shadow:0 2px 6px rgba(0,0,0,.5); font:700 21px/1 var(--hw); font-size-adjust:.5; cursor:pointer; }
@@ -722,7 +722,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   /* no bottom bar: the filter & view panel peeks from the bottom left, the map from the bottom right, and a ghost arrow floats in the middle */
   :root { --tabs-h:16px; }
   .tabs { display:none !important; }
-  #psort[hidden] { display:block !important; transform-origin:100% 0; transform:translateX(calc(64px - 50vw - 100%)) translateY(calc(100% + var(--tabs-h, 16px) - 150px)) rotate(12deg); cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.6) !important; transition:transform .38s cubic-bezier(.3,1.1,.5,1), opacity .25s; }
+  #psort[hidden] { display:block !important; transform-origin:100% 0; transform:translateX(calc(64px - 50vw - 100%)) translateY(calc(100% + var(--tabs-h, 16px) - 118px)) rotate(12deg); cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.6) !important; transition:transform .38s cubic-bezier(.3,1.1,.5,1), opacity .25s; }
   #psort[hidden] > * { pointer-events:none; }
   body:not(.scrolled) #psort[hidden], body.sheet-open #psort[hidden] { opacity:0; pointer-events:none; }
   #psort { transition:transform .38s cubic-bezier(.3,1.1,.5,1), opacity .25s; }
@@ -2230,6 +2230,7 @@ async function ensurePlaces() {
     placeLoading = false;
   }
   if (view === 'place') show(true);
+  finishBm();
   if (view === 'explore') renderExplore();
 }
 
@@ -2371,7 +2372,7 @@ async function loadRarityData() {
     }
     status(`Rarity checked for ${missing.length} species.`);
   } catch (e) { log(`rarity lookup failed: ${e.stack || e}`, 'e'); status(e.message, true); }
-  finally { rarityBusy = false; }
+  finally { rarityBusy = false; finishBm(); }
 }
 let cmpMode = ''; // '' | 'missing' (species the other person hasn't seen) | 'common' (seen by both)
 let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite) | 'others' (faved by other users) | 'theirs' / 'mine' (someone else's account: their favourites / ones I faved)
@@ -3225,6 +3226,7 @@ function renderExplore() {
     for (const it of rows) { const cell = document.createElement('div'); cell.className = 'cell'; cell.append(commonTile(it, mine, myPhoto, act)); grid.append(cell); }
     draw([para(note), ...oneFolder(grid)]);
   }
+  if (!explore.loading && !geoBusy) finishBm();
   $('exprefresh').hidden = !explore.cachedAt || explore.loading;
   $('expmore').hidden = explore.loading || explore.items.length >= explore.total;
   $('expmore').textContent = `Show more (${explore.total - explore.items.length} left)`;
@@ -3513,6 +3515,12 @@ const scrollPos = {}; // scroll offset remembered per tab
 const SORTS = [['recent', 'Latest'], ['rare', 'Rarest'], ['tree', 'Taxonomy'], ['place', 'Place'], ['explore', 'Common']];
 const sortId = () => view === 'recent' && raritySort ? 'rare' : view;
 const MARK_COLORS = { recent: '#c8453b', rare: '#7b4fb0', tree: '#3f8f52', place: '#2f78b8', explore: '#d9952f' };
+let bmPending = false;
+function finishBm() {
+  if (!bmPending) return; bmPending = false;
+  const m = $('marks'); if (!m) return;
+  requestAnimationFrame(() => scrollTo({ top: Math.max(0, m.getBoundingClientRect().top + scrollY - 10), behavior: 'smooth' }));
+}
 function drawMarks() {
   const box = $('marks'); if (!box) return; box.replaceChildren();
   for (const [k, label] of SORTS) {
@@ -3520,7 +3528,10 @@ function drawMarks() {
     b.style.setProperty('--mc', MARK_COLORS[k]);
     b.insertAdjacentHTML('beforeend', ic({ recent: 'clock', rare: 'gem', tree: 'list-tree', place: 'map-pin', explore: 'compass' }[k], 20));
     const t = document.createElement('span'); t.textContent = label; b.append(t);
-    b.onclick = () => chooseSort(k); // changes the sort only: the page does not scroll
+    b.onclick = () => { // changes the sort only; if that starts a load, the page scrolls to the content once it has loaded (keeping the bookmarks in view)
+      chooseSort(k);
+      setTimeout(() => { bmPending = !!(explore.loading || rarityBusy || placeLoading || geoBusy); }, 0);
+    };
     box.append(b);
   }
   syncMarks();
@@ -3900,7 +3911,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-127 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-128 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
