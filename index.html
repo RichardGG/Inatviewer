@@ -581,6 +581,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbpr .season { margin-top:0; }
   .cntpill { position:absolute; right:6px; bottom:6px; z-index:3; padding:2px 9px 3px; background:#fbf6e2; color:#3a2a14; border-radius:3px; transform:rotate(2.5deg); box-shadow:0 2px 4px rgba(0,0,0,.45);
              font:700 16px/1 var(--hw); font-size-adjust:.5; pointer-events:none; white-space:nowrap; display:flex; align-items:center; gap:4px; } /* a paper sticker with the count */
+  .dvx { position:absolute; right:8px; top:2px; z-index:3; width:30px; height:24px; padding:0; display:grid; place-items:center; border:0; border-radius:12px; background:rgba(0,0,0,.18); color:var(--dvfg); cursor:pointer; }
+  .dvx:active { background:rgba(0,0,0,.32); }
   /* place folders: a small map across the top of each folder */
   .pmap { position:relative; height:96px; margin:0 0 4px; overflow:hidden; background:#cfd8c8; box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); }
   .pmap[hidden] { display:none; }
@@ -1822,6 +1824,11 @@ function dvSection(g) {
   if (g.sub) { const sm = document.createElement('small'); sm.textContent = g.sub; if (gal.sort === 'tree') sm.className = 'sci'; t.append(sm); }
   const body = document.createElement('div'); body.className = 'dvb';
   const head = document.createElement('div'); head.className = 'dvh'; head.append(t);
+  if (gal.groups.length) { // top right of the tab row: expand every group (or, when everything is open, collapse them all)
+    const any = collapsed[gal.sort].size > 0, x = document.createElement('button'); x.type = 'button'; x.className = 'dvx'; x.dataset.key = g.key;
+    x.innerHTML = ic(any ? 'chevrons-up-down' : 'chevrons-down-up', 18); x.title = x.ariaLabel = any ? 'Expand all groups' : 'Collapse all groups';
+    head.append(x);
+  }
   sec.append(head, body);
   return { el: sec, body };
 }
@@ -3599,6 +3606,14 @@ function toast(msg) {
 }
 // Tap a label (or a stack) to collapse or expand every group of its level; the group you tapped stays where it is on screen.
 (() => {
+  $('gal').addEventListener('click', e => {
+    const x = e.target.closest('.dvx');
+    if (!x) return;
+    e.stopPropagation();
+    const col = collapsed[gal.sort];
+    if (col.size) col.clear(); else gal.groups.forEach(g => col.add(g.key));
+    gal.byKey.has(x.dataset.key) ? redrawKeep(x.dataset.key, false) : drawGallery();
+  }, true);
   for (const host of [$('gal'), $('pathbar')]) {
     const fromBar = host.id === 'pathbar';
     host.addEventListener('click', e => {
@@ -3739,7 +3754,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-95 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-96 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
