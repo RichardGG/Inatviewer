@@ -3223,8 +3223,8 @@ function setView(v) {
   document.body.classList.toggle('stkview', true); // the dot-grid desk behind the Polaroids
   document.body.classList.toggle('vexplore', v === 'explore'); // Common keeps only the date and group filters
   $('locTools').hidden = v !== 'place';
-  closePanels();
   syncRecentTools(); updateSortUi();
+  if (!$('psort').hidden) drawSortChips(); // the Sort sheet stays open; its highlighted chip follows the change
   if (v === 'explore') { initExpMap(); drawChips(); renderExplore(); if (explore.selected && !explore.items.length && !explore.loading) loadExplore(); else if (!explore.selected) setTimeout(() => { if (view === 'explore' && $('pexplore').hidden) $('areabtn').click(); }, 150); }
   if (state.obs.length) show();
   // each sort keeps its own scroll position (re-applied once more next frame in case layout settles late)
@@ -3233,15 +3233,16 @@ function setView(v) {
   requestAnimationFrame(() => scrollTo({ top: y }));
 }
 function chooseSort(k) {
-  closePanels();
   if (k === 'rare') {
     raritySort = 'rare'; shuffleSeed = recentSeed = null; try { localStorage.setItem('inat_rsort', 'rare'); } catch {}
     if (view !== 'recent') setView('recent'); else { syncRecentTools(); updateSortUi(); drawChips(); show(true); }
     if (rarityMissing().length) loadRarityData();
+    if (!$('psort').hidden) drawSortChips();
     return;
   }
   if (raritySort) { raritySort = ''; try { localStorage.removeItem('inat_rsort'); } catch {} }
   if (view === k) { updateSortUi(); show(true); } else setView(k);
+  if (!$('psort').hidden) drawSortChips();
 }
 function drawSortChips() {
   const box = $('sortchips'); box.replaceChildren();
@@ -3465,8 +3466,8 @@ function syncRecentTools() {
   drawGroupChips();
 }
 // one seed shuffles every sort of the gallery (a shuffle replaces the Rarest sort)
-$('shuffle').onclick = () => { if (raritySort) { raritySort = ''; try { localStorage.removeItem('inat_rsort'); } catch {} } shuffleSeed = recentSeed = Math.floor(Math.random() * 2 ** 31); syncRecentTools(); updateSortUi(); closePanels(); show(true); };
-$('unshuffle').onclick = () => { shuffleSeed = recentSeed = null; syncRecentTools(); closePanels(); show(true); };
+$('shuffle').onclick = () => { if (raritySort) { raritySort = ''; try { localStorage.removeItem('inat_rsort'); } catch {} } shuffleSeed = recentSeed = Math.floor(Math.random() * 2 ** 31); syncRecentTools(); updateSortUi(); show(true); };
+$('unshuffle').onclick = () => { shuffleSeed = recentSeed = null; syncRecentTools(); show(true); };
 // ---------- jump to (in the Filter sheet): autocomplete over group and species names, then scroll to the item ----------
 let jumpIndex = null;
 function buildJumpIndex() {
@@ -3539,7 +3540,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-50 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-51 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
