@@ -704,6 +704,14 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .signin::before { content:''; position:absolute; inset:4px; border:1.5px dashed rgba(39,52,139,.4); pointer-events:none; }
   .signin:active { transform:rotate(-1deg) scale(.98); }
   .signin[hidden] { display:none; }
+  /* sort options: ribbon bookmarks sticking out of the bottom edge of the cover */
+  header.cover { margin-bottom:84px !important; min-height:calc(100vh - 116px) !important; min-height:calc(100dvh - 116px) !important; }
+  @media (max-width: 899px) { header.cover { min-height:calc(100vh - 102px) !important; min-height:calc(100dvh - 102px) !important; } }
+  .marks { position:absolute; left:0; right:0; top:calc(100% - 2px); z-index:-1; display:flex; justify-content:center; gap:8px; padding:0 8px; pointer-events:none; }
+  .marks button { pointer-events:auto; flex:0 0 58px; height:68px; padding:10px 2px 14px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:2px; border:0; border-radius:0; color:#fff; cursor:pointer; transform:translateY(0); transition:height .2s;
+                  background:linear-gradient(90deg, rgba(0,0,0,.22), transparent 28%, rgba(255,255,255,.22) 60%, rgba(0,0,0,.2)), var(--mc); clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%); filter:drop-shadow(0 3px 3px rgba(0,0,0,.45)); }
+  .marks button:hover { height:74px; } .marks button.on { height:80px; }
+  .marks button svg { stroke:#fff; } .marks button span { font:700 14px/1 var(--hw); font-size-adjust:.5; text-shadow:0 1px 1px rgba(0,0,0,.5); }
 </style>
 </head>
 <body>
@@ -713,6 +721,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
     <div class="clabel"><h1><span>Nature</span><span>Observations</span></h1><p>Field notes · observation book<br>Made from your iNaturalist records</p><button type="button" id="covername" aria-haspopup="dialog" title="Switch user, search or share"></button></div>
     <button id="acct" aria-label="Account and sync" aria-expanded="false" hidden></button>
     <button type="button" id="signin" class="signin" hidden>Sign in</button>
+    <nav class="marks" id="marks" aria-label="Sort"></nav>
     <div class="cnote">
       <div id="viewing" class="banner" hidden></div>
       <div id="status" class="status" role="status"></div>
@@ -3479,7 +3488,21 @@ function applyUrlState() {
 const scrollPos = {}; // scroll offset remembered per tab
 const SORTS = [['recent', 'Latest'], ['rare', 'Rarest'], ['tree', 'Taxonomy'], ['place', 'Place'], ['explore', 'Common']];
 const sortId = () => view === 'recent' && raritySort ? 'rare' : view;
-function updateSortUi() { const name = SORTS.find(x => x[0] === sortId())[1]; $('sortlabel').textContent = name; $('bsort').setAttribute('aria-label', `Sort: ${name}`); }
+const MARK_COLORS = { recent: '#c8453b', rare: '#7b4fb0', tree: '#3f8f52', place: '#2f78b8', explore: '#d9952f' };
+function drawMarks() {
+  const box = $('marks'); if (!box) return; box.replaceChildren();
+  for (const [k, label] of SORTS) {
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.k = k; b.title = `Sort: ${label}`; b.setAttribute('aria-label', `Sort: ${label}`);
+    b.style.setProperty('--mc', MARK_COLORS[k]);
+    b.insertAdjacentHTML('beforeend', ic({ recent: 'clock', rare: 'gem', tree: 'list-tree', place: 'map-pin', explore: 'compass' }[k], 20));
+    const t = document.createElement('span'); t.textContent = label; b.append(t);
+    b.onclick = () => { chooseSort(k); setTimeout(() => $('gal').scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); };
+    box.append(b);
+  }
+  syncMarks();
+}
+function syncMarks() { document.querySelectorAll('#marks button').forEach(b => b.classList.toggle('on', b.dataset.k === sortId())); }
+function updateSortUi() { syncMarks(); const name = SORTS.find(x => x[0] === sortId())[1]; $('sortlabel').textContent = name; $('bsort').setAttribute('aria-label', `Sort: ${name}`); }
 function setView(v) {
   if (v !== view) scrollPos[view] = scrollY;
   view = v;
@@ -3848,11 +3871,12 @@ document.addEventListener('click', e => { if (!e.target.closest('#jumpwrap')) $(
 
 
 applyGalLook();
+drawMarks();
 setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-116 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-119 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
