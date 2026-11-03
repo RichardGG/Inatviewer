@@ -715,7 +715,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   @media (max-width: 899px) { header.cover { min-height:calc(100vh - 102px) !important; min-height:calc(100dvh - 102px) !important; } }
   .marks { position:absolute; left:0; right:0; top:calc(100% - 22px); z-index:-1; display:flex; justify-content:center; gap:8px; padding:0 8px; pointer-events:none; }
   .marks button { pointer-events:auto; flex:0 0 58px; height:86px; padding:28px 2px 14px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:2px; border:0; border-radius:0; color:#fff; cursor:pointer; transform:translateY(0); transition:height .2s;
-                  background:var(--grain), linear-gradient(rgba(255,255,255,.1), rgba(0,0,0,.07)), var(--mc); clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%); filter:drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
+                  background:var(--grain), linear-gradient(rgba(255,255,255,.1), rgba(0,0,0,.07)), var(--mc); clip-path:polygon(0 0, 100% 0, 100% 90%, 50% 100%, 0 90%); filter:drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
   .marks button:nth-child(odd) { rotate:-.9deg; } .marks button:nth-child(even) { rotate:1deg; }
   .marks button:hover { height:92px; } .marks button.on { height:98px; }
   .marks button svg { stroke:#fff; } .marks button span { font:700 14px/1 var(--hw); font-size-adjust:.5; text-shadow:none; opacity:.95; }
@@ -726,7 +726,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #areapanel #areamap { border:0; box-shadow:none; height:min(62vh, 560px); }
   #areapanel[hidden] { display:block !important; transform-origin:0 0; transform:translateX(calc(50vw - 64px)) translateY(calc(100% + var(--tabs-h, 70px) - 59px)) rotate(-12deg); cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.6) !important; }
   #areapanel[hidden] > * { pointer-events:none; }
-  body:not(.scrolled) #areapanel[hidden], body.sheet-open #areapanel[hidden] { opacity:0; pointer-events:none; }
+  body:not(.scrolled) #areapanel[hidden], body.sheet-open #areapanel[hidden] { transform:translateX(calc(50vw + 140px)) translateY(calc(100% + 220px)) rotate(-12deg); pointer-events:none; } /* slides away off the corner instead of fading */
   .onlyhere { position:absolute; z-index:1200; left:10px; bottom:30px; display:flex; align-items:center; gap:8px; padding:5px 12px 6px 8px; background:var(--grain), #fbf6e2; color:#27348b; border-radius:3px; transform:rotate(-1.5deg); box-shadow:0 2px 6px rgba(0,0,0,.5); font:700 21px/1 var(--hw); font-size-adjust:.5; cursor:pointer; }
   .onlyhere small { font:700 16px var(--hw); color:#5a6590; } .onlyhere small:empty { display:none; }
   .onlyhere input { accent-color:#27348b; width:20px; height:20px; margin:0; }
@@ -736,7 +736,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .tabs { display:none !important; }
   #psort[hidden] { display:block !important; transform-origin:100% 0; transform:translateX(calc(64px - 50vw - 100%)) translateY(calc(100% + var(--tabs-h, 16px) - 59px)) rotate(12deg); cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.6) !important; transition:transform .38s cubic-bezier(.3,1.1,.5,1), opacity .25s; }
   #psort[hidden] > * { pointer-events:none; }
-  body:not(.scrolled) #psort[hidden], body.sheet-open #psort[hidden] { opacity:0; pointer-events:none; }
+  body:not(.scrolled) #psort[hidden], body.sheet-open #psort[hidden] { transform:translateX(calc(-140px - 50vw - 100%)) translateY(calc(100% + 220px)) rotate(12deg); pointer-events:none; }
   #psort { transition:transform .38s cubic-bezier(.3,1.1,.5,1), opacity .25s; }
   #totop { position:fixed; z-index:64; left:50%; bottom:calc(16px + env(safe-area-inset-bottom)); width:52px; height:52px; margin-left:-26px; display:grid; place-items:center; padding:0; border:0; border-radius:50%; background:rgba(255,255,255,.08); color:#fff; backdrop-filter:blur(2px); box-shadow:inset 0 0 0 2.5px rgba(255,255,255,.9), 0 2px 8px rgba(0,0,0,.55); filter:drop-shadow(0 0 1px rgba(0,0,0,.6)); cursor:pointer; transition:opacity .25s, transform .25s; }
   #totop svg { stroke-width:3; width:26px; height:26px; }
@@ -3265,19 +3265,19 @@ const exploreKm = () => Math.min(100, Math.max(0.1, area.r / 1000));
 let geoBusy = false, commonTemp = false; // commonTemp: the circle exists only because Common needs one
 function useMyLocationForCommon() {
   commonTemp = true;
-  const pick = () => { if (view === 'explore' && !area && $('areapanel').hidden) $('areabtn').click(); };
-  if (!navigator.geolocation || geoBusy) return setTimeout(pick, 150);
-  geoBusy = true; status('Finding your location…');
+  if (!navigator.geolocation || geoBusy) { if (!geoBusy) { commonTemp = false; renderExplore(); } return; } // no location: Nearby shows its Choose a location button
+  geoBusy = true; renderExplore();
   navigator.geolocation.getCurrentPosition(pos => {
-    geoBusy = false; status('');
+    geoBusy = false;
     log(`geolocation: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (±${Math.round(pos.coords.accuracy)} m)`);
-    if (area) return;
+    if (area || view !== 'explore') { renderExplore(); return; }
     $('follow').checked = true; areaFitted = false;
     setArea({ lat: pos.coords.latitude, lng: pos.coords.longitude, r: 10000 });
+    if (areaMap) moveMap(() => areaMap.fitBounds(L.latLng(area.lat, area.lng).toBounds(area.r * 2), { animate: false }));
   }, err => {
-    geoBusy = false; status('');
+    geoBusy = false; commonTemp = false;
     log(`geolocation error ${err.code}: ${err.message}`, 'w');
-    pick();
+    renderExplore(); // the Choose a location button is shown
   }, { timeout: 12000, maximumAge: 120000 });
 }
 // Open Common around where an observation was made.
@@ -3347,9 +3347,10 @@ function renderExplore() {
   };
   const para = text => { $('summary').textContent = text; return null; }; // Common's note is written on the cover with the other totals
   $('expmore').hidden = true; $('exprefresh').hidden = true;
+  if (!area && geoBusy) { draw([para('Finding your location…')]); return; }
   if (!area) {
     const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Choose a location'; b.style.margin = '0 14px'; b.onclick = () => $('areabtn').click();
-    draw([para('Nearby lists the most observed species around a place, and which of them you have seen. Pan the map in Location to choose the place.'), b]);
+    draw([para("Your location couldn't be found. Choose a place on the map to see the most observed species there."), b]);
     return;
   }
   const mine = mySpeciesCounts(), myPhoto = myPhotoBySpecies();
@@ -3703,11 +3704,7 @@ function setView(v) {
   if (prevView === 'explore' && v !== 'explore' && commonTemp) { commonTemp = false; if (area) setArea(null); }
   $('follow').disabled = v === 'explore';
   if (v === 'explore') {
-    if (!area) {
-      commonTemp = true;
-      if (areaMap) { $('follow').checked = true; setArea(viewportCircle()); } // the map keeps its position
-      else useMyLocationForCommon();
-    }
+    if (!area) useMyLocationForCommon(); // Nearby starts from where I am; if that cannot be found it offers the Choose a location button
     drawChips(); renderExplore();
     if (area && !explore.items.length && !explore.loading) loadExplore();
   }
@@ -4078,7 +4075,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-155 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-156 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
