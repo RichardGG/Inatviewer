@@ -2589,7 +2589,8 @@ function addDoubleTapZoom(map) {
     if (last && Date.now() - last.t < 320 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 40) {
       e.stopPropagation(); e.preventDefault(); // the second tap is ours: Leaflet must not start a pan
       const r = el.getBoundingClientRect();
-      g = { id: e.pointerId, y0: e.clientY, z0: map.getZoom(), moved: false, pt: L.point(e.clientX - r.left, e.clientY - r.top), steps: 0 };
+      g = { id: e.pointerId, y0: e.clientY, z0: map.getZoom(), moved: false, pt: L.point(e.clientX - r.left, e.clientY - r.top), z: null, raf: 0, snap: map.options.zoomSnap };
+      map.options.zoomSnap = 0; // continuous zoom while the finger moves
       try { el.setPointerCapture(e.pointerId); } catch {}
       last = null;
     }
@@ -2597,16 +2598,23 @@ function addDoubleTapZoom(map) {
   el.addEventListener('pointermove', e => {
     if (!g || e.pointerId !== g.id) return;
     e.stopPropagation(); e.preventDefault();
-    const dy = e.clientY - g.y0; if (Math.abs(dy) > 8) g.moved = true;
-    const steps = Math.round(dy / 70); // a step of zoom for every 70px of drag
-    if (steps !== g.steps) { g.steps = steps; map.setZoomAround(g.pt, Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), g.z0 + steps)), { animate: false }); }
+    const dy = e.clientY - g.y0; if (Math.abs(dy) > 6) g.moved = true;
+    // smooth like a pinch: the zoom follows the finger continuously (100px of drag is one level), around the point first touched, with no panning
+    g.z = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), g.z0 + dy / 100));
+    if (!g.raf) g.raf = requestAnimationFrame(() => { g.raf = 0; if (g.z != null) map.setZoomAround(g.pt, g.z, { animate: false }); });
   }, true);
   const end = e => {
     if (e.pointerType !== 'touch') return;
-    if (g && e.pointerId === g.id) { e.stopPropagation(); if (!g.moved) map.setZoomAround(g.pt, map.getZoom() + 1, { animate: true }); g = null; return; }
+    if (g && e.pointerId === g.id) {
+      e.stopPropagation(); cancelAnimationFrame(g.raf);
+      map.options.zoomSnap = g.snap;
+      if (!g.moved) map.setZoomAround(g.pt, Math.round(g.z0) + 1, { animate: true });
+      else map.setZoomAround(g.pt, Math.round(map.getZoom()), { animate: true }); // settle on a whole zoom level, as a pinch does
+      g = null; return;
+    }
     if (e.type === 'pointerup' && e.isPrimary) last = { t: Date.now(), x: e.clientX, y: e.clientY };
   };
-  el.addEventListener('pointerup', end, true); el.addEventListener('pointercancel', e => { if (g && e.pointerId === g.id) g = null; }, true);
+  el.addEventListener('pointerup', end, true); el.addEventListener('pointercancel', e => { if (g && e.pointerId === g.id) { map.options.zoomSnap = g.snap; cancelAnimationFrame(g.raf); g = null; } }, true);
 }
 // Map buttons: jump to my location, and search for a place by name (OpenStreetMap's Nominatim, light use).
 function addMapButtons(map) {
@@ -4050,7 +4058,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-150 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-151 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
