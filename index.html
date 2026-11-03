@@ -555,6 +555,21 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
               -webkit-mask:linear-gradient(#000 0 0) content-box no-repeat, radial-gradient(circle 3.5px at 0 0, transparent 97%, #000) 0 0/12px 12px;
               mask:linear-gradient(#000 0 0) content-box no-repeat, radial-gradient(circle 3.5px at 0 0, transparent 97%, #000) 0 0/12px 12px; }
   .pgrid .tile .stamp3in img { position:static; display:block; width:100%; height:auto; aspect-ratio:1; }
+  /* View sheet: tools top right (light/dark, photo style, shuffle), size as a segmented control */
+  .vhead { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 0 4px; }
+  .vtitle { font:700 34px/1 var(--hw); font-size-adjust:.5; color:#27348b; } .dark .vtitle { color:#a9bdf2; }
+  .vtools { display:flex; gap:8px; }
+  .vt { width:42px; height:42px; padding:0; display:grid; place-items:center; border-radius:50%; background:none; color:#27348b; border:2.5px solid #27348b; }
+  .vt.on { background:rgba(250,225,60,.55); }
+  .vt[hidden] { display:none; }
+  .dark .vt { color:#a9bdf2; border-color:#a9bdf2; } .dark .vt.on { background:rgba(250,225,60,.45); }
+  .seg { display:flex; border:2.5px solid #27348b; border-radius:10px; overflow:hidden; }
+  .seg button { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 4px 6px; border:0; border-radius:0; background:none; color:#27348b; font:700 17px var(--hw); }
+  .seg button + button { border-left:2px solid #27348b; }
+  .seg button.on { background:rgba(250,225,60,.55); }
+  .glyph { display:grid; grid-template-columns:repeat(var(--c), 1fr); grid-template-rows:repeat(2, 1fr); gap:3px; width:38px; height:30px; }
+  .glyph i { display:block; background:currentColor; opacity:.75; border-radius:2px; }
+  .dark .seg { border-color:#a9bdf2; } .dark .seg button { color:#a9bdf2; } .dark .seg button + button { border-left-color:#a9bdf2; } .dark .seg button.on { background:rgba(250,225,60,.45); }
 </style>
 </head>
 <body>
@@ -628,8 +643,19 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
     <div id="filterwrap">
       <div id="chips"></div>
       <div class="card fpanel" id="psort" hidden>
+        <div class="vhead">
+          <span class="vtitle">View</span>
+          <span class="vtools">
+            <button type="button" class="vt" id="themebtn" aria-label="Light or dark"></button>
+            <button type="button" class="vt" id="stylebtn" aria-label="Polaroid or simple photos"></button>
+            <button type="button" class="vt" id="shuffle" aria-label="Shuffle"></button>
+            <button type="button" class="vt" id="unshuffle" aria-label="Back to the default order" hidden></button>
+          </span>
+        </div>
         <h4>Sort</h4>
         <div id="sortchips" class="clsrow" role="group" aria-label="Sort the photos"></div>
+        <h4>Size</h4>
+        <div id="sizechips" class="seg" role="group" aria-label="Photo size"></div>
         <div id="fsGroupMode">
           <h4>Same species</h4>
           <div id="gmodechips" class="clsrow" role="group" aria-label="How to group observations of the same species"></div>
@@ -644,17 +670,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
         <div id="fsCommon">
           <h4>Common</h4>
           <div id="commonchips" class="clsrow" role="group" aria-label="Options for the Common sort"></div>
-        </div>
-        <h4>Appearance</h4>
-        <div id="themechips" class="clsrow" role="group" aria-label="Light or dark"></div>
-        <h4>Style</h4>
-        <div id="stylechips" class="clsrow" role="group" aria-label="Photo style"></div>
-        <h4>Size</h4>
-        <div id="sizechips" class="clsrow" role="group" aria-label="Photo size"></div>
-        <h4>Order</h4>
-        <div class="clsrow">
-          <button type="button" class="cls" id="shuffle">Shuffle</button>
-          <button type="button" class="cls" id="unshuffle" hidden>Back to default order</button>
         </div>
       </div>
       <div class="card fpanel" id="pfilter" hidden>
@@ -738,7 +753,7 @@ const KEY = 'inat_token';
 const SHOWN_RANKS = new Set(['kingdom','phylum','class','order','family','genus']);
 const $ = id => document.getElementById(id);
 // Lucide icons (https://lucide.dev, ISC licence), inlined so there is no network dependency.
-const ICONS = {"eye":"<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","filter":"<path d=\"M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z\"/>","images":"<path d=\"M18 22H4a2 2 0 0 1-2-2V6\"/> <path d=\"m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18\"/> <circle cx=\"12\" cy=\"8\" r=\"2\"/> <rect width=\"16\" height=\"16\" x=\"6\" y=\"2\" rx=\"2\"/>","arrow-up-down":"<path d=\"m21 16-4 4-4-4\"/> <path d=\"M17 20V4\"/> <path d=\"m3 8 4-4 4 4\"/> <path d=\"M7 4v16\"/>","clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","palette":"<path d=\"M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\"/> <circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","scissors":"<circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M8.12 8.12 12 12\"/> <path d=\"M20 4 8.12 15.88\"/> <circle cx=\"6\" cy=\"18\" r=\"3\"/> <path d=\"M14.8 14.8 20 20\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
+const ICONS = {"sun":"<circle cx=\"12\" cy=\"12\" r=\"4\"/> <path d=\"M12 2v2\"/> <path d=\"M12 20v2\"/> <path d=\"m4.93 4.93 1.41 1.41\"/> <path d=\"m17.66 17.66 1.41 1.41\"/> <path d=\"M2 12h2\"/> <path d=\"M20 12h2\"/> <path d=\"m6.34 17.66-1.41 1.41\"/> <path d=\"m19.07 4.93-1.41 1.41\"/>","moon":"<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\"/>","polaroid":"<rect x=\"4\" y=\"2.5\" width=\"16\" height=\"19\" rx=\"1.5\"/> <rect x=\"6.5\" y=\"5\" width=\"11\" height=\"10\"/> <path d=\"M8 18.5h5\"/>","simple":"<rect x=\"4\" y=\"3\" width=\"16\" height=\"13\" rx=\"3\"/> <path d=\"M6 20h9\"/>","eye":"<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","filter":"<path d=\"M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z\"/>","images":"<path d=\"M18 22H4a2 2 0 0 1-2-2V6\"/> <path d=\"m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18\"/> <circle cx=\"12\" cy=\"8\" r=\"2\"/> <rect width=\"16\" height=\"16\" x=\"6\" y=\"2\" rx=\"2\"/>","arrow-up-down":"<path d=\"m21 16-4 4-4-4\"/> <path d=\"M17 20V4\"/> <path d=\"m3 8 4-4 4 4\"/> <path d=\"M7 4v16\"/>","clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","palette":"<path d=\"M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\"/> <circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","scissors":"<circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M8.12 8.12 12 12\"/> <path d=\"M20 4 8.12 15.88\"/> <circle cx=\"6\" cy=\"18\" r=\"3\"/> <path d=\"M14.8 14.8 20 20\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
 ICONS.heart = '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>';
 ICONS['share-2'] = "<circle cx=\"18\" cy=\"5\" r=\"3\"/> <circle cx=\"6\" cy=\"12\" r=\"3\"/> <circle cx=\"18\" cy=\"19\" r=\"3\"/> <line x1=\"8.59\" x2=\"15.42\" y1=\"13.51\" y2=\"17.49\"/> <line x1=\"15.41\" x2=\"8.59\" y1=\"6.51\" y2=\"10.49\"/>";
 ICONS['git-compare'] = "<circle cx=\"18\" cy=\"18\" r=\"3\"/> <circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M13 6h3a2 2 0 0 1 2 2v7\"/> <path d=\"M11 18H8a2 2 0 0 1-2-2V9\"/>";
@@ -3509,24 +3524,28 @@ function applyGalLook() {
   requestAnimationFrame(() => { if (typeof spanTags === 'function') spanTags(); document.querySelectorAll('.pgrid .tile .cap').forEach(fitCaption); schedulePath(); });
 }
 function drawLookChips() {
-  const mk = (box, items, cur, set) => {
-    box.replaceChildren();
-    for (const [k, label] of items) {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (cur === k ? ' on' : ''); b.textContent = label; b.setAttribute('aria-pressed', String(cur === k));
-      b.onclick = () => { set(k); applyGalLook(); drawLookChips(); };
-      box.append(b);
-    }
-  };
-  let theme = 'auto'; try { theme = localStorage.getItem('inat_theme') || 'auto'; } catch {}
-  mk($('themechips'), [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']], theme, k => { try { localStorage.setItem('inat_theme', k); } catch {} applyTheme(k); });
-  mk($('stylechips'), [['polaroid', 'Polaroid'], ['simple', 'Simple']], galStyle, k => { galStyle = k; try { localStorage.setItem('inat_gal_style', k); } catch {} });
-  mk($('sizechips'), [['xl', 'XL'], ['l', 'L'], ['m', 'M'], ['s', 'S']], galSize, k => { galSize = k; try { localStorage.setItem('inat_gal_size', k); } catch {} });
+  const dark = document.documentElement.classList.contains('dark');
+  setIcon($('themebtn'), dark ? 'moon' : 'sun', 22); $('themebtn').title = dark ? 'Dark: tap for light' : 'Light: tap for dark';
+  setIcon($('stylebtn'), galStyle === 'simple' ? 'simple' : 'polaroid', 22); $('stylebtn').title = galStyle === 'simple' ? 'Simple photos: tap for Polaroids' : 'Polaroids: tap for simple photos';
+  setIcon($('shuffle'), 'shuffle', 22); setIcon($('unshuffle'), 'rotate-ccw', 22);
+  const box = $('sizechips'); box.replaceChildren();
+  for (const [k, label, cols] of [['xl', 'XL', 1], ['l', 'L', 2], ['m', 'M', 3], ['s', 'S', 4]]) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = galSize === k ? 'on' : ''; b.setAttribute('aria-pressed', String(galSize === k)); b.title = `${cols} column${cols > 1 ? 's' : ''} on a phone`;
+    const g = document.createElement('span'); g.className = 'glyph'; g.style.setProperty('--c', cols);
+    for (let i = 0; i < cols * 2; i++) g.append(document.createElement('i'));
+    b.append(g, label);
+    b.onclick = () => { galSize = k; try { localStorage.setItem('inat_gal_size', k); } catch {} applyGalLook(); drawLookChips(); };
+    box.append(b);
+  }
 }
+$('themebtn').onclick = () => { const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark'; try { localStorage.setItem('inat_theme', next); } catch {} applyTheme(next); drawLookChips(); };
+$('stylebtn').onclick = () => { galStyle = galStyle === 'simple' ? 'polaroid' : 'simple'; try { localStorage.setItem('inat_gal_style', galStyle); } catch {} applyGalLook(); drawLookChips(); };
 function syncRecentTools() {
   drawLookChips();
   drawCommonChips();
   $('unshuffle').hidden = shuffleSeed == null && recentSeed == null;
   $('shuffle').classList.toggle('on', !$('unshuffle').hidden);
+  $('shuffle').title = $('unshuffle').hidden ? 'Shuffle' : 'Shuffled: tap for a new order';
   drawGroupChips();
 }
 // one seed shuffles every sort of the gallery (a shuffle replaces the Rarest sort)
@@ -3605,7 +3624,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-80 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-82 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
