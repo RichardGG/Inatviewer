@@ -643,7 +643,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   header.cover { position:relative; display:flex; flex-direction:column; min-height:calc(100vh - 44px); min-height:calc(100dvh - 44px); margin:6px 0 14px; padding:22vh 56px 110px 34px; padding-top:22dvh; border-radius:10px; text-align:center; isolation:isolate;
     background:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px), #232733; box-shadow:0 10px 24px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12); }
   header.cover::after { content:''; position:absolute; inset:5px; border:2px dashed rgba(240,215,160,.4); border-radius:7px; pointer-events:none; }
-  header.cover::before { content:''; position:absolute; left:11px; top:14px; bottom:14px; width:5px; background:repeating-linear-gradient(0deg, #8d9299 0 14px, transparent 14px 34px); border-radius:2px; box-shadow:1px 1px 1px rgba(0,0,0,.35); z-index:-1; } /* staples */
   .clabel { color:#d9b45a; text-shadow:0 -1px 0 rgba(0,0,0,.65); }
   .clabel h1 { margin:0; font:800 27px/1.1 'Futura','Century Gothic','Trebuchet MS','Arial Black',sans-serif; letter-spacing:.14em; text-transform:uppercase; font-size-adjust:none; }
   .clabel h1 span { display:block; }
@@ -674,17 +673,39 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbpr .season { height:90px; margin:0; }
   .nbpr #dmap { margin-top:0 !important; }
   .nbpr .nbmap, .nbpr > div { padding:0; }
+  .clabel #covername { display:block; width:100%; background:none; border:0; border-top:1px solid rgba(217,180,90,.4); border-bottom:1px solid rgba(217,180,90,.4); border-radius:0; cursor:pointer; text-decoration:none; color:#e9e5d6; }
+  .clabel #covername:active { background:rgba(255,255,255,.06); }
+  header.cover #summary { text-align:center; }
+  header.cover { padding-right:34px; }
+  /* the bottom bar slides in once you have scrolled off the top of the cover */
+  .tabs { transition:transform .3s ease, opacity .25s; }
+  body:not(.scrolled) .tabs { transform:translate(-50%, 160%); opacity:0; pointer-events:none; }
+  /* observer / account: a paper form */
+  #loginbg { position:fixed; inset:0; z-index:940; background:rgba(0,0,0,.5); } #loginbg[hidden] { display:none; }
+  #login { position:fixed !important; z-index:950; left:50%; top:4vh; transform:translateX(-50%); width:min(560px, calc(100% - 16px)); max-height:92vh; overflow-y:auto; margin:0 !important; padding:18px 18px 22px;
+           background:var(--grain), #f6f2e4 !important; color:#27348b; border:0 !important; border-radius:6px; box-shadow:0 16px 40px rgba(0,0,0,.6); }
+  #login[hidden] { display:none; }
+  #login .lhead { display:flex; align-items:center; justify-content:space-between; margin:0 0 10px; padding-bottom:8px; border-bottom:2px solid #27348b; }
+  #login .lt { font:700 15px 'Trebuchet MS', Arial, sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#37507a; font-size-adjust:none; }
+  #login .ltools { display:flex; gap:4px; } #login .ltools .ib { background:none; border:0; color:#27348b; width:38px; height:38px; }
+  #login, #login label, #login strong, #login .status, #login summary { color:#27348b; font-family:var(--hw); font-size-adjust:.5; }
+  #login .status { font-size:18px; line-height:1.2; } #login label, #login strong { font-size:20px; }
+  #login button:not(.ib), #login .secondary { border:2.5px solid #27348b; border-radius:7px; background:none; color:#27348b; text-transform:uppercase; letter-spacing:.05em; font:700 16px var(--hw); padding:5px 12px; }
+  #login button#oauth { background:rgba(250,225,60,.55); width:100%; font-size:20px; }
+  #login input, #login textarea { background:transparent; color:#27348b; border:0; border-bottom:1px solid #9bb0c6; border-radius:0; font:700 20px var(--hw); padding:5px 2px; }
+  #login input::placeholder, #login textarea::placeholder { color:#7a85b4; }
+  #login a { color:#27348b; }
+  #login pre { color:#27348b; background:transparent; border-color:#9bb0c6; }
+  .dark #login { background:var(--grain), #262c36 !important; color:#a9bdf2; } .dark #login .lt { color:#8fa6cf; } .dark #login, .dark #login label, .dark #login strong, .dark #login .status, .dark #login summary, .dark #login a, .dark #login input, .dark #login textarea, .dark #login .ltools .ib, .dark #login pre { color:#a9bdf2; }
+  .dark #login .lhead { border-bottom-color:#a9bdf2; } .dark #login button:not(.ib), .dark #login .secondary { border-color:#a9bdf2; color:#a9bdf2; } .dark #login input, .dark #login textarea { border-bottom-color:#4a5873; }
 </style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="rough" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="3" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3"/></filter></svg>
 <main>
   <header class="top cover">
-    <div class="clabel"><h1><span>Nature</span><span>Observations</span></h1><p>Field notes · observation book<br>Made from your iNaturalist records</p><span id="covername"></span></div>
-    <span class="ibgroup">
-      <button class="ib" id="share" aria-label="Share link" title="Share a link to this view" hidden><i data-i="share-2"></i></button>
-      <button class="ib" id="acct" aria-label="Account and sync" title="Account &amp; sync" aria-expanded="false"><i data-i="settings"></i></button>
-    </span>
+    <div class="clabel"><h1><span>Nature</span><span>Observations</span></h1><p>Field notes · observation book<br>Made from your iNaturalist records</p><button type="button" id="covername" aria-haspopup="dialog" title="Switch user, search or share"></button></div>
+    <button id="acct" aria-label="Account and sync" aria-expanded="false" hidden></button>
     <div class="cnote">
       <div id="viewing" class="banner" hidden></div>
       <div id="status" class="status" role="status"></div>
@@ -694,7 +715,9 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
     </div>
   </header>
 
-  <div class="card" id="login" hidden>
+  <div id="loginbg" hidden></div>
+  <div class="card" id="login" role="dialog" aria-modal="true" aria-label="Observer" hidden>
+    <div class="lhead"><span class="lt">Observer</span><span class="ltools"><button class="ib" id="share" aria-label="Share link" title="Share a link to this view" hidden><i data-i="share-2"></i></button><button class="ib" id="lclose" aria-label="Close"><i data-i="x"></i></button></span></div>
     <div id="oauthbox">
       <button id="oauth" style="width:100%;padding:12px;font-size:16px">Log in with iNaturalist</button>
       <p class="status" id="whoami" style="margin:6px 0 0"></p>
@@ -1291,16 +1314,20 @@ async function saveDataset(ds = state) {
 const saveCache = () => saveDataset(state);
 
 function status(msg, err) {
+  if (!err && /token/i.test(msg)) msg = ''; // token / sign-in state is not shown on the cover
   $('status').textContent = msg;
   $('status').className = 'status' + (err ? ' error' : '');
   if (err) setPanel(true); // surface the account/sync controls when something needs attention
 }
 function setPanel(open) {
-  $('login').hidden = !open;
+  $('login').hidden = !open; $('loginbg').hidden = !open;
   $('acct').setAttribute('aria-expanded', String(open));
   if (open && typeof renderPeople === 'function') renderPeople();
 }
 $('acct').onclick = () => setPanel($('login').hidden);
+$('covername').onclick = () => setPanel(true);
+$('lclose').onclick = $('loginbg').onclick = () => setPanel(false);
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('login').hidden) setPanel(false); });
 
 // ---------- API ----------
 const apiStats = { limited: 0 }; // how many times iNaturalist has answered 429 (too many requests)
@@ -2133,6 +2160,7 @@ function updatePath() {
   pb.hidden = false;
 }
 addEventListener('scroll', schedulePath, { passive: true });
+{ const sc = () => document.body.classList.toggle('scrolled', scrollY > 120); addEventListener('scroll', sc, { passive: true }); sc(); }
 addEventListener('resize', schedulePath);
 
 // ---------- location grouping ----------
@@ -3406,7 +3434,7 @@ function refreshViewing() {
     if (meLogin) { const b = document.createElement('button'); b.className = 'secondary'; b.textContent = 'Back to mine'; b.onclick = () => { location.href = redirectUri(); }; box.append(b); }
   }
   $('share').hidden = !(other || state.user?.login || meLogin);
-  { const who = state.user?.login || (other ? viewLogin : meLogin); $('covername').textContent = who ? `of @${who}` : ''; }
+  { const who = state.user?.login || (other ? viewLogin : meLogin); $('covername').textContent = who ? `of @${who}` : 'Tap to log in'; }
   if (favMode && !favModes().some(m => m[0] === favMode)) { favMode = ''; drawFilterChips(); drawChips(); } // e.g. a filter that only exists for my own observations
   $('fsCompare').hidden = !(other || candidates().length); // comparing needs someone to compare with
   $('loadall').hidden = state.complete !== false;
@@ -3564,7 +3592,7 @@ function show(keepStatus) {
     $('gal').replaceChildren(empty); $('pathbar').hidden = true;
   }
   $('results').hidden = false;
-  $('summary').textContent = `${state.user.login}: ${species} species · ${obs.length}${filtered ? ` of ${state.obs.length}` : ''} identified observations${state.complete === false ? ` · newest ${state.obs.length}${state.total ? ' of ' + state.total.toLocaleString() : ''}` : ''}`;
+  $('summary').textContent = `${species} species · ${obs.length}${filtered ? ` of ${state.obs.length}` : ''} identified observations${state.complete === false ? ` · newest ${state.obs.length}${state.total ? ' of ' + state.total.toLocaleString() : ''}` : ''}`;
   $('summary').title = state.updated ? `Updated ${new Date(state.updated).toLocaleString()}` : ''; // kept out of the sticky bar's text to save height
   log(`rendered in ${Math.round(performance.now() - t0)}ms (${species} species)`);
 }
@@ -3840,7 +3868,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-113 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-114 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
