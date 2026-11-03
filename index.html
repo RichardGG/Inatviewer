@@ -603,6 +603,38 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
               font:700 15px/1 var(--hw); font-size-adjust:.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
   .gsticker small { margin-left:5px; font-size:12px; font-weight:400; opacity:.75; } .gsticker small.sci { font-style:italic; }
   #gal.st-simple .gsticker { top:6px; left:6px; }
+  /* ---------- map controls in the notebook's style: cloth buttons with gold icons, paper popups and search, sticker clusters ---------- */
+  .leaflet-container { font-family:var(--hw); }
+  .leaflet-bar { border:0 !important; border-radius:14px !important; overflow:hidden; box-shadow:0 3px 9px rgba(0,0,0,.5) !important; }
+  .leaflet-bar a, .leaflet-bar a:hover { display:flex; align-items:center; justify-content:center; width:36px !important; height:36px !important; line-height:36px; border-bottom:1px dashed rgba(240,215,160,.4) !important; border-radius:0 !important;
+      background:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px), #232733 !important; color:#d9b45a !important; font:700 26px var(--hw) !important; text-shadow:0 -1px 0 rgba(0,0,0,.6); }
+  .leaflet-bar a:hover { color:#ffe9a8 !important; filter:brightness(1.15); }
+  .leaflet-bar a:last-child { border-bottom:0 !important; }
+  .leaflet-bar a.leaflet-disabled { color:#7c6a3a !important; filter:none; }
+  .leaflet-control-attribution { background:rgba(246,242,228,.88) !important; color:#37507a !important; font:11px Arial, sans-serif !important; border-radius:6px 0 0 0; } .leaflet-control-attribution a { color:#27348b !important; }
+  .leaflet-popup-content-wrapper { background:var(--grain), #f6f2e4; color:#27348b; border-radius:5px; box-shadow:0 6px 16px rgba(0,0,0,.5); }
+  .leaflet-popup-tip { background:#f6f2e4; }
+  .leaflet-popup-content { margin:12px 14px; font:700 19px/1.15 var(--hw); font-size-adjust:.5; }
+  .leaflet-popup-content a { color:#27348b; } .leaflet-popup-close-button { color:#37507a !important; }
+  .mp img { border:6px solid #fbfaf4; border-bottom-width:14px; border-radius:2px; box-shadow:0 2px 6px rgba(0,0,0,.4); transform:rotate(-1.5deg); }
+  .mp .t { font:700 21px/1.1 var(--hw); } .mp .d { color:#5a6590; font:700 16px var(--hw); }
+  .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background:transparent !important; }
+  .marker-cluster div { width:34px !important; height:34px !important; margin:3px !important; display:grid; place-items:center; border:2px solid #fff; border-radius:50% !important; background:#ffe27a !important; color:#3a2a14 !important; box-shadow:0 2px 5px rgba(0,0,0,.5); font:700 17px var(--hw) !important; }
+  .marker-cluster-medium div { background:#f9bd80 !important; } .marker-cluster-large div { background:#f7a8bd !important; }
+  .marker-cluster span { line-height:1; }
+  .msearch input { background:var(--grain), #f6f2e4; color:#27348b; border:2.5px solid #27348b; border-radius:10px; font:700 20px var(--hw); padding:6px 12px; }
+  .msearch input::placeholder { color:#6a76a8; }
+  .msug { background:var(--grain), #f6f2e4; color:#27348b; border-radius:0 0 10px 10px; box-shadow:0 6px 16px rgba(0,0,0,.45); font:700 18px var(--hw); }
+  .msug button { background:none; color:#27348b; border-top:1px solid #c8cfe6; font:700 20px var(--hw); } .msug button small { color:#5a6590; font:700 14px var(--hw); }
+  #areapanel .row { margin-top:12px; align-items:center; }
+  #areapanel .row label, #areapanel .row .status { font:700 20px var(--hw); font-size-adjust:.5; color:#27348b; }
+  #areapanel input[type=checkbox] { accent-color:#27348b; width:20px; height:20px; }
+  #areapanel #areafit { border:2.5px solid #27348b; border-radius:7px; background:none; color:#27348b; text-transform:uppercase; letter-spacing:.05em; font:700 17px var(--hw); padding:5px 12px; }
+  .dark .leaflet-popup-content-wrapper { background:var(--grain), #262c36; color:#a9bdf2; } .dark .leaflet-popup-tip { background:#262c36; } .dark .leaflet-popup-content a, .dark .leaflet-popup-close-button { color:#a9bdf2 !important; } .dark .mp .d { color:#8fa6cf; }
+  .dark .msearch input, .dark .msug { background:var(--grain), #262c36; color:#a9bdf2; border-color:#a9bdf2; } .dark .msug button { color:#a9bdf2; border-top-color:#3a4256; } .dark .msug button small { color:#8fa6cf; }
+  .dark #areapanel .row label, .dark #areapanel .row .status { color:#a9bdf2; } .dark #areapanel input[type=checkbox] { accent-color:#a9bdf2; }
+  .dark #areapanel #areafit { border-color:#a9bdf2; color:#a9bdf2; }
+  .dark .leaflet-control-attribution { background:rgba(38,44,54,.88) !important; color:#8fa6cf !important; } .dark .leaflet-control-attribution a { color:#a9bdf2 !important; }
 </style>
 </head>
 <body>
@@ -3766,7 +3798,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-102 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-103 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
