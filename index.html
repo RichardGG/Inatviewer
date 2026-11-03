@@ -595,7 +595,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .pmap { position:relative; height:96px; margin:0 0 4px; overflow:hidden; background:#cfd8c8; box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); }
   .pmap[hidden] { display:none; }
   .ptiles img { position:absolute; width:256px; height:256px; max-width:none; user-select:none; }
-  .pdots { position:absolute; inset:0; pointer-events:none; } .pdots circle { fill:#e8590c; stroke:#fff; stroke-width:1.5; }
+  .pdots { position:absolute; inset:0; pointer-events:none; } .pdots circle { fill:#c8453b; stroke:#fff; stroke-width:1.8; }
   .mapcredit { margin:6px 12px 0; font:11px Arial, sans-serif; color:var(--muted); text-align:right; } .mapcredit a { color:inherit; }
   .dark .ptiles { filter:brightness(.72) contrast(1.05) saturate(.75); }
   /* a group too small for a folder: a paper sticker stuck on the photo */
@@ -610,6 +610,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
       background:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px), #232733 !important; color:#d9b45a !important; font:700 26px var(--hw) !important; text-shadow:0 -1px 0 rgba(0,0,0,.6); }
   .leaflet-bar a:hover { color:#ffe9a8 !important; filter:brightness(1.15); }
   .leaflet-bar a:last-child { border-bottom:0 !important; }
+  .leaflet-interactive:focus { outline:none; }
+  path.leaflet-interactive:hover { filter:brightness(1.1); }
   .leaflet-bar a.leaflet-disabled { color:#7c6a3a !important; filter:none; }
   .leaflet-control-attribution { background:rgba(246,242,228,.88) !important; color:#37507a !important; font:11px Arial, sans-serif !important; border-radius:6px 0 0 0; } .leaflet-control-attribution a { color:#27348b !important; }
   .leaflet-popup-content-wrapper { background:var(--grain), #f6f2e4; color:#27348b; border-radius:5px; box-shadow:0 6px 16px rgba(0,0,0,.5); }
@@ -623,6 +625,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .marker-cluster-medium div { background:#f9bd80 !important; } .marker-cluster-large div { background:#f7a8bd !important; }
   .marker-cluster span { line-height:1; }
   .msearch input { background:var(--grain), #f6f2e4; color:#27348b; border:2.5px solid #27348b; border-radius:10px; font:700 20px var(--hw); padding:6px 12px; }
+  .msearch input::-webkit-search-cancel-button, .msearch input::-webkit-search-decoration { -webkit-appearance:none; appearance:none; display:none; } /* the browser's own clear button; the search button closes the box */
+  .msearch input:focus { outline:none; box-shadow:0 0 0 3px rgba(250,225,60,.6); }
   .msearch input::placeholder { color:#6a76a8; }
   .msug { background:var(--grain), #f6f2e4; color:#27348b; border-radius:0 0 10px 10px; box-shadow:0 6px 16px rgba(0,0,0,.45); font:700 18px var(--hw); }
   .msug button { background:none; color:#27348b; border-top:1px solid #c8cfe6; font:700 20px var(--hw); } .msug button small { color:#5a6590; font:700 14px var(--hw); }
@@ -2386,7 +2390,7 @@ function drawArea(a = area) {
   $('radiuslabel').textContent = a ? fmtDist(a.r) + ' radius' : '';
   if (!areaMap) return;
   if (!a) { if (areaCircle) { areaCircle.remove(); areaCircle = null; } return; }
-  if (!areaCircle) areaCircle = L.circle([a.lat, a.lng], { radius: a.r, color: '#d9480f', weight: 2, fillColor: '#d9480f', fillOpacity: 0.08, interactive: false }).addTo(areaMap);
+  if (!areaCircle) areaCircle = L.circle([a.lat, a.lng], { radius: a.r, color: '#27348b', weight: 3, dashArray: '2 8', lineCap: 'round', fillColor: '#f5d832', fillOpacity: 0.2, interactive: false, className: 'inkring' }).addTo(areaMap);
   else { areaCircle.setLatLng([a.lat, a.lng]); areaCircle.setRadius(a.r); }
 }
 // Run a programmatic map move without it being treated as the user changing the filter.
@@ -2401,7 +2405,7 @@ function drawAreaMarkers() {
   const markers = [];
   for (const o of textFiltered()) {
     const ll = parseLoc(o);
-    if (ll) markers.push(L.circleMarker(ll, { radius: 7, color: '#fff', weight: 1, fillColor: '#2f7d32', fillOpacity: 0.9 }).bindPopup(() => obsPopup(o), { minWidth: 200 }));
+    if (ll) markers.push(L.circleMarker(ll, { radius: 7, color: '#fff', weight: 2, fillColor: '#c8453b', fillOpacity: 1 }).bindPopup(() => obsPopup(o), { minWidth: 200 }));
   }
   areaCluster.addLayers(markers);
   if (!areaFitted) {
@@ -2949,7 +2953,7 @@ async function openSpecies(id, focusObs, ctx) {
   for (const o of mineObs) {
     const ll = parseLoc(o);
     if (!ll) continue;
-    dots.push(L.circleMarker(ll, { radius: 9, color: '#fff', weight: 2, fillColor: '#d9480f', fillOpacity: 0.95, bubblingMouseEvents: false })
+    dots.push(L.circleMarker(ll, { radius: 9, color: '#fff', weight: 2.5, fillColor: '#c8453b', fillOpacity: 1, bubblingMouseEvents: false })
       .bindPopup(() => obsPopup(o), { minWidth: 200 }).addTo(m));
   }
   m.on('click', e => nearbyPopup(m, e.latlng, id));
@@ -3055,7 +3059,7 @@ async function exploreFromObs(o) {
 // The circle as a layer for another map (the species page frames the area that was searched).
 function nearbyAreaLayer() {
   if (!area) return null;
-  const layer = L.circle([area.lat, area.lng], { radius: area.r, color: '#d9480f', weight: 2, fillColor: '#d9480f', fillOpacity: 0.08, interactive: false });
+  const layer = L.circle([area.lat, area.lng], { radius: area.r, color: '#27348b', weight: 3, dashArray: '2 8', lineCap: 'round', fillColor: '#f5d832', fillOpacity: 0.2, interactive: false, className: 'inkring' });
   return { layer, bounds: L.latLng(area.lat, area.lng).toBounds(area.r * 2) };
 }
 
@@ -3798,7 +3802,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-103 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-104 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
