@@ -1649,7 +1649,9 @@ function toggleRank(key, fromBar) { // hold: collapse every group of this rank (
   const col = collapsed[gal.sort], g = gal.byKey.get(key);
   if (!g) return;
   const same = gal.groups.filter(x => x.rank === g.rank), collapse = !col.has(key);
-  same.forEach(x => { if (collapse) col.add(x.key); else col.delete(x.key); });
+  const under = (y, x) => { for (let p = y.parent; p; p = p.parent) if (p === x) return true; return false; };
+  // collapsing a group collapses everything inside it too, so expanding it later opens just one level
+  same.forEach(x => { if (collapse) { col.add(x.key); gal.groups.forEach(y => { if (under(y, x)) col.add(y.key); }); } else col.delete(x.key); });
   log(`hold: ${collapse ? 'collapsed' : 'expanded'} ${same.length} ${g.rank} groups`);
   toast(`${collapse ? 'Collapsed' : 'Expanded'} all ${same.length} ${PLURAL[g.rank] || g.rank}`);
   if (navigator.vibrate) navigator.vibrate(15);
@@ -4510,7 +4512,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-40 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-41 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
