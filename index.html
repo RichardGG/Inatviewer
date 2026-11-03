@@ -609,7 +609,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .gsticker small { margin-left:5px; font-size:12px; font-weight:400; opacity:.75; } .gsticker small.sci { font-style:italic; }
   #gal.st-simple .gsticker { top:6px; left:6px; }
   /* ---------- map controls in the notebook's style: cloth buttons with gold icons, paper popups and search, sticker clusters ---------- */
-  .leaflet-container { font-family:var(--hw); }
+  .leaflet-container { font-family:var(--hw); touch-action:none; }
   html .leaflet-container, html .leaflet-container.leaflet-container { background:#a8c8f0; } /* beats leaflet.css, which is loaded after this stylesheet and sets #ddd */ /* the ocean colour of the map tiles, so unloaded or out-of-world areas match it */
   /* map buttons are paper stickers: cream paper, ink icons, a little tilted, each stuck on separately */
   .leaflet-bar { border:0 !important; background:none !important; box-shadow:none !important; overflow:visible; display:flex; flex-direction:column; gap:6px; }
@@ -2580,6 +2580,34 @@ function drawAreaMarkers() {
     areaFitted = true;
   }
 }
+// One-finger zoom, as in other map apps: tap, then tap again and drag. Dragging down zooms in, up zooms out, around the touch point; a plain double tap zooms in one step.
+function addDoubleTapZoom(map) {
+  map.doubleClickZoom.disable();
+  const el = map.getContainer(); let last = null, g = null;
+  el.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'touch' || !e.isPrimary || e.target.closest('.leaflet-control, .msearch')) return;
+    if (last && Date.now() - last.t < 320 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 40) {
+      e.stopPropagation(); e.preventDefault(); // the second tap is ours: Leaflet must not start a pan
+      const r = el.getBoundingClientRect();
+      g = { id: e.pointerId, y0: e.clientY, z0: map.getZoom(), moved: false, pt: L.point(e.clientX - r.left, e.clientY - r.top), steps: 0 };
+      try { el.setPointerCapture(e.pointerId); } catch {}
+      last = null;
+    }
+  }, true);
+  el.addEventListener('pointermove', e => {
+    if (!g || e.pointerId !== g.id) return;
+    e.stopPropagation(); e.preventDefault();
+    const dy = e.clientY - g.y0; if (Math.abs(dy) > 8) g.moved = true;
+    const steps = Math.round(dy / 70); // a step of zoom for every 70px of drag
+    if (steps !== g.steps) { g.steps = steps; map.setZoomAround(g.pt, Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), g.z0 + steps)), { animate: false }); }
+  }, true);
+  const end = e => {
+    if (e.pointerType !== 'touch') return;
+    if (g && e.pointerId === g.id) { e.stopPropagation(); if (!g.moved) map.setZoomAround(g.pt, map.getZoom() + 1, { animate: true }); g = null; return; }
+    if (e.type === 'pointerup' && e.isPrimary) last = { t: Date.now(), x: e.clientX, y: e.clientY };
+  };
+  el.addEventListener('pointerup', end, true); el.addEventListener('pointercancel', e => { if (g && e.pointerId === g.id) g = null; }, true);
+}
 // Map buttons: jump to my location, and search for a place by name (OpenStreetMap's Nominatim, light use).
 function addMapButtons(map) {
   const button = (icon, label, fn) => {
@@ -2659,7 +2687,7 @@ function initAreaMap() {
     areaCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40, showCoverageOnHover: false });
     areaMap.addLayer(areaCluster);
     areaMap.setView([20, 0], 2);
-    addMapButtons(areaMap);
+    addMapButtons(areaMap); addDoubleTapZoom(areaMap);
     // While filtering, the circle tracks the view live; the filter itself updates when the move ends.
     areaMap.on('move', () => { if ($('follow').checked && !suppressMove) drawArea(viewportCircle()); });
     areaMap.on('moveend', () => { if ($('follow').checked && !suppressMove) setArea(viewportCircle()); });
@@ -3118,7 +3146,7 @@ async function openSpecies(id, focusObs, ctx) {
   const mapDiv = el('div'); mapDiv.id = 'dmap'; mapDiv.style.marginTop = '8px'; mapBox.append(mapDiv);
   try { await ensureLeaflet(); } catch (e) { mapBox.append(el('p', 'status error', 'Map failed to load.')); return; }
   if (!detail.isOpen || !mapDiv.isConnected) return;
-  const m = L.map(mapDiv, { worldCopyJump: true, preferCanvas: true, zoomControl: false }); L.control.zoom({ position: 'topright' }).addTo(m);
+  const m = L.map(mapDiv, { worldCopyJump: true, preferCanvas: true, zoomControl: false }); L.control.zoom({ position: 'topright' }).addTo(m); addDoubleTapZoom(m);
   L.tileLayer(TILE_TEMPLATE, { maxZoom: 19, attribution: TILE_ATTR }).addTo(m);
   const heat = L.tileLayer(`https://api.inaturalist.org/v1/colored_heatmap/{z}/{x}/{y}.png?taxon_id=${id}`, { opacity: 0.7, maxNativeZoom: 12 });
   heat.addTo(m);
@@ -4022,7 +4050,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-148 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-149 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
