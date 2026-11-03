@@ -270,7 +270,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   /* phones and small tablets: the lists and galleries use the full width instead of sitting in a padded card */
   @media (max-width: 899px) {
     main { padding:10px 0 64px; }
-    header.top, #viewing, #status, #summary, #loadall, #locTools, #filterwrap, #login { margin-left:12px; margin-right:12px; }
+    header.top, #locTools, #filterwrap, #login { margin-left:12px; margin-right:12px; }
     #iconbar { margin:0 0 6px; padding:0 6px; }
     #gal { border-left:0; border-right:0; border-radius:0; padding:6px 3px; }
     #explore { border-left:0; border-right:0; border-radius:0; padding:8px 8px; }
@@ -647,11 +647,25 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .clabel h1 { margin:0; font:800 34px/1.02 'Futura','Century Gothic','Trebuchet MS','Arial Black',sans-serif; letter-spacing:.16em; text-transform:uppercase; font-size-adjust:none; }
   .clabel h1 span { display:block; }
   .clabel p { margin:8px 0 0; font:700 10px/1.45 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; color:#4a3820; font-size-adjust:none; }
-  .clabel #covername { display:block; margin-top:8px; padding-top:6px; border-top:1px solid rgba(59,43,23,.45); font:700 20px var(--hw); transform:rotate(-1deg); } .clabel #covername:empty { display:none; }
+  .clabel #covername { display:block; margin-top:8px; padding:6px 0 4px; border-top:1px solid rgba(59,43,23,.45); border-bottom:1px solid rgba(59,43,23,.45); font:700 20px var(--hw); transform:rotate(-1deg); } .clabel #covername:empty { display:none; }
   header.cover .ibgroup { position:absolute; top:6px; right:6px; flex-direction:column; gap:0; }
   @media (max-width: 899px) { header.cover { margin:6px 12px 14px; } }
   header.cover #acct, header.cover #share, header.cover .ib, header.cover .ib:hover { color:#3b2b17 !important; }
   header.cover .ib, header.cover .ib:hover { background:none; border:0; color:#3b2b17; filter:drop-shadow(0 1px 0 rgba(255,255,255,.3)); width:40px; height:40px; }
+  /* the lines under the title are written on the cover: what the app is doing, the totals, and the filters in use as paper labels */
+  header.cover .cnote { margin:10px 0 0; text-align:left; }
+  header.cover .cnote:not(:has(.status:not(:empty), #chips:not(:empty), #viewing:not([hidden]), #loadall:not([hidden]))) { display:none; }
+  header.cover .status { margin:0 !important; min-height:0 !important; padding:0 !important; font:700 19px/1.15 var(--hw); font-size-adjust:.5; color:#3b2b17 !important; text-shadow:0 1px 0 rgba(255,255,255,.25); }
+  header.cover .status:empty { display:none; } header.cover .status.error { color:#8e1f14 !important; }
+  header.cover #summary { margin-top:3px !important; font-size:17px; color:#4a3820 !important; }
+  header.cover #viewing { margin:0 0 8px !important; padding:6px 10px; border:1.5px dashed rgba(59,43,23,.6); border-radius:6px; background:rgba(255,255,255,.28); color:#3b2b17; font:700 18px/1.15 var(--hw); }
+  header.cover #viewing button { background:none; color:#3b2b17; border:1.5px solid #3b2b17; font:700 16px var(--hw); }
+  header.cover #loadall { margin:8px 0 0 !important; background:none; border:2px solid #3b2b17; color:#3b2b17; border-radius:7px; font:700 17px var(--hw); text-transform:uppercase; letter-spacing:.05em; }
+  header.cover #chips { margin:8px 0 0; gap:8px; }
+  header.cover .chip { background:var(--grain), #f6f2e4; color:#27348b; border:0; border-radius:3px; padding:3px 6px 3px 10px; font:700 17px var(--hw); font-size-adjust:.5; box-shadow:0 2px 4px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.1); transform:rotate(-1deg); }
+  header.cover .chip:nth-child(even) { transform:rotate(1.2deg); }
+  header.cover .chip button { color:#37507a; padding:0 4px; }
+  header.cover .chip svg { color:#27348b; }
 </style>
 </head>
 <body>
@@ -663,9 +677,14 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
       <button class="ib" id="share" aria-label="Share link" title="Share a link to this view" hidden><i data-i="share-2"></i></button>
       <button class="ib" id="acct" aria-label="Account and sync" title="Account &amp; sync" aria-expanded="false"><i data-i="settings"></i></button>
     </span>
+    <div class="cnote">
+      <div id="viewing" class="banner" hidden></div>
+      <div id="status" class="status" role="status"></div>
+      <div id="summary" class="status"></div>
+      <button class="secondary" id="loadall" hidden>Load full history</button>
+      <div id="chips"></div>
+    </div>
   </header>
-  <div id="viewing" class="banner" hidden></div>
-  <div id="status" class="status" role="status"></div>
 
   <div class="card" id="login" hidden>
     <div id="oauthbox">
@@ -720,10 +739,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
       <button id="areabtn" aria-label="Location" aria-expanded="false"><i data-i="map-pin"></i><span class="vh">Location</span></button>
     </div>
     <div id="controls">
-    <div id="summary" class="status"></div>
-    <button class="secondary" id="loadall" hidden style="margin:0 0 8px">Load full history</button>
     <div id="filterwrap">
-      <div id="chips"></div>
       <div class="card fpanel" id="psort" hidden>
         <div class="vhead">
           <span class="vtitle">View</span>
@@ -3816,7 +3832,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-107 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-108 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
