@@ -444,6 +444,20 @@
   #gal.st-simple .stack .mini { background:none; padding:0; aspect-ratio:1; border-radius:6px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.45); }
   #gal.st-simple .stack .mini img { height:100%; }
   #gal.st-simple .pgrid .tile.piled::before, #gal.st-simple .pgrid .tile.piled::after { inset:0 0 auto 0; height:auto; aspect-ratio:1; } /* the pile sits behind the photo only, never behind the name */
+
+  /* groups as horizontal folder dividers: each group is a card across the page with a tab on its top edge; nested groups sit inside and their tabs step across */
+  .dvroot { padding:38px 2px 6px; }
+  .dv { position:relative; margin:0 0 14px; }
+  .dvb > .dv { margin-top:33px; }
+  .dv.d0 { --dvfg:#1d2f6b; --dvbg:linear-gradient(rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(60,100,160,.28) 1px, transparent 1px) 0 0/10px 10px, #faf6e8; }
+  .dv.d1 { --dvfg:#3a2a14; --dvbg:repeating-linear-gradient(0deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), #e2dbc5; }
+  .dv.d2 { --dvfg:#173a1f; --dvbg:repeating-linear-gradient(135deg, rgba(255,255,255,.3) 0 2px, transparent 2px 5px), #b6dcb0; }
+  .dvb { padding:5px 3px 6px; border-radius:3px 9px 9px 9px; background:var(--dvbg); box-shadow:0 3px 9px rgba(0,0,0,.4); }
+  .dvb .pgrid { padding:8px 3px 6px; }
+  .dvt { position:absolute; z-index:3; top:-30px; left:calc(8px + var(--dd) * 78px); height:30px; padding:1px 24px 0 14px; border:0; border-radius:10px 22px 0 0 / 10px 100% 0 0; background:var(--dvbg); color:var(--dvfg);
+         font:700 19px/30px 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; white-space:nowrap; cursor:pointer; box-shadow:-3px -2px 5px -3px rgba(0,0,0,.4); user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
+  .dvt small { margin-left:8px; font-size:14px; font-weight:400; opacity:.8; } .dvt small.sci { font-style:italic; }
+  .dvt:active { filter:brightness(.95); }
 </style>
 </head>
 <body>
@@ -528,6 +542,8 @@
           <h4>Common</h4>
           <div id="commonchips" class="clsrow" role="group" aria-label="Options for the Common sort"></div>
         </div>
+        <h4>Groups</h4>
+        <div id="groupchips" class="clsrow" role="group" aria-label="How groups are shown"></div>
         <h4>Style</h4>
         <div id="stylechips" class="clsrow" role="group" aria-label="Photo style"></div>
         <h4>Size</h4>
@@ -1552,7 +1568,52 @@ function renderGallery(obs) {
   if (!gal.items.length) { gal.cells = []; el.replaceChildren(); $('pathbar').hidden = true; return; }
   drawGallery();
 }
+let galGroups = 'dividers'; // how groups are shown: 'tabs' (chevron tabs above the first photo of a group) or 'dividers' (the group splits the page into a horizontal folder-divider section)
+try { if (localStorage.getItem('inat_gal_groups') === 'tabs') galGroups = 'tabs'; } catch {}
+// A divider section: a card with a folder tab on its top edge; sections nest, and their tabs step across the page by level.
+function dvSection(g) {
+  const sec = document.createElement('section'); sec.className = 'dv d' + (g.depth % 3); sec.dataset.key = g.key; sec.style.setProperty('--dd', g.depth % 3);
+  const t = document.createElement('button'); t.type = 'button'; t.className = 'dvt'; t.dataset.key = g.key; t.dataset.rank = g.rank;
+  t.title = `${g.rank}: ${g.main}${g.sub ? ' (' + g.sub + ')' : ''} · tap to ${collapsed[gal.sort].has(g.key) ? 'expand' : 'collapse'} every ${g.rank}`;
+  const b = document.createElement('b'); b.textContent = g.main; t.append(b);
+  if (g.sub) { const sm = document.createElement('small'); sm.textContent = g.sub; if (gal.sort === 'tree') sm.className = 'sci'; t.append(sm); }
+  const body = document.createElement('div'); body.className = 'dvb';
+  sec.append(t, body);
+  return { el: sec, body };
+}
+function drawDividers() {
+  const el = $('gal'), items = gal.items, col = collapsed[gal.sort];
+  const root = document.createElement('div'); root.className = 'dvroot';
+  const open = [{ g: null, body: root }]; // the sections the current photo is inside, outermost first
+  const trailing = new Map();             // section body -> the grid its photos are currently going into
+  const gridIn = body => { let g = trailing.get(body); if (!g || g !== body.lastElementChild) { g = document.createElement('div'); g.className = 'pgrid'; body.append(g); trailing.set(body, g); } return g; };
+  gal.cells = []; let n = 0, i = 0;
+  for (; i < items.length; i++) {
+    const it = items[i], k = it.path.findIndex(g => col.has(g.key));
+    if (k >= 0 && it.path[k].first !== i) continue;
+    if (n >= gal.limit) break;
+    const vis = k < 0 ? it.path : it.path.slice(0, k + 1);
+    let m = 1; while (m < open.length && m - 1 < vis.length && open[m].g === vis[m - 1]) m++;
+    open.length = m;
+    for (let j = m - 1; j < vis.length; j++) { const sec = dvSection(vis[j]); open[open.length - 1].body.append(sec.el); open.push({ g: vis[j], body: sec.body }); }
+    const cell = document.createElement('div'); cell.className = 'cell'; cell.dataset.i = i;
+    cell.append(k < 0 ? polTile(it.o) : stackEl(it.path[k]));
+    gridIn(open[open.length - 1].body).append(cell); n++;
+    gal.cells.push({ el: cell, tagGroups: [], path: vis });
+  }
+  gal.shownTo = i;
+  el.replaceChildren(root);
+  if (i < items.length) {
+    const more = document.createElement('button'); more.className = 'secondary'; more.style.margin = '12px 0 0';
+    more.textContent = `Show more (${items.length - i} left)`;
+    more.onclick = () => { gal.limit += GAL_PAGE; drawGallery(); };
+    el.append(more);
+  }
+  $('pathbar').dataset.sig = '';
+  schedulePath();
+}
 function drawGallery() {
+  if (galGroups === 'dividers' && gal.groups.length) return drawDividers();
   const el = $('gal'), items = gal.items, col = collapsed[gal.sort];
   const grid = document.createElement('div'); grid.className = 'pgrid';
   gal.cells = []; let n = 0, i = 0;
@@ -1611,9 +1672,9 @@ function redrawKeep(key, fromBar) {
   for (let guard = 0; gal.shownTo <= g.first && gal.shownTo < gal.items.length && guard < 200; guard++) { gal.limit += GAL_PAGE; drawGallery(); }
   // bring the group's first cell (tabs and all) to the top of the viewport, just under the bar
   const fix = () => {
-    const cell = $('gal').querySelector(`.cell[data-i="${g.first}"]`);
+    const cell = $('gal').querySelector(`.dv[data-key="${CSS.escape(key)}"]`) || $('gal').querySelector(`.cell[data-i="${g.first}"]`);
     if (!cell) return;
-    const d = cell.getBoundingClientRect().top - (barHeight() + 6);
+    const d = cell.getBoundingClientRect().top - (barHeight() + (cell.classList.contains('dv') ? 40 : 6));
     if (Math.abs(d) > 1) scrollBy(0, d);
   };
   fix();
@@ -3184,12 +3245,12 @@ function toast(msg) {
   for (const host of [$('gal'), $('pathbar')]) {
     const fromBar = host.id === 'pathbar';
     host.addEventListener('click', e => {
-      const tag = e.target.closest('.tag');
+      const tag = e.target.closest('.tag, .dvt');
       if (!tag) return;
       e.preventDefault(); e.stopPropagation();
       toggleRank(tag.dataset.key, fromBar);
     }, true);
-    host.addEventListener('contextmenu', e => { if (e.target.closest('.tag')) e.preventDefault(); });
+    host.addEventListener('contextmenu', e => { if (e.target.closest('.tag, .dvt')) e.preventDefault(); });
   }
 })();
 
@@ -3221,6 +3282,7 @@ function drawLookChips() {
       box.append(b);
     }
   };
+  mk($('groupchips'), [['dividers', 'Dividers'], ['tabs', 'Tabs']], galGroups, k => { galGroups = k; try { localStorage.setItem('inat_gal_groups', k); } catch {} if (isGal(view) && gal.items.length) drawGallery(); });
   mk($('stylechips'), [['polaroid', 'Polaroid'], ['simple', 'Simple']], galStyle, k => { galStyle = k; try { localStorage.setItem('inat_gal_style', k); } catch {} });
   mk($('sizechips'), [['xl', 'XL'], ['l', 'L'], ['m', 'M'], ['s', 'S']], galSize, k => { galSize = k; try { localStorage.setItem('inat_gal_size', k); } catch {} });
 }
@@ -3307,7 +3369,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-57 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-59 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

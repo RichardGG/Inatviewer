@@ -42,7 +42,7 @@ A bottom bar has the main controls; each opens a sheet above it.
 - **Location**: one map for every sort. The orange circle is the current view of the map; it filters your observations to the area and is the area Common searches (within 100 km). Buttons on the map jump to your location or search for a place by name.
 - **Compare**: species missing from another person's list, or seen by both (available from your own account and while viewing someone else).
 
-Every photo is a Polaroid (white frame, handwritten name in Caveat, a small random tilt fixed per observation) in one strict grid. A group is not a row in between: its overlapping
+Groups are shown as horizontal folder dividers by default (a card across the page with a tab on its top edge; nested groups sit inside it and their tabs step across by level, the common name and scientific name on one line); the View sheet can switch back to chevron *Tabs* above the first photo of each group. Every photo is a Polaroid (white frame, handwritten name in Caveat, a small random tilt fixed per observation) in one strict grid. A group is not a row in between: its overlapping
 chevron tab (graph paper, linen and denim in turn by level) sits above the first Polaroid of the group. Tap a tab to collapse every group of its level into a small overlapping stack of Polaroids (collapsing a group collapses everything inside it; tapping again expands one level; the group you tapped stays where it is on screen).
 While scrolling, the tabs of the group you are in are shown at the top. Fonts are pinned in `package.json` and copied into `vendor/fonts/` at deploy time.
 
