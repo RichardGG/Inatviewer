@@ -544,9 +544,12 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .dvroot1 { margin-top:6px; }
   /* comparing: my photo and the other people's photos of the species side by side; an empty frame when they have none */
   .pgrid .tile .pic.cmp { display:grid; grid-template-columns:repeat(var(--n, 2), minmax(0, 1fr)); gap:3px; aspect-ratio:var(--n, 2) / 1; }
-  .pgrid .tile .pic.cmp img { position:static; width:100%; height:100%; min-height:0; }
+  .pgrid .tile .pic.cmp img { position:static; width:100%; height:100%; min-height:0; object-fit:cover; }
   .noph { background:repeating-linear-gradient(135deg, rgba(0,0,0,.07) 0 6px, transparent 6px 12px), #e6e3d6; box-shadow:inset 0 0 0 2px rgba(0,0,0,.12); }
   .dark .noph { background:repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 6px, transparent 6px 12px), #2c3035; box-shadow:inset 0 0 0 2px rgba(255,255,255,.1); }
+  .pgrid .tile .pic.cmp .cph { position:relative; display:block; min-width:0; overflow:hidden; }
+  .pgrid .tile .pic.cmp .cph > img, .pgrid .tile .pic.cmp .cph > .noph { display:block; width:100%; height:100%; }
+  .ava { position:absolute; left:4px; bottom:4px; z-index:3; width:24px; height:24px; border-radius:50%; border:2px solid #fff; background:#7a8a80 center/cover; color:#fff; font:700 13px/20px Arial, sans-serif; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.5); pointer-events:none; }
 </style>
 </head>
 <body>
@@ -1596,6 +1599,30 @@ function fitCaption(cap) {
 }
 const capObserver = new ResizeObserver(es => { for (const e of es) fitCaption(e.target); });
 if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('.pgrid .tile .cap').forEach(fitCaption));
+// ---- profile pictures (looked up once per person and kept in this browser) ----
+const AVA_KEY = 'inat_avatars'; let avatars = {};
+try { avatars = JSON.parse(localStorage.getItem(AVA_KEY) || '{}') || {}; } catch {}
+const avaPending = new Set(); let avaTimer;
+function setAva(el) {
+  const login = el.dataset.login, url = avatars[lc(login)];
+  if (url) { el.style.backgroundImage = `url("${url}")`; el.textContent = ''; } else { el.style.backgroundImage = ''; el.textContent = (login || '?')[0].toUpperCase(); }
+}
+function avatarBadge(login) {
+  const el = document.createElement('span'); el.className = 'ava'; el.dataset.login = login; el.title = lc(login) === lc(meLogin) ? 'you' : '@' + login;
+  setAva(el);
+  if (!(lc(login) in avatars) && !avaPending.has(lc(login))) fetchAvatar(login);
+  return el;
+}
+async function fetchAvatar(login) {
+  const k = lc(login); avaPending.add(k);
+  try {
+    const d = await api(`/users/autocomplete?q=${encodeURIComponent(login)}&per_page=5`);
+    const u = (d.results || []).find(x => lc(x.login) === k);
+    avatars[k] = u?.icon || u?.icon_url || '';
+    try { localStorage.setItem(AVA_KEY, JSON.stringify(avatars)); } catch {}
+    clearTimeout(avaTimer); avaTimer = setTimeout(() => document.querySelectorAll('.ava').forEach(setAva), 200);
+  } catch (e) { avaPending.delete(k); log(`profile picture lookup failed for ${login}: ${e.message}`, 'w'); }
+}
 // While comparing, each Polaroid shows my photo with the other person's photo of the same species beside it (an empty frame if they have none).
 function partnerPhoto(p, sid) {
   const sig = `${p.obs.length}|${Object.keys(state.names).length}`;
@@ -1624,15 +1651,17 @@ function polTile(o) {
   b.append(im);
   const act = activePartners();
   if (act.length) {
-    const sid = speciesIdOf(o) ?? o.tid;
+    const sid = speciesIdOf(o) ?? o.tid, owner = state.user?.login || (isOther() ? viewLogin : meLogin);
     b.classList.add('cmp'); b.style.setProperty('--n', act.length + 1);
+    const cell = (child, login) => { const c = document.createElement('span'); c.className = 'cph'; c.append(child); if (login) c.append(avatarBadge(login)); return c; };
+    im.remove(); b.append(cell(im, owner));
     for (const p of act) {
       const url = partnerPhoto(p, sid), who = myName(p.login) === 'me' ? 'you' : '@' + p.login;
       if (url) {
         const pim = document.createElement('img'); pim.alt = ''; pim.loading = 'lazy'; pim.src = sized(url, 'medium'); pim.title = `${who}`;
         pim.onerror = () => { if (pim.src !== url) pim.src = url; };
-        b.append(pim);
-      } else { const e = document.createElement('span'); e.className = 'noph'; e.title = `${who} has not seen this`; b.append(e); }
+        b.append(cell(pim, p.login));
+      } else { const e = document.createElement('span'); e.className = 'noph'; e.title = `${who} has not seen this`; b.append(cell(e, p.login)); }
     }
   }
   if (favMode === 'others' && o.ff > 0) { const ot = document.createElement('span'); ot.className = 'othertag'; ot.innerHTML = ic('heart', 12, true) + ' ' + o.ff; ot.title = `Favourited by ${o.ff} other ${o.ff > 1 ? 'people' : 'person'}`; t.append(ot); }
@@ -3541,7 +3570,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-72 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-73 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
