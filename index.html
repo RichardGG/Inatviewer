@@ -2592,7 +2592,8 @@ function addDoubleTapZoom(map) {
     if (last && Date.now() - last.t < 320 && Math.hypot(t.clientX - last.x, t.clientY - last.y) < 40) {
       e.stopPropagation(); e.preventDefault(); // the second tap is ours: Leaflet must not start a pan
       const r = el.getBoundingClientRect();
-      g = { id: t.identifier, y0: t.clientY, z0: map.getZoom(), moved: false, pt: L.point(t.clientX - r.left, t.clientY - r.top), z: null, raf: 0, snap: map.options.zoomSnap };
+      const pt = L.point(t.clientX - r.left, t.clientY - r.top);
+      g = { id: t.identifier, y0: t.clientY, z0: map.getZoom(), moved: false, pt, ll: map.containerPointToLatLng(pt), z: null, raf: 0, snap: map.options.zoomSnap, started: false };
       map.options.zoomSnap = 0; // continuous zoom while the finger moves
       last = null;
     }
@@ -2604,12 +2605,19 @@ function addDoubleTapZoom(map) {
     if (Math.abs(dy) > 6) g.moved = true;
     // smooth like a pinch: the zoom follows the finger (100px of drag is one level) around the point first touched; the map does not pan
     g.z = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), g.z0 + dy / 100));
-    if (!g.raf) g.raf = requestAnimationFrame(() => { g.raf = 0; if (g && g.z != null) map.setZoomAround(g.pt, g.z, { animate: false }); });
+    if (!g.raf) g.raf = requestAnimationFrame(() => {
+      g.raf = 0; if (!g || g.z == null) return;
+      // the same way Leaflet does a pinch: move the view as a pinch (the tiles of the old level stay on screen, scaled, until the new ones have loaded)
+      if (!g.started) { g.started = true; map._stop(); map._moveStart(true, false); }
+      const size = map.getSize(), centrePx = map.project(g.ll, g.z).subtract(g.pt.subtract(size.divideBy(2)));
+      map._move(map.unproject(centrePx, g.z), g.z, { pinch: true });
+    });
   }, { capture: true, passive: false });
   const end = e => {
     if (mine(e)) {
       e.stopPropagation(); e.preventDefault(); cancelAnimationFrame(g.raf);
       map.options.zoomSnap = g.snap;
+      if (g.started) map._moveEnd(true);
       if (e.type === 'touchcancel') { map.setZoomAround(g.pt, Math.round(map.getZoom()), { animate: false }); }
       else if (!g.moved) map.setZoomAround(g.pt, Math.round(g.z0) + 1, { animate: true });
       else map.setZoomAround(g.pt, Math.round(map.getZoom()), { animate: true }); // settle on a whole level, as a pinch does
@@ -2694,7 +2702,7 @@ function initAreaMap() {
   return areaMapReady = (async () => {
     try { await ensureLeaflet(); } catch (e) { log(String(e), 'e'); areaMapReady = null; status(`Map library failed to load: ${e.message}`, true); return; }
     areaMap = L.map('areamap', { preferCanvas: true, worldCopyJump: true, zoomControl: false }); L.control.zoom({ position: 'topright' }).addTo(areaMap);
-    L.tileLayer(TILE_TEMPLATE, { maxZoom: 19, attribution: TILE_ATTR }).addTo(areaMap);
+    L.tileLayer(TILE_TEMPLATE, { maxZoom: 19, attribution: TILE_ATTR, keepBuffer: 6 }).addTo(areaMap);
     areaCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40, showCoverageOnHover: false });
     areaMap.addLayer(areaCluster);
     areaMap.setView([20, 0], 2);
@@ -3158,7 +3166,7 @@ async function openSpecies(id, focusObs, ctx) {
   try { await ensureLeaflet(); } catch (e) { mapBox.append(el('p', 'status error', 'Map failed to load.')); return; }
   if (!detail.isOpen || !mapDiv.isConnected) return;
   const m = L.map(mapDiv, { worldCopyJump: true, preferCanvas: true, zoomControl: false }); L.control.zoom({ position: 'topright' }).addTo(m); addDoubleTapZoom(m);
-  L.tileLayer(TILE_TEMPLATE, { maxZoom: 19, attribution: TILE_ATTR }).addTo(m);
+  L.tileLayer(TILE_TEMPLATE, { maxZoom: 19, attribution: TILE_ATTR, keepBuffer: 6 }).addTo(m);
   const heat = L.tileLayer(`https://api.inaturalist.org/v1/colored_heatmap/{z}/{x}/{y}.png?taxon_id=${id}`, { opacity: 0.7, maxNativeZoom: 12 });
   heat.addTo(m);
   heat.on('tileerror', () => log(`range overlay tile failed for taxon ${id}`, 'w'));
@@ -4061,7 +4069,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-152 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-153 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
