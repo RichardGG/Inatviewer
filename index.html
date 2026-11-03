@@ -366,8 +366,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #areamap, #expmap { border:7px solid #fbfaf4; border-radius:2px; box-shadow:0 3px 8px rgba(0,0,0,.35); }
   #sheetbg { position:fixed; inset:0; z-index:68; background:rgba(0,0,0,.28); } #sheetbg[hidden] { display:none; }
   .seentag { position:absolute; top:6px; right:6px; z-index:2; width:26px; height:26px; border-radius:50%; background:#4a9b50; color:#fff; display:grid; place-items:center; font-size:15px; box-shadow:0 1px 3px rgba(0,0,0,.5); pointer-events:none; }
-  .pgrid .tile.piled::before, .pgrid .tile.piled::after { content:''; position:absolute; inset:0; z-index:-1; background:#fbfaf4; border-radius:3px; box-shadow:0 2px 6px rgba(0,0,0,.35); }
-  .pgrid .tile.piled::before { transform:rotate(4deg) translate(4px, 2px); } .pgrid .tile.piled::after { transform:rotate(-3.5deg) translate(-4px, 3px); }
 
   /* ---------- species page: an open notebook, a printed form filled in by hand on the left, lined paper on the right ---------- */
   .dpanel { background:var(--paper, none), var(--desk, #e6e0d2); }
@@ -445,11 +443,9 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #gal.st-simple .pgrid .tile .pic { border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.35); background:#2b3a32; }
   #gal.st-simple .pgrid .tile .cap { display:block; height:auto; min-height:2.2em; padding:5px 2px 0; text-align:left; color:var(--fg); transform:none; overflow:visible; line-height:1.05; }
   #gal.st-simple .pgrid .tile .cap:hover { color:var(--accent); }
-  #gal.st-simple .pgrid .tile.piled::before, #gal.st-simple .pgrid .tile.piled::after { background:rgba(255,255,255,.55); border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,.3); }
   /* Simple style: no Polaroid frames anywhere, also not on stacks of collapsed groups or piles of the same species */
   #gal.st-simple .stack .mini { background:none; padding:0; aspect-ratio:1; border-radius:6px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.45); }
   #gal.st-simple .stack .mini img { height:100%; }
-  #gal.st-simple .pgrid .tile.piled::before, #gal.st-simple .pgrid .tile.piled::after { inset:0 0 auto 0; height:auto; aspect-ratio:1; } /* the pile sits behind the photo only, never behind the name */
 
   /* groups as horizontal folder dividers: each group is a full-width card with a tab on its top edge; nested groups lie over their parent at the same width, and every tab sticks to the top (every level stacked below its parent; a leaving row slides behind them) while its group is on screen */
   .dvroot { padding:4px 0 6px; }
@@ -1640,7 +1636,7 @@ function partnerPhoto(p, sid) {
 function polTile(o) {
   const ph = photosOf(o);
   const t = document.createElement('div');
-  t.className = 'tile' + (o._pile ? ' piled' : ''); markBrow(t, o.tid, o.id);
+  t.className = 'tile' + ; markBrow(t, o.tid, o.id);
   t.style.setProperty('--rot', ((Math.imul(o.id, 2654435761) >>> 0) % 1300 / 100 - 6.5).toFixed(2) + 'deg'); // a random tilt of up to 6.5 degrees, fixed per observation
   t.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
   const b = document.createElement('button');
@@ -3570,7 +3566,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-73 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-74 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
