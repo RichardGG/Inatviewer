@@ -762,6 +762,12 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .coverava { align-self:center; margin:0 0 16px; padding:0; border:0; background:none; cursor:pointer; transform:rotate(-5deg); filter:drop-shadow(0 3px 5px rgba(0,0,0,.6)); }
   .coverava[hidden] { display:none; }
   .coverava .ava { position:static; display:block; width:84px; height:84px; border:5px solid #fbf6e2; font-size:38px; line-height:74px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); }
+  /* a person being compared: a paper chip on the cover with their picture, a three-state eye and an x */
+  header.cover .chip.pchip { padding:3px 4px 3px 4px; gap:6px; }
+  .pchip .ava { position:static; width:24px; height:24px; font-size:13px; line-height:20px; flex:none; }
+  .pchip .eyebtn { padding:0 5px; color:#27348b; border-radius:10px; } .pchip.m-off .eyebtn { opacity:.4; }
+  .pchip.m-seen .eyebtn { background:rgba(74,155,80,.4); } .pchip.m-unseen .eyebtn { background:rgba(200,69,59,.35); }
+  header.cover .chip.pchip.m-off { opacity:.8; }
 </style>
 </head>
 <body>
@@ -855,7 +861,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
         <div id="fsCompare" hidden>
           <h4>Compare</h4>
           <div id="cmppeople" class="clsrow" role="group" aria-label="People to compare with"></div>
-          <div id="cmpchips" class="clsrow" role="group" aria-label="Compare" style="margin-top:8px"></div>
+          <div id="cmpchips" hidden></div>
           <p class="status" id="cmpnote" style="margin:6px 0 0"></p>
           <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
         </div>
@@ -2399,7 +2405,14 @@ async function loadRarityData() {
   } catch (e) { log(`rarity lookup failed: ${e.stack || e}`, 'e'); status(e.message, true); }
   finally { rarityBusy = false; finishBm(); }
 }
-let cmpMode = ''; // '' | 'missing' (species the other person hasn't seen) | 'common' (seen by both)
+// Each person being compared has a mode: 'off' (shown beside the photos only), 'seen' (only species they have seen) or 'unseen' (only species they have not seen).
+let cmpModes = {};
+try { cmpModes = JSON.parse(localStorage.getItem('inat_pmodes') || '{}') || {}; } catch {}
+const pmode = p => cmpModes[lc(p.login)] || 'off';
+const saveModes = () => { try { localStorage.setItem('inat_pmodes', JSON.stringify(cmpModes)); } catch {} };
+const cmpFiltering = () => activePartners().some(p => pmode(p) !== 'off');
+let cmpMode = ''; // kept in step with cmpFiltering() for the places that only need to know whether a comparison filter is on
+function syncCmpMode() { cmpMode = cmpFiltering() ? 'on' : ''; }
 let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'others' (faved by other users) | 'theirs' / 'mine' (someone else's account: their favourites / ones I faved)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
                     47158: 'Insecta', 47119: 'Arachnida', 47115: 'Mollusca', 47126: 'Plantae', 47170: 'Fungi' };
@@ -2414,7 +2427,9 @@ function classMatch(o) {
 // Observations passing the date, group and favourite-status filters, before the area filter.
 function textFiltered() {
   const range = dateRange();
-  if (!range && !filterClasses.size && !favMode && !(cmpMode && activePartners().length)) return state.obs;
+  syncCmpMode();
+  if (!range && !filterClasses.size && !favMode && !cmpMode) return state.obs;
+  syncCmpMode();
   const stats = favMode === 'need' ? favStats() : null, act = cmpMode ? activePartners() : [];
   return state.obs.filter(o => {
     if (cmpMode && act.length && !cmpPass(o, act)) return false;
@@ -2481,9 +2496,21 @@ function drawChips() {
     () => { filterClasses.clear(); try { localStorage.setItem('inat_fclass', ''); } catch {} drawFilterChips(); scheduleShow(); }, 'Clear group filter');
   if (!nearby && favMode) add({ need: 'star', theirs: 'star', others: 'heart', mine: 'user-round', new: 'refresh-cw' }[favMode], { need: 'Needs favourite', theirs: 'Their favourites', others: 'Faved by others', mine: 'Faved by me', new: 'New since favourite' }[favMode],
     () => { favMode = ''; drawFilterChips(); scheduleShow(); }, 'Clear favourite filter');
-  if (!nearby && cmpMode) add('git-compare', cmpLabel(cmpMode), () => { cmpMode = ''; drawCmpChips(); scheduleShow(); }, 'Clear comparison');
+  for (const l of partners) { // one chip per person being compared: name, a seen / not seen / off eye, and an x
+    const m = cmpModes[lc(l)] || 'off', chip = document.createElement('span'); chip.className = 'chip pchip m-' + m;
+    chip.append(avatarBadge(l));
+    chip.append(document.createTextNode('@' + l));
+    const eye = document.createElement('button'); eye.type = 'button'; eye.className = 'eyebtn';
+    eye.innerHTML = ic(m === 'unseen' ? 'eye-off' : 'eye', 16);
+    eye.title = eye.ariaLabel = { seen: `Only species @${l} has seen: tap for not seen`, unseen: `Only species @${l} has not seen: tap to turn off`, off: `Not filtering by @${l}: tap for seen` }[m];
+    eye.onclick = () => { cmpModes[lc(l)] = { off: 'seen', seen: 'unseen', unseen: 'off' }[m]; saveModes(); drawChips(); drawCmpChips(); scheduleShow(); };
+    const x = document.createElement('button'); x.type = 'button'; x.innerHTML = ic('x', 14); x.title = x.ariaLabel = `Stop comparing with @${l}`;
+    x.onclick = () => togglePartner(l);
+    chip.append(eye, x); c.append(chip);
+  }
   const has = (id, on) => $(id).classList.toggle('has', !!on);
-  has('bsort', cmpMode || dv !== 'all' || filterClasses.size || favMode); has('areabtn', area);
+  syncCmpMode();
+  has('bsort', cmpMode || partners.length || dv !== 'all' || filterClasses.size || favMode); has('areabtn', area);
 }
 // Largest circle that fits inside the map's current view (with a little margin).
 function viewportCircle() {
@@ -2515,7 +2542,7 @@ function drawArea(a = area) {
 let suppressMove = false;
 function moveMap(fn) { suppressMove = true; try { fn(); } finally { suppressMove = false; } }
 
-const markerKey = () => `${Object.keys(rarity).length}|${cmpMode}|${partners.join()}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
+const markerKey = () => `${Object.keys(rarity).length}|${JSON.stringify(cmpModes)}|${partners.join()}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
 function updatePhotoMarkers() {} // photos are now the markers at every zoom (see drawAreaMarkers)
 function drawAreaMarkers() {
   if (!areaMap) return;
@@ -3258,10 +3285,10 @@ function renderExplore() {
     return;
   }
   const mine = mySpeciesCounts(), myPhoto = myPhotoBySpecies();
-  const act = activePartners().filter(p => lc(p.login) !== lc(meLogin)); // my own photo is already the first one
+  const act = activePartners(); // the viewed person's photo is the first one; each person being compared sits beside it
   const rows = explore.items.filter(it => {
     if (exploreHideSeen && mine.has(it.taxon.id)) return false;
-    if (cmpMode && act.length) { const all = act.every(p => partnerSpecies(p).has(it.taxon.id)); if (cmpMode === 'common' ? !all : act.some(p => partnerSpecies(p).has(it.taxon.id))) return false; }
+    if (act.length && !act.every(p => { const m = pmode(p); return m === 'off' || (m === 'seen') === partnerSpecies(p).has(it.taxon.id); })) return false;
     return true;
   });
   const seenN = explore.items.filter(it => mine.has(it.taxon.id)).length;
@@ -3389,7 +3416,7 @@ function partnerSpecies(p) {
 // 'missing': none of the partners has seen the species; 'common': all of them have.
 function cmpPass(o, act) {
   const sid = speciesIdOf(o) ?? o.tid;
-  return cmpMode === 'missing' ? !act.some(p => partnerSpecies(p).has(sid)) : act.every(p => partnerSpecies(p).has(sid));
+  return act.every(p => { const m = pmode(p); return m === 'off' || (m === 'seen') === partnerSpecies(p).has(sid); });
 }
 function cmpLabel(mode) {
   const names = activePartners().map(p => myName(p.login));
@@ -3410,13 +3437,6 @@ function drawCmpChips() {
     b.onclick = () => togglePartner(l);
     who.append(b);
   }
-  for (const mode of ['missing', 'common']) {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'cls' + (cmpMode === mode ? ' on' : ''); b.textContent = cmpLabel(mode); b.disabled = !ready;
-    b.setAttribute('aria-pressed', String(cmpMode === mode));
-    b.onclick = () => { cmpMode = cmpMode === mode ? '' : mode; drawCmpChips(); scheduleShow(); };
-    box.append(b);
-  }
   const token = $('token').value.trim(), meSel = partners.some(x => lc(x) === lc(meLogin)), meLoaded = !!cmpData.get(lc(meLogin))?.obs.length || (isOther() && mine.obs.length);
   $('cmpload').hidden = !(token && (isOther() || meSel) && !meLoaded);
   $('cmpnote').textContent = ready ? `Comparing ${state.user?.login ? '@' + state.user.login : 'this list'} with ${act.map(p => `${myName(p.login)} (${p.obs.length})`).join(', ')}.`
@@ -3429,7 +3449,8 @@ async function togglePartner(l) {
   if (i >= 0) { partners.splice(i, 1); cmpData.delete(lc(l)); }
   else { partners.push(l); cmpData.set(lc(l), { login: l, obs: (await idb.get(dsKey(l)))?.obs || [], species: null, sig: '' }); }
   try { localStorage.setItem('inat_partners', JSON.stringify(partners)); } catch {}
-  if (!activePartners().length) cmpMode = '';
+  delete cmpModes[lc(l)]; saveModes(); syncCmpMode();
+  drawChips();
   drawCmpChips(); scheduleShow();
 }
 // Fetch my own observations so they can be compared (and used for Nearby's seen badges) while viewing a shared link.
@@ -3537,7 +3558,7 @@ function buildShareUrl() {
   if (dv !== 'all') { p.set('date', dv); if (dv === 'custom') { if ($('dfrom').value) p.set('from', $('dfrom').value); if ($('dto').value) p.set('to', $('dto').value); } }
   if (filterClasses.size) p.set('cls', [...filterClasses].join(','));
   if (area) p.set('area', `${area.lat.toFixed(4)},${area.lng.toFixed(4)},${Math.round(area.r)}`);
-  if (cmpMode) p.set('cmp', cmpMode);
+  { const ms = activePartners().map(pmode); if (ms.includes('seen')) p.set('cmp', 'common'); else if (ms.includes('unseen')) p.set('cmp', 'missing'); }
   if (raritySort && view === 'recent') p.set('rsort', 'rare');
   return `${redirectUri()}?${p}`;
 }
@@ -3563,7 +3584,7 @@ function applyUrlState() {
   if (g('cls')) { filterClasses.clear(); g('cls').split(',').filter(c => EXP_CLASSES.some(x => x[0] === c)).forEach(c => filterClasses.add(c)); drawFilterChips(); }
   const ar = (g('area') || '').split(',').map(Number);
   if (ar.length === 3 && ar.every(Number.isFinite) && ar[2] > 0) { area = { lat: ar[0], lng: ar[1], r: ar[2] }; $('follow').checked = true; }
-  if (['missing', 'common'].includes(g('cmp'))) cmpMode = g('cmp');
+  if (['missing', 'common'].includes(g('cmp'))) for (const l of partners) cmpModes[lc(l)] = g('cmp') === 'common' ? 'seen' : 'unseen';
   if (g('rsort') === '1' || g('rsort') === 'rare' || g('rsort') === 'threat') { raritySort = 'rare'; view = 'recent'; }
 }
 
@@ -3988,7 +4009,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-144 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-145 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
