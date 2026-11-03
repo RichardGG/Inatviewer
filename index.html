@@ -581,6 +581,13 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbpr .season { margin-top:0; }
   .cntpill { position:absolute; right:6px; bottom:6px; z-index:3; padding:2px 9px 3px; background:#fbf6e2; color:#3a2a14; border-radius:3px; transform:rotate(2.5deg); box-shadow:0 2px 4px rgba(0,0,0,.45);
              font:700 16px/1 var(--hw); font-size-adjust:.5; pointer-events:none; white-space:nowrap; display:flex; align-items:center; gap:4px; } /* a paper sticker with the count */
+  /* place folders: a small map across the top of each folder */
+  .pmap { position:relative; height:96px; margin:0 0 4px; overflow:hidden; background:#cfd8c8; box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); }
+  .pmap[hidden] { display:none; }
+  .ptiles img { position:absolute; width:256px; height:256px; max-width:none; user-select:none; }
+  .pdots { position:absolute; inset:0; pointer-events:none; } .pdots circle { fill:#e8590c; stroke:#fff; stroke-width:1.5; }
+  .pat { position:absolute; right:4px; bottom:2px; font:10px Arial, sans-serif; color:#333; background:rgba(255,255,255,.7); padding:0 4px; border-radius:2px; }
+  .dark .ptiles { filter:brightness(.72) contrast(1.05) saturate(.75); }
   /* a group too small for a folder: a paper sticker stuck on the photo */
   .gsticker { position:absolute; z-index:6; top:-9px; left:6px; max-width:92%; padding:2px 9px 3px; background:#ffe27a; color:#3a2a14; border-radius:3px; transform:rotate(-2.5deg); box-shadow:0 2px 4px rgba(0,0,0,.4);
               font:700 15px/1 var(--hw); font-size-adjust:.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
@@ -1590,7 +1597,7 @@ function treeItems(root, meta) {
     for (const row of rows) {
       const cur = thumbObs(row.obs);
       if (!cur || !photosOf(cur).length) continue;
-      items.push({ o: { ...cur, _n: row.obs.length }, path });
+      items.push({ o: { ...cur, _n: row.obs.length }, path, all: row.obs });
     }
     for (const [ch, rank] of groups) {
       const t = meta.get(ch.id);
@@ -1821,8 +1828,44 @@ function dvSection(g) {
 // Infinite scroll: the "Show more" button loads the next page by itself as soon as it comes near the screen.
 const moreObserver = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting && !e.target.hidden && !e.target.disabled) e.target.click(); }, { rootMargin: '900px 0px' });
 function autoMore(btn) { moreObserver.observe(btn); }
+// ---- Place: each folder has a small map of where its observations were made (OpenStreetMap tiles, drawn only when the folder is near the screen) ----
+const PMAP_H = 96;
+const mercator = (lat, lng, z) => { const n = 256 * 2 ** z, r = lat * Math.PI / 180; return [(lng + 180) / 360 * n, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n]; };
+function placeMap(g) {
+  const el = document.createElement('div'); el.className = 'pmap'; el.dataset.key = g.key;
+  pmapObserver.observe(el);
+  return el;
+}
+function fillPlaceMap(el) {
+  const g = gal.byKey.get(el.dataset.key), W = el.clientWidth;
+  if (!g || !W || el.dataset.w === String(W)) return;
+  el.dataset.w = W;
+  let pts = [];
+  for (let i = g.first; i <= g.last; i++) for (const o of (gal.items[i].all || [gal.items[i].o])) { const ll = parseLoc(o); if (ll) pts.push(ll); }
+  if (!pts.length) { el.hidden = true; return; }
+  const step = Math.ceil(pts.length / 150); if (step > 1) pts = pts.filter((_, i) => i % step === 0);
+  const lats = pts.map(p => p[0]), lngs = pts.map(p => p[1]);
+  const lat0 = Math.min(...lats), lat1 = Math.max(...lats), lng0 = Math.min(...lngs), lng1 = Math.max(...lngs);
+  let z = 12;
+  if (lat1 > lat0 || lng1 > lng0) for (z = 16; z > 1; z--) { const a = mercator(lat1, lng0, z), b = mercator(lat0, lng1, z); if (b[0] - a[0] <= W - 30 && b[1] - a[1] <= PMAP_H - 26) break; }
+  const [cx, cy] = mercator((lat0 + lat1) / 2, (lng0 + lng1) / 2, z), n = 2 ** z, ox = cx - W / 2, oy = cy - PMAP_H / 2;
+  const frag = document.createDocumentFragment(), tiles = document.createElement('div'); tiles.className = 'ptiles';
+  for (let ty = Math.floor(oy / 256); ty <= Math.floor((oy + PMAP_H) / 256); ty++) for (let tx = Math.floor(ox / 256); tx <= Math.floor((ox + W) / 256); tx++) {
+    if (ty < 0 || ty >= n) continue;
+    const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.draggable = false;
+    im.src = `https://tile.openstreetmap.org/${z}/${((tx % n) + n) % n}/${ty}.png`;
+    im.style.cssText = `left:${Math.round(tx * 256 - ox)}px;top:${Math.round(ty * 256 - oy)}px`;
+    tiles.append(im);
+  }
+  const NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'); svg.setAttribute('class', 'pdots'); svg.setAttribute('width', W); svg.setAttribute('height', PMAP_H);
+  for (const [la, ln] of pts) { const [x, y] = mercator(la, ln, z), c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', Math.round(x - ox)); c.setAttribute('cy', Math.round(y - oy)); c.setAttribute('r', 3.6); svg.append(c); }
+  const at = document.createElement('span'); at.className = 'pat'; at.textContent = '© OpenStreetMap';
+  frag.append(tiles, svg, at);
+  el.replaceChildren(frag);
+}
+const pmapObserver = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) fillPlaceMap(e.target); }, { rootMargin: '500px 0px' });
 function drawDividers() {
-  stripObserver.disconnect(); moreObserver.disconnect();
+  stripObserver.disconnect(); moreObserver.disconnect(); pmapObserver.disconnect();
   const el = $('gal'), items = gal.items, col = collapsed[gal.sort];
   const root = document.createElement('div'); root.className = 'dvroot';
   const open = [{ g: null, body: root }]; // the sections the current photo is inside, outermost first
@@ -1836,7 +1879,7 @@ function drawDividers() {
     const vis = k < 0 ? it.path : it.path.slice(0, k + 1);
     let m = 1; while (m < open.length && m - 1 < vis.length && open[m].g === vis[m - 1]) m++;
     open.length = m;
-    for (let j = m - 1; j < vis.length; j++) { const sec = dvSection(vis[j]); open[open.length - 1].body.append(sec.el); open.push({ g: vis[j], body: sec.body }); }
+    for (let j = m - 1; j < vis.length; j++) { const sec = dvSection(vis[j]); if (gal.sort === 'place') sec.body.append(placeMap(vis[j])); open[open.length - 1].body.append(sec.el); open.push({ g: vis[j], body: sec.body }); }
     if (k >= 0) { // a collapsed group: a row of small photos across the whole width of its folder
       const st = stripEl(it.path[k]);
       open[open.length - 1].body.append(st); n++;
@@ -3691,7 +3734,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-93 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-94 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

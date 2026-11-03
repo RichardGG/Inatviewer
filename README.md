@@ -42,6 +42,7 @@ A bottom bar has the main controls; each opens a sheet above it.
 - **Location**: one map for every sort. The orange circle is the current view of the map; it filters your observations to the area and is the area Common searches (within 100 km). Buttons on the map jump to your location or search for a place by name.
 - **Small groups** (View sheet): a group with fewer photos than the chosen number (under 3, 6 or 12; default 3) gets no folder of its own. Its photos join the folder above, each with a yellow sticker naming the group. The decision is made from the current counts, so a big group (parrots) keeps its folder while a small one (spiders) is folded in.
 - **Infinite scroll**: the gallery and Common load the next page by themselves as you near the bottom. Rarest, a shuffle and Common sit in one folder with its own tab; Rarest shows each species' worldwide iNaturalist observation count and Common shows how many observations of it there are in the area.
+- **Place maps**: in the Place sort every folder (country, state, county, city…) has a small map across its top, zoomed to fit where its observations were made, with an orange dot for each (OpenStreetMap tiles, loaded only for folders near the screen).
 - **View** (the eye): style, size, groups and *Appearance* (Auto follows the device, or force Light or Dark; dark mode has its own dark folder, notebook and sheet textures).
 - **Compare** (a section of the View sheet): species missing from another person's list, or seen by both (available from your own account and while viewing someone else).
 
