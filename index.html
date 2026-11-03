@@ -729,16 +729,21 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #totop { position:fixed; z-index:64; left:50%; bottom:calc(16px + env(safe-area-inset-bottom)); width:52px; height:52px; margin-left:-26px; display:grid; place-items:center; padding:0; border:0; border-radius:50%; background:rgba(255,255,255,.08); color:rgba(255,255,255,.7); backdrop-filter:blur(2px); box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22); cursor:pointer; transition:opacity .25s, transform .25s; }
   #totop:active { background:rgba(255,255,255,.18); }
   body:not(.scrolled) #totop, body.sheet-open #totop { opacity:0; pointer-events:none; transform:translateY(20px); }
+  .coverwrap { position:relative; margin:6px 0 84px; }
+  @media (max-width: 899px) { .coverwrap { margin:6px 12px 84px; } }
+  header.cover { margin:0 !important; z-index:1; }
+  .marks { z-index:0 !important; }
 </style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="rough" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="3" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3"/></filter></svg>
 <main>
+  <div class="coverwrap">
+  <nav class="marks" id="marks" aria-label="Sort"></nav>
   <header class="top cover">
     <div class="clabel"><h1><span>Nature</span><span>Observations</span></h1><p>Field notes · observation book<br>Made from your iNaturalist records</p><button type="button" id="covername" aria-haspopup="dialog" title="Switch user, search or share"></button></div>
     <button id="acct" aria-label="Account and sync" aria-expanded="false" hidden></button>
     <button type="button" id="signin" class="signin" hidden>Sign in</button>
-    <nav class="marks" id="marks" aria-label="Sort"></nav>
     <div class="cnote">
       <div id="viewing" class="banner" hidden></div>
       <div id="status" class="status" role="status"></div>
@@ -747,6 +752,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
       <div id="chips"></div>
     </div>
   </header>
+  </div>
 
   <div id="loginbg" hidden></div>
   <div class="card" id="login" role="dialog" aria-modal="true" aria-label="Observer" hidden>
@@ -3894,7 +3900,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-126 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-127 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
