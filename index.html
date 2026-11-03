@@ -17,6 +17,7 @@
     :root { --bg:#14181a; --fg:#e6ece6; --muted:#8c9a8e; --accent:#7fc45a; --line:#2a3330; --card:#1b2124; }
   }
   * { box-sizing: border-box; }
+  html, body, main, #gal { overflow-x:clip; } /* rotated Polaroids and tabs may poke a pixel or two past the edge; that must never widen the page */
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; } /* handwriting everywhere (Caveat); font-size-adjust keeps its small letters readable */
   button, input, select { font-family:inherit; }
   main { max-width:900px; margin:0 auto; padding:24px 16px 64px; }
@@ -3509,7 +3510,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-47 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-49 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
