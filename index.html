@@ -2471,12 +2471,22 @@ function viewportCircle() {
   const r = 0.92 * Math.min(distM(c.lat, c.lng, c.lat, b.getEast()), distM(c.lat, c.lng, b.getNorth(), c.lng));
   return { lat: c.lat, lng: c.lng, r: Math.max(r, 1) };
 }
+// A hand-drawn ring: a slightly uneven outline with dashes of varied length, no fill.
+function inkRingPoints(lat, lng, r) {
+  const pts = [], cosLat = Math.max(0.01, Math.cos(lat * Math.PI / 180));
+  for (let i = 0; i < 120; i++) {
+    const t = i / 120 * 2 * Math.PI, k = 1 + 0.028 * Math.sin(3 * t + 0.8) + 0.018 * Math.sin(5 * t + 2.1) + 0.01 * Math.sin(9 * t + 4);
+    pts.push([lat + r * k * Math.cos(t) / 111320, lng + r * k * Math.sin(t) / (111320 * cosLat)]);
+  }
+  return pts;
+}
+const INK_RING = { color: '#27348b', weight: 3.5, dashArray: '16 7 5 9 24 8 9 7 3 10', lineCap: 'round', lineJoin: 'round', fill: false, interactive: false, className: 'inkring' };
 function drawArea(a = area) {
   $('radiuslabel').textContent = a ? fmtDist(a.r) + ' radius' : '';
   if (!areaMap) return;
   if (!a) { if (areaCircle) { areaCircle.remove(); areaCircle = null; } return; }
-  if (!areaCircle) areaCircle = L.circle([a.lat, a.lng], { radius: a.r, color: '#27348b', weight: 3, dashArray: '2 8', lineCap: 'round', fillColor: '#f5d832', fillOpacity: 0.2, interactive: false, className: 'inkring' }).addTo(areaMap);
-  else { areaCircle.setLatLng([a.lat, a.lng]); areaCircle.setRadius(a.r); }
+  if (!areaCircle) areaCircle = L.polygon(inkRingPoints(a.lat, a.lng, a.r), INK_RING).addTo(areaMap);
+  else areaCircle.setLatLngs(inkRingPoints(a.lat, a.lng, a.r));
 }
 // Run a programmatic map move without it being treated as the user changing the filter.
 let suppressMove = false;
@@ -3126,8 +3136,9 @@ function myPhotoBySpecies() {
 // iNaturalist's species list is searched by radius; very wide circles are cut to the nearest 100 km.
 const exploreKm = () => Math.min(100, Math.max(0.1, area.r / 1000));
 // Switching to Common with no area chosen: start around where I am (10 km); if that is not possible, open the Location sheet to pick a place.
-let geoBusy = false;
+let geoBusy = false, commonTemp = false; // commonTemp: the circle exists only because Common needs one
 function useMyLocationForCommon() {
+  commonTemp = true;
   const pick = () => { if (view === 'explore' && !area && $('areapanel').hidden) $('areabtn').click(); };
   if (!navigator.geolocation || geoBusy) return setTimeout(pick, 150);
   geoBusy = true; status('Finding your location…');
@@ -3154,7 +3165,7 @@ async function exploreFromObs(o) {
 // The circle as a layer for another map (the species page frames the area that was searched).
 function nearbyAreaLayer() {
   if (!area) return null;
-  const layer = L.circle([area.lat, area.lng], { radius: area.r, color: '#27348b', weight: 3, dashArray: '2 8', lineCap: 'round', fillColor: '#f5d832', fillOpacity: 0.2, interactive: false, className: 'inkring' });
+  const layer = L.polygon(inkRingPoints(area.lat, area.lng, area.r), INK_RING);
   return { layer, bounds: L.latLng(area.lat, area.lng).toBounds(area.r * 2) };
 }
 
@@ -3549,6 +3560,7 @@ function drawMarks() {
 function syncMarks() { document.querySelectorAll('#marks button').forEach(b => b.classList.toggle('on', b.dataset.k === sortId())); }
 function updateSortUi() { syncMarks(); const name = SORTS.find(x => x[0] === sortId())[1]; $('sortlabel').textContent = name; $('bsort').setAttribute('aria-label', `Sort: ${name}`); }
 function setView(v) {
+  const prevView = view;
   if (v !== view) scrollPos[view] = scrollY;
   view = v;
   if (isGal(v)) lastGal = v;
@@ -3562,10 +3574,17 @@ function setView(v) {
   $('locTools').hidden = v !== 'place';
   syncRecentTools(); updateSortUi();
   if (!$('psort').hidden) drawSortChips(); // the Sort sheet stays open; its highlighted chip follows the change
+  // Common always works from the map's circle (Only here is on and locked there). Leaving it, the circle is kept only if Only here was on before.
+  if (prevView === 'explore' && v !== 'explore' && commonTemp) { commonTemp = false; if (area) setArea(null); }
+  $('follow').disabled = v === 'explore';
   if (v === 'explore') {
+    if (!area) {
+      commonTemp = true;
+      if (areaMap) { $('follow').checked = true; setArea(viewportCircle()); } // the map keeps its position
+      else useMyLocationForCommon();
+    }
     drawChips(); renderExplore();
     if (area && !explore.items.length && !explore.loading) loadExplore();
-    else if (!area) useMyLocationForCommon();
   }
   if (state.obs.length) show();
   // each sort keeps its own scroll position (re-applied once more next frame in case layout settles late)
@@ -3921,7 +3940,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-130 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-131 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
