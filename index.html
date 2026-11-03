@@ -73,26 +73,10 @@
   #toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:rgba(0,0,0,.8); color:#fff;
            padding:8px 14px; border-radius:20px; font-size:13px; z-index:2000; opacity:0; pointer-events:none; transition:opacity .2s; }
   #toast.show { opacity:1; }
-  .tabs { display:flex; gap:0; margin:0 0 10px; }
-  .tabs button { flex:1; background:transparent; color:var(--muted); border:1px solid var(--line); border-radius:0; padding:9px 2px; font-size:13px; }
-  .tabs button:first-child { border-radius:8px 0 0 8px; } .tabs button:last-child { border-radius:0 8px 8px 0; border-left:0; }
   button.secondary.active { border-color:var(--accent); color:var(--accent); font-weight:600; }
-  .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
   i[data-i] { display:inline-flex; font-style:normal; }
   svg.lc { display:block; flex:none; }
   .withicon { display:inline-flex; align-items:center; gap:6px; }
-  .tabs i { display:none; }
-  /* phones: tabs become a fixed bottom navigation bar */
-  @media (max-width: 899px) {
-    .tabs { position:fixed; left:0; right:0; bottom:0; z-index:70; margin:0; background:var(--card); border-top:1px solid var(--line);
-            padding-bottom:env(safe-area-inset-bottom); box-shadow:0 -2px 10px rgba(0,0,0,.12); }
-    .tabs button, .tabs button:first-child, .tabs button:last-child { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
-            border:0; border-radius:0; background:transparent; color:var(--muted); padding:8px 2px 9px; font-size:11px; }
-    .tabs i { display:inline-flex; }
-    .tabs button.active { background:transparent; color:var(--accent); font-weight:700; box-shadow:inset 0 3px 0 var(--accent); }
-    main { padding-bottom:calc(84px + env(safe-area-inset-bottom)); }
-    #toast { bottom:calc(88px + env(safe-area-inset-bottom)) !important; }
-  }
   .dh { position:sticky; top:var(--bar-h, 0px); transition:top .2s; z-index:5; background:var(--card); padding:6px 0; font-size:13px; font-weight:600;
         color:var(--muted); border-bottom:1px solid var(--line); }
   #recent .sp { border-left:0; padding-left:0; }
@@ -189,57 +173,12 @@
   .leaflet-bar a.gpsbtn { display:flex; align-items:center; justify-content:center; width:30px; height:30px; color:#333; }
   .leaflet-bar a.gpsbtn svg { display:block; }
   /* Web: full-screen physics picture of related species */
-  #web { position:fixed; inset:0; z-index:800; background:radial-gradient(circle at 50% 45%, #16242a 0%, #0b1215 70%); color:#e6ece6; touch-action:none; user-select:none; -webkit-user-select:none; }
-  #web[hidden] { display:none; }
-  #webcanvas { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
-  #webbar { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:10px; padding:calc(8px + env(safe-area-inset-top)) 12px 28px; background:linear-gradient(rgba(11,18,21,.85), rgba(11,18,21,0)); pointer-events:none; }
-  #webbar .ib { pointer-events:auto; color:#e6ece6; background:rgba(255,255,255,.08); border-radius:50%; }
-  #webbar .ib.on { background:var(--accent); color:#fff; }
-  #webtitle { flex:1; min-width:0; font-weight:600; font-size:14px; text-shadow:0 1px 3px #000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  /* World: the most observed animal over each country */
-  #world { position:fixed; inset:0; z-index:800; background:#0b1a22; color:#e6ece6; }
-  #world[hidden] { display:none; }
-  #worldmap { position:absolute; inset:0; z-index:0; background:#0b1a22; }
-  #worldbar { position:absolute; z-index:5; top:0; left:0; right:0; display:flex; align-items:center; gap:10px; padding:calc(8px + env(safe-area-inset-top)) 12px 8px; background:linear-gradient(rgba(11,18,21,.92), rgba(11,18,21,0)); pointer-events:none; }
-  #worldbar .ib, #worldmode { pointer-events:auto; }
-  #worldbar .ib { color:#e6ece6; background:rgba(255,255,255,.08); border-radius:50%; }
-  #worldtitle { flex:1; min-width:0; font-weight:600; font-size:14px; text-shadow:0 1px 3px #000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  #worldmode { display:flex; border:1px solid rgba(255,255,255,.25); border-radius:16px; overflow:hidden; }
-  #worldmode button { background:rgba(255,255,255,.06); color:#e6ece6; border:0; padding:5px 11px; font-size:13px; border-radius:0; }
-  #worldmode button.on { background:var(--accent); color:#fff; }
-  #worldchips { position:absolute; z-index:5; top:calc(58px + env(safe-area-inset-top)); left:0; right:0; display:flex; gap:6px; overflow-x:auto; padding:2px 12px 6px; scrollbar-width:none; }
-  #worldchips::-webkit-scrollbar { display:none; }
-  #worldchips button { flex:none; background:rgba(20,32,38,.85); color:#e6ece6; border:1px solid rgba(255,255,255,.2); border-radius:16px; padding:4px 12px; font-size:13px; }
-  #worldchips button.on { background:var(--accent); border-color:var(--accent); color:#fff; }
-  #worldsheet { position:absolute; z-index:6; left:10px; right:10px; bottom:calc(12px + env(safe-area-inset-bottom)); max-height:56vh; display:flex; flex-direction:column; color:#e6ece6;
-                background:rgba(14,24,30,.96); border:1px solid rgba(255,255,255,.14); border-radius:14px; box-shadow:0 6px 22px rgba(0,0,0,.5); overflow:hidden; }
-  #worldsheet[hidden] { display:none; }
-  #worldsheethead { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 8px 6px 14px; border-bottom:1px solid rgba(255,255,255,.1); }
-  #worldcountry { font-size:16px; } #worldnote { display:block; font-size:12px; color:#8fa092; }
-  #worldsheethead .ib { color:#e6ece6; background:rgba(255,255,255,.08); border-radius:50%; flex:none; }
-  #worldlist { list-style:none; margin:0; padding:0; overflow-y:auto; }
-  #worldlist li { display:flex; align-items:center; gap:10px; padding:7px 14px; border-bottom:1px solid rgba(255,255,255,.06); cursor:pointer; }
-  #worldlist li:last-child { border-bottom:0; }
-  #worldlist .rk { width:18px; text-align:right; color:#8fa092; font-size:13px; flex:none; }
-  #worldlist img { width:44px; height:44px; border-radius:50%; object-fit:cover; background:#1d2a2f; flex:none; }
-  #worldlist .nm { display:flex; flex-direction:column; min-width:0; flex:1; }
-  #worldlist .nm b { font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  #worldlist .nm i { font-size:12px; color:#b9c6bb; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  #worldlist .ct { font-size:12px; color:#8fa092; flex:none; }
-  #worldlist li.seen { background:rgba(127,196,90,.15); box-shadow:inset 3px 0 0 #7fc45a; }
-  #worldlist .you { font-size:12px; color:#9fdc7e; font-weight:600; }
-  #worldlist li.wait { cursor:default; color:#8fa092; font-size:13px; justify-content:center; }
+  /* World: the most observed animal over each country */ #worldnote { display:block; font-size:12px; color:#8fa092; }
   .wm { background:none; border:0; }
   .wmi { position:absolute; transform:translate(-50%,-50%); border-radius:50%; overflow:hidden; border:2px solid #fff; background:#1d2a2f; box-shadow:0 2px 8px rgba(0,0,0,.55); cursor:pointer; }
   .wmi img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
   .wmi.seen { border-color:#7fc45a; box-shadow:0 0 0 2px rgba(127,196,90,.45), 0 2px 8px rgba(0,0,0,.55); }
   .wmi.sel { border-color:#ffd54a; border-width:3px; z-index:9; }
-  #webinfo { position:absolute; left:0; right:0; bottom:0; display:flex; flex-direction:column; gap:1px; text-align:left; border:0; color:#e6ece6; font:inherit; cursor:pointer;
-             padding:34px 18px calc(14px + env(safe-area-inset-bottom)); background:linear-gradient(rgba(11,18,21,0), rgba(11,18,21,.92) 38%); }
-  #webinfo[hidden] { display:none; }
-  #webname { font-size:17px; font-weight:700; text-shadow:0 1px 3px #000; }
-  #websci { font-size:13px; font-style:italic; color:#b9c6bb; }
-  #webrank { font-size:12px; color:#8fa092; margin-top:2px; }
   #detail { position:fixed; inset:0; z-index:900; background:var(--bg); color:var(--fg); display:none; flex-direction:column; }
   #detail.open { display:flex; }
   .dpanel { flex:1; min-height:0; display:flex; flex-direction:column; background:var(--bg); }
@@ -328,18 +267,6 @@
     #explore { border-left:0; border-right:0; border-radius:0; padding:8px 8px; }
     .dbody { padding:10px 10px 48px; }
   }
-  /* the tab bar stays above the full-screen Web and World views */
-  body.ovl .tabs { position:fixed; z-index:850; left:0; right:0; margin:0; background:var(--card); }
-  body.ovl #web, body.ovl #world { bottom:var(--tabs-h, 58px); }
-  body.ovl #worldsheet { bottom:12px; }
-  body.ovl #webinfo { padding-bottom:14px; }
-  .tabs.dim button.active { background:transparent; color:var(--muted); box-shadow:none; border-color:var(--line); font-weight:400; }
-  .tabs.dim button.on-ovl { color:var(--accent); font-weight:700; box-shadow:inset 0 3px 0 var(--accent); }
-  @media (min-width: 900px) {
-    body.ovl .tabs { top:0; bottom:auto; padding:6px 10px; border-bottom:1px solid var(--line); }
-    body.ovl #web, body.ovl #world { top:var(--tabs-h, 44px); bottom:0; }
-    .tabs.dim button.on-ovl { background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:none; }
-  }
   /* handwriting for the sticker layout (Caveat, pinned and copied into vendor/ at deploy time) */
   @font-face { font-family:'Caveat'; font-style:normal; font-weight:700; font-display:swap; src:url('vendor/fonts/caveat-latin-700-normal.woff2') format('woff2');
                unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
@@ -398,6 +325,22 @@
   #pathbar[hidden] { display:none; }
   #pathbar .pbin { position:absolute; left:0; right:0; top:26px; display:flex; align-items:stretch; flex-wrap:wrap; gap:0; padding:0 0 0 13px; gap:0; }
   #pathbar .tag { max-width:100%; }
+  /* bottom bar: sort, filter, location, compare; each opens a sheet above it */
+  .tabs { position:fixed; left:0; right:0; bottom:0; z-index:70; display:flex; background:var(--card); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); box-shadow:0 -2px 10px rgba(0,0,0,.12); }
+  .tabs button { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; border:0; border-radius:0; background:transparent; color:var(--muted); padding:8px 2px 9px; font-size:15px; position:relative; }
+  .tabs button[hidden] { display:none; }
+  .tabs button.open { color:var(--accent); font-weight:700; box-shadow:inset 0 3px 0 var(--accent); }
+  .tabs button.has::after { content:''; position:absolute; top:6px; left:calc(50% + 10px); width:9px; height:9px; border-radius:50%; background:var(--accent); border:2px solid var(--card); }
+  .tabs i { display:inline-flex; }
+  main { padding-bottom:calc(84px + env(safe-area-inset-bottom)); }
+  #toast { bottom:calc(88px + env(safe-area-inset-bottom)) !important; }
+  .fpanel, #areapanel { position:fixed; left:50%; transform:translateX(-50%); bottom:var(--tabs-h, 58px); width:min(100%, 900px); max-height:min(72vh, calc(100vh - var(--tabs-h, 58px) - 24px)); overflow:auto; z-index:69; margin:0; border-radius:16px 16px 0 0; border-bottom:0; box-shadow:0 -8px 24px rgba(0,0,0,.3); padding:14px 14px 18px; }
+  .fpanel[hidden], #areapanel[hidden] { display:none; }
+  .fpanel h4 { margin:14px 0 6px; font-size:18px; } .fpanel h4:first-child { margin-top:0; }
+  #sheetbg { position:fixed; inset:0; z-index:68; background:rgba(0,0,0,.28); } #sheetbg[hidden] { display:none; }
+  body.vexplore #areabtn { display:none; }
+  .pgrid .tile.piled::before, .pgrid .tile.piled::after { content:''; position:absolute; inset:0; z-index:-1; background:#fbfaf4; border-radius:3px; box-shadow:0 2px 6px rgba(0,0,0,.35); }
+  .pgrid .tile.piled::before { transform:rotate(4deg) translate(4px, 2px); } .pgrid .tile.piled::after { transform:rotate(-3.5deg) translate(-4px, 3px); }
 </style>
 </head>
 <body>
@@ -432,12 +375,6 @@
         (not confidential) with redirect URI <code id="redirecturi"></code>, then paste its Client ID.
       </p>
       <input id="clientid" spellcheck="false" style="width:100%;padding:8px;font:12px monospace;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">
-      <label for="photoproxy" style="display:block;margin-top:10px"><strong>Photo proxy address</strong> (optional)</label>
-      <p class="status" style="margin:4px 0 8px">
-        Used to read photo pixels (colours, cut-outs) when iNaturalist's photo servers refuse. Clear the box to use the default
-        (<code>https://inat-photos.richardgg.workers.dev/</code>).
-      </p>
-      <input id="photoproxy" spellcheck="false" placeholder="https://…workers.dev/" style="width:100%;padding:8px;font:12px monospace;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)">
     </details>
     <div class="row">
       <button id="load" title="Fetch only observations newer than the cache; reuses cached taxonomy">Check for new observations</button>
@@ -464,47 +401,47 @@
   </div>
 
   <div id="results" hidden>
-    <div class="tabs" role="tablist">
-      <button id="tabRecent" role="tab"><i data-i="images"></i><span>Photos</span></button>
-      <button id="tabExplore" role="tab"><i data-i="compass"></i><span>Nearby</span></button>
-      <button id="tabWeb" role="tab" aria-haspopup="dialog"><i data-i="network"></i><span>Web</span></button>
-      <button id="tabWorld" role="tab" aria-haspopup="dialog"><i data-i="globe"></i><span>World</span></button>
-    </div>
-    <div id="iconbar">
-      <div id="fbtns" class="ibgroup">
-        <button class="ib tb" id="bsort" aria-label="Sort" title="Sort: by date, taxonomy or place"><i data-i="arrow-up-down"></i></button>
-        <button class="ib tb" id="bsearch" aria-label="Jump to" title="Jump to a group or species"><i data-i="search"></i></button>
-        <button class="ib tb" id="bdate" aria-label="Date" title="Date"><i data-i="calendar"></i></button>
-        <button class="ib tb" id="areabtn" aria-label="Map area" title="Map area" aria-expanded="false"><i data-i="map-pin"></i></button>
-        <button class="ib tb" id="bclass" aria-label="Groups" title="Groups (birds, plants…)"><i data-i="paw-print"></i></button>
-        <button class="ib tb" id="brare" aria-label="Rarity" title="Rare species" hidden><i data-i="gem"></i></button>
-        <button class="ib tb" id="bcmp" aria-label="Compare" title="Compare with another user" hidden><i data-i="git-compare"></i></button>
-        <button class="ib tb" id="bfav" aria-label="Favourites" title="Favourite photos"><i data-i="star"></i></button>
-      </div>
-      <span class="sp1"></span>
-      <div class="ibgroup">
-        <span id="galTools" class="ibgroup">
-          <button class="ib tb" id="runique" aria-label="Unique species" title="One photo per species, using your starred (or newest) observation"><i data-i="layers"></i></button>
-          <button class="ib tb" id="expcol" aria-label="Collapse all" title="Collapse all"><i data-i="chevrons-down-up"></i></button>
-          <button class="ib tb" id="shuffle" aria-label="Shuffle" title="Randomise the order. Tap again for a new order."><i data-i="shuffle"></i></button>
-          <button class="ib tb" id="unshuffle" aria-label="Default order" title="Back to the default order" hidden><i data-i="rotate-ccw"></i></button>
-        </span>
-      </div>
+    <div class="tabs" role="toolbar" aria-label="Sort, filter and location">
+      <button id="bsort" aria-label="Sort"><i data-i="arrow-up-down"></i><span id="sortlabel">Latest</span></button>
+      <button id="bfilter" aria-label="Filter"><i data-i="filter"></i><span>Filter</span></button>
+      <button id="areabtn" aria-label="Location" aria-expanded="false"><i data-i="map-pin"></i><span>Location</span></button>
+      <button id="bcmp" aria-label="Compare" hidden><i data-i="git-compare"></i><span>Compare</span></button>
     </div>
     <div id="controls">
     <div id="summary" class="status"></div>
     <button class="secondary" id="loadall" hidden style="margin:0 0 8px">Load full history</button>
     <div id="filterwrap">
       <div id="chips"></div>
-      <div class="card fpanel" id="psearch" hidden>
-        <div id="jumpwrap" hidden>
-          <p class="status" style="margin:0 0 4px">Jump to a group or species in the list</p>
-          <input type="search" id="jump" placeholder="Jump to…" autocomplete="off" spellcheck="false"
-                 style="width:100%;padding:9px 12px;font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)">
-          <div id="jumpsug" hidden></div>
+      <div class="card fpanel" id="psort" hidden>
+        <h4>Sort</h4>
+        <div id="sortchips" class="clsrow" role="group" aria-label="Sort the photos"></div>
+        <p class="status" style="margin:6px 0 0">Latest groups by date, Rarest puts the species with the fewest iNaturalist observations first, Taxonomy and Place group by the tree of life and by where they were seen, and Common lists the most observed species around a place.</p>
+        <div id="fsGroupMode">
+          <h4>Same species</h4>
+          <div id="gmodechips" class="clsrow" role="group" aria-label="How to group observations of the same species"></div>
+        </div>
+        <h4>Order</h4>
+        <div class="clsrow">
+          <button type="button" class="cls" id="shuffle">Shuffle</button>
+          <button type="button" class="cls" id="unshuffle" hidden>Back to default order</button>
         </div>
       </div>
-      <div class="card fpanel" id="pdate" hidden>
+      <div class="card fpanel" id="pfilter" hidden>
+        <div id="fsJump">
+          <h4>Jump to</h4>
+          <div id="jumpwrap">
+            <input type="search" id="jump" placeholder="A group or species…" autocomplete="off" spellcheck="false"
+                   style="width:100%;padding:9px 12px;font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)">
+            <div id="jumpsug" hidden></div>
+          </div>
+        </div>
+        <h4>Group</h4>
+        <div id="fclasses" class="clsrow" role="group" aria-label="Filter by group (none selected = all)"></div>
+        <div id="fsFav">
+          <h4>Favourite photos</h4>
+          <div id="ffav" class="clsrow" role="group" aria-label="Favourite photo status"></div>
+        </div>
+        <h4>Date</h4>
         <select id="datesel" aria-label="Date filter" style="width:100%">
           <option value="all">All dates</option><option value="week">This week</option>
           <option value="month">This month</option><option value="year">This year</option>
@@ -515,30 +452,13 @@
           <label class="status">to <input type="date" id="dto"></label>
         </div>
       </div>
-      <div class="card fpanel" id="pclass" hidden>
-        <div id="fclasses" class="clsrow" role="group" aria-label="Filter by group (none selected = all)"></div>
-      </div>
       <div class="card fpanel" id="pcmp" hidden>
+        <h4>Compare</h4>
         <p class="status" style="margin:0 0 6px">Compare with (pick any number):</p>
         <div id="cmppeople" class="clsrow" role="group" aria-label="People to compare with"></div>
         <div id="cmpchips" class="clsrow" role="group" aria-label="Compare" style="margin-top:8px"></div>
         <p class="status" id="cmpnote" style="margin:6px 0 0"></p>
         <button class="secondary" id="cmpload" hidden style="margin-top:8px">Load my observations</button>
-      </div>
-      <div class="card fpanel" id="prare" hidden>
-        <p class="status" style="margin:0 0 6px">Show only species with fewer observations on iNaturalist than:</p>
-        <div id="rarechips" class="clsrow" role="group" aria-label="Rarity thresholds"></div>
-        <div id="rareopts" class="clsrow" role="group" style="margin-top:8px"></div>
-        <p class="status" id="rarenote" style="margin:8px 0 0"></p>
-        <button class="secondary" id="rarecheck" hidden style="margin-top:8px">Check rarity</button>
-      </div>
-      <div class="card fpanel" id="psort" hidden>
-        <div id="sortchips" class="clsrow" role="group" aria-label="Sort the photos"></div>
-        <p class="status" style="margin:6px 0 0">Group the photos by when they were taken, by the tree of life, or by where they were seen.</p>
-      </div>
-      <div class="card fpanel" id="pfav" hidden>
-        <div id="ffav" class="clsrow" role="group" aria-label="Favourite photo status"></div>
-        <p class="status" style="margin:6px 0 0">Find species that still need a favourite photo, have new observations since you chose one, or observations other people have favourited.</p>
       </div>
       <div class="card" id="areapanel" hidden>
         <p class="status" style="margin:0 0 8px">Pan and zoom the map: the orange circle always fits the current view. Turn the filter on and only observations inside the circle are shown in every view.</p>
@@ -577,36 +497,8 @@
       <button class="secondary" id="expmore" hidden style="margin-top:10px">Show more</button>
     </div>
   </div>
+<div id="sheetbg" hidden></div>
 </main>
-
-<div id="web" role="dialog" aria-modal="true" aria-label="Species web" hidden>
-  <canvas id="webcanvas"></canvas>
-  <div id="webbar">
-    <button class="ib" id="webclose" aria-label="Close"><i data-i="x"></i></button>
-    <span id="webtitle"></span>
-    <button class="ib" id="webcolour" aria-label="Arrange by colour" title="Arrange by average colour" aria-pressed="false"><i data-i="palette"></i></button>
-    <button class="ib" id="webfit" aria-label="Fit to screen" title="Fit to screen"><i data-i="locate-fixed"></i></button>
-  </div>
-  <button id="webinfo" type="button" hidden>
-    <span id="webname"></span><span id="websci"></span><span id="webrank"></span>
-  </button>
-</div>
-
-<div id="world" role="dialog" aria-modal="true" aria-label="Top animal per country" hidden>
-  <div id="worldmap"></div>
-  <div id="worldbar">
-    <button class="ib" id="worldclose" aria-label="Close"><i data-i="x"></i></button>
-    <span id="worldtitle"></span>
-    <div id="worldmode" role="group" aria-label="Whose observations">
-      <button type="button" data-mode="all" class="on">Everyone</button><button type="button" data-mode="mine">Mine</button>
-    </div>
-  </div>
-  <div id="worldchips" role="group" aria-label="Animal group"></div>
-  <div id="worldsheet" hidden>
-    <div id="worldsheethead"><span><b id="worldcountry"></b><span id="worldnote"></span></span><button class="ib" id="worldsheetclose" aria-label="Close list"><i data-i="x"></i></button></div>
-    <ol id="worldlist"></ol>
-  </div>
-</div>
 
 <div id="toast"></div>
 
@@ -642,7 +534,7 @@ const KEY = 'inat_token';
 const SHOWN_RANKS = new Set(['kingdom','phylum','class','order','family','genus']);
 const $ = id => document.getElementById(id);
 // Lucide icons (https://lucide.dev, ISC licence), inlined so there is no network dependency.
-const ICONS = {"images":"<path d=\"M18 22H4a2 2 0 0 1-2-2V6\"/> <path d=\"m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18\"/> <circle cx=\"12\" cy=\"8\" r=\"2\"/> <rect width=\"16\" height=\"16\" x=\"6\" y=\"2\" rx=\"2\"/>","arrow-up-down":"<path d=\"m21 16-4 4-4-4\"/> <path d=\"M17 20V4\"/> <path d=\"m3 8 4-4 4 4\"/> <path d=\"M7 4v16\"/>","clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","palette":"<path d=\"M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\"/> <circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","scissors":"<circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M8.12 8.12 12 12\"/> <path d=\"M20 4 8.12 15.88\"/> <circle cx=\"6\" cy=\"18\" r=\"3\"/> <path d=\"M14.8 14.8 20 20\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
+const ICONS = {"filter":"<path d=\"M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z\"/>","images":"<path d=\"M18 22H4a2 2 0 0 1-2-2V6\"/> <path d=\"m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18\"/> <circle cx=\"12\" cy=\"8\" r=\"2\"/> <rect width=\"16\" height=\"16\" x=\"6\" y=\"2\" rx=\"2\"/>","arrow-up-down":"<path d=\"m21 16-4 4-4-4\"/> <path d=\"M17 20V4\"/> <path d=\"m3 8 4-4 4 4\"/> <path d=\"M7 4v16\"/>","clock":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 6v6l4 2\"/>","list-tree":"<path d=\"M8 5h13\"/> <path d=\"M13 12h8\"/> <path d=\"M13 19h8\"/> <path d=\"M3 10a2 2 0 0 0 2 2h3\"/> <path d=\"M3 5v12a2 2 0 0 0 2 2h3\"/>","map":"<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\"/> <path d=\"M15 5.764v15\"/> <path d=\"M9 3.236v15\"/>","compass":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\"/>","search":"<path d=\"m21 21-4.34-4.34\"/> <circle cx=\"11\" cy=\"11\" r=\"8\"/>","calendar":"<path d=\"M8 2v3\"/> <path d=\"M16 2v3\"/> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/> <path d=\"M3 9h18\"/>","map-pin":"<path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"/> <circle cx=\"12\" cy=\"10\" r=\"3\"/>","paw-print":"<circle cx=\"11\" cy=\"4\" r=\"2\"/> <circle cx=\"18\" cy=\"8\" r=\"2\"/> <circle cx=\"20\" cy=\"16\" r=\"2\"/> <path d=\"M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z\"/>","star":"<path d=\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\"/>","chevrons-down-up":"<path d=\"m7 20 5-5 5 5\"/> <path d=\"m7 4 5 5 5-5\"/>","chevrons-up-down":"<path d=\"m7 15 5 5 5-5\"/> <path d=\"m7 9 5-5 5 5\"/>","shuffle":"<path d=\"m18 14 4 4-4 4\"/> <path d=\"m18 2 4 4-4 4\"/> <path d=\"M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22\"/> <path d=\"M2 6h1.972a4 4 0 0 1 3.6 2.2\"/> <path d=\"M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/>","layers":"<path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/> <path d=\"M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12\"/> <path d=\"M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17\"/>","external-link":"<path d=\"M15 3h6v6\"/> <path d=\"M10 14 21 3\"/> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/>","x":"<path d=\"M18 6 6 18\"/> <path d=\"m6 6 12 12\"/>","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","chevron-left":"<path d=\"m15 18-6-6 6-6\"/>","chevron-right":"<path d=\"m9 18 6-6-6-6\"/>","globe":"<circle cx=\"12\" cy=\"12\" r=\"10\"/> <path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/> <path d=\"M2 12h20\"/>","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/> <path d=\"M3 3v5h5\"/> <path d=\"M12 7v5l4 2\"/>","network":"<rect x=\"16\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"2\" y=\"16\" width=\"6\" height=\"6\" rx=\"1\"/> <rect x=\"9\" y=\"2\" width=\"6\" height=\"6\" rx=\"1\"/> <path d=\"M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3\"/> <path d=\"M12 12V8\"/>","palette":"<path d=\"M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z\"/> <circle cx=\"13.5\" cy=\"6.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"17.5\" cy=\"10.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"6.5\" cy=\"12.5\" r=\".5\" fill=\"currentColor\"/> <circle cx=\"8.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","scissors":"<circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M8.12 8.12 12 12\"/> <path d=\"M20 4 8.12 15.88\"/> <circle cx=\"6\" cy=\"18\" r=\"3\"/> <path d=\"M14.8 14.8 20 20\"/>","locate-fixed":"<line x1=\"2\" x2=\"5\" y1=\"12\" y2=\"12\"/> <line x1=\"19\" x2=\"22\" y1=\"12\" y2=\"12\"/> <line x1=\"12\" x2=\"12\" y1=\"2\" y2=\"5\"/> <line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/> <circle cx=\"12\" cy=\"12\" r=\"7\"/> <circle cx=\"12\" cy=\"12\" r=\"3\"/>","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/> <path d=\"M21 3v5h-5\"/> <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/> <path d=\"M8 16H3v5\"/>"};
 ICONS.heart = '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>';
 ICONS['share-2'] = "<circle cx=\"18\" cy=\"5\" r=\"3\"/> <circle cx=\"6\" cy=\"12\" r=\"3\"/> <circle cx=\"18\" cy=\"19\" r=\"3\"/> <line x1=\"8.59\" x2=\"15.42\" y1=\"13.51\" y2=\"17.49\"/> <line x1=\"15.41\" x2=\"8.59\" y1=\"6.51\" y2=\"10.49\"/>";
 ICONS['git-compare'] = "<circle cx=\"18\" cy=\"18\" r=\"3\"/> <circle cx=\"6\" cy=\"6\" r=\"3\"/> <path d=\"M13 6h3a2 2 0 0 1 2 2v7\"/> <path d=\"M11 18H8a2 2 0 0 1-2-2V9\"/>";
@@ -1381,7 +1273,7 @@ viewer.track.addEventListener('scroll', () => {
   const i = Math.round(viewer.track.scrollLeft / viewer.track.clientWidth);
   if (i !== viewer.idx) { viewer.idx = i; viewer.counter(); }
 });
-window.addEventListener('popstate', () => { if (viewer.isOpen) viewer.hide(); else if (detail.isOpen) detail.hide(); else if (web.isOpen) web.hide(); else if (world.isOpen) world.hide(); });
+window.addEventListener('popstate', () => { if (viewer.isOpen) viewer.hide(); else if (detail.isOpen) detail.hide(); });
 $('vclose').onclick = () => viewer.close();
 $('vprev').onclick = () => viewer.go(-1);
 $('vnext').onclick = () => viewer.go(1);
@@ -1462,7 +1354,7 @@ function treeItems(root, meta) {
 
 // Recent: observations (or one per species) newest first, grouped [year][month][day]; flat when shuffled or rarity-sorted.
 function recentItems(obs) {
-  let list = recentUnique ? uniqueSpecies(obs) : [...obs];
+  let list = groupMode === 'species' ? uniqueSpecies(obs) : groupMode === 'day' ? dailySpecies(obs) : [...obs];
   list = list.filter(o => photosOf(o).length); // the gallery is photos only
   const rc = rarityCmp(), shuffled = recentSeed != null;
   list = raritySort ? list.sort((a, b) => rc(rarityOf(a), rarityOf(b)) || recentDate(b).localeCompare(recentDate(a)))
@@ -1497,7 +1389,7 @@ if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('.
 function polTile(o) {
   const ph = photosOf(o);
   const t = document.createElement('div');
-  t.className = 'tile'; markBrow(t, o.tid, o.id);
+  t.className = 'tile' + (o._pile ? ' piled' : ''); markBrow(t, o.tid, o.id);
   t.style.setProperty('--rot', ((Math.imul(o.id, 2654435761) >>> 0) % 1300 / 100 - 6.5).toFixed(2) + 'deg'); // a random tilt of up to 6.5 degrees, fixed per observation
   t.title = `${o.common || o.name}${recentDate(o) ? ' · ' + recentDate(o) : ''}${o._n != null ? ` · ${o._n} obs` : ''}`;
   const b = document.createElement('button');
@@ -1564,7 +1456,7 @@ function renderGallery(obs) {
   if (gal.drawnSort !== view) gal.limit = GAL_PAGE;
   gal.drawnSort = view;
   jumpIndex = null; // rebuilt on next use
-  if (!gal.items.length) { gal.cells = []; el.replaceChildren(); $('pathbar').hidden = true; syncExpCol(); return; }
+  if (!gal.items.length) { gal.cells = []; el.replaceChildren(); $('pathbar').hidden = true; return; }
   drawGallery();
 }
 function drawGallery() {
@@ -1593,7 +1485,6 @@ function drawGallery() {
     el.append(more);
   }
   spanTags();
-  syncExpCol();
   $('pathbar').dataset.sig = '';
   schedulePath();
 }
@@ -1745,8 +1636,8 @@ try { const v = localStorage.getItem(VIEW_KEY); view = ['tree', 'place', 'recent
 if (isGal(view)) lastGal = view;
 
 const UNIQUE_KEY = 'inat_recent_unique';
-let recentSeed = null, recentUnique = false;
-try { recentUnique = localStorage.getItem(UNIQUE_KEY) === '1'; } catch {}
+let recentSeed = null, groupMode = 'all'; // how observations of one species are grouped: 'all' (each on its own), 'day' (one per species per day), 'species' (one per species)
+try { groupMode = localStorage.getItem('inat_group_mode') || (localStorage.getItem(UNIQUE_KEY) === '1' ? 'species' : 'all'); if (!['all', 'day', 'species'].includes(groupMode)) groupMode = 'all'; } catch {}
 
 // One entry per species: my starred observation if there is one, otherwise the newest one with a photo.
 // _n = how many observations of the species, _last = date it was last seen.
@@ -1760,8 +1651,14 @@ function uniqueSpecies(obs) {
   return [...groups.values()].map(g => {
     const byNew = [...g].sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id);
     const rep = thumbObs(g);
-    return { ...rep, _n: g.length, _last: byNew[0].date || '' };
+    return { ...rep, _n: g.length, _last: byNew[0].date || '', _pile: g.length > 1 };
   });
+}
+// One entry per species per day (the day's best photo).
+function dailySpecies(obs) {
+  const groups = new Map();
+  for (const o of obs) { const k = `${o.date || ''}|${speciesIdOf(o) ?? o.tid}`; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(o); }
+  return [...groups.values()].map(g => { const rep = thumbObs(g); return { ...rep, _n: g.length, _last: rep.date || '', _pile: g.length > 1 }; });
 }
 const recentDate = o => o._last ?? o.date ?? '';
 
@@ -1823,7 +1720,8 @@ function rarityBadge(r) {
 // rarity[speciesId] = { n: observations on iNaturalist, iucn: IUCN level (10 LC … 70 EX) or 0, st: status label, thr: threatened flag, t: fetched at }
 let rarity = {};
 const RARITY_TTL = 30 * 864e5;
-let rareMax = 0, rareConcern = false, raritySort = '', rarityBusy = false;
+let raritySort = '', rarityBusy = false; // raritySort 'rare' = the Rarest sort (fewest iNaturalist observations first)
+try { raritySort = localStorage.getItem('inat_rsort') === 'rare' ? 'rare' : ''; } catch {}
 const rarityOf = o => { const id = speciesIdOf(o); return id ? rarity[id] : undefined; };
 // Prefer the global IUCN assessment, then other global lists, then place-specific ones.
 function pickStatus(t) {
@@ -1835,10 +1733,9 @@ function pickStatus(t) {
 }
 // Comparator for the active sort on rarity records (unknown species last): 'rare' = fewest observations, 'threat' = most threatened, then fewest observations.
 function rarityCmp() {
-  const lvl = r => r.iucn >= 20 && r.iucn <= 50 ? 100 - r.iucn : r.thr ? 60 : 1000; // CR 50 → 50, EN → 60, VU → 70, NT → 80; flagged-only sits between EN and VU
   return (a, b) => {
     if (!a || !b) return a ? -1 : b ? 1 : 0;
-    return (raritySort === 'threat' ? lvl(a) - lvl(b) : 0) || a.n - b.n;
+    return a.n - b.n;
   };
 }
 const isConcern = r => !!r && (r.iucn >= 20 || r.thr);
@@ -1865,22 +1762,14 @@ async function loadRarityData() {
         rarity[t.id] = { n: t.observations_count || 0, iucn: cs?.iucn || 0, st: cs ? (cs.status_name || cs.status || '') : '', code: cs?.status || '', auth: cs?.authority || '', place: cs?.place?.display_name || '', thr: !!t.threatened, v: 2, t: Date.now() };
       }
       await idb.set('rarity', rarity);
-      refreshRarityUI(); show(true);
+      show(true);
       await sleep(700);
     }
     status(`Rarity checked for ${missing.length} species.`);
   } catch (e) { log(`rarity lookup failed: ${e.stack || e}`, 'e'); status(e.message, true); }
-  finally { rarityBusy = false; refreshRarityUI(); }
+  finally { rarityBusy = false; }
 }
-function rarityMatches(o) {
-  const r = rarityOf(o);
-  if (!r) return false;
-  return (rareMax > 0 && r.n <= rareMax) || (rareConcern && isConcern(r));
-}
-const rarityActive = () => rareMax > 0 || rareConcern;
 let cmpMode = ''; // '' | 'missing' (species the other person hasn't seen) | 'common' (seen by both)
-const DEFAULT_PHOTO_PROXY = 'https://inat-photos.richardgg.workers.dev/'; // a Cloudflare Worker that forwards iNaturalist photos with permission to read their pixels
-const getPhotoProxy = () => { try { return (localStorage.getItem('inat_photo_proxy') || '').trim() || DEFAULT_PHOTO_PROXY; } catch { return DEFAULT_PHOTO_PROXY; } };
 let favMode = ''; // '' | 'need' (2+ photos, no favourite) | 'new' (new observations since the favourite) | 'others' (faved by other users) | 'theirs' / 'mine' (someone else's account: their favourites / ones I faved)
 const CLASS_IDS = { 3: 'Aves', 40151: 'Mammalia', 26036: 'Reptilia', 20978: 'Amphibia', 47178: 'Actinopterygii',
                     47158: 'Insecta', 47119: 'Arachnida', 47115: 'Mollusca', 47126: 'Plantae', 47170: 'Fungi' };
@@ -1895,11 +1784,10 @@ function classMatch(o) {
 // Observations passing the date, group and favourite-status filters, before the area filter.
 function textFiltered() {
   const range = dateRange();
-  if (!range && !filterClasses.size && !favMode && !rarityActive() && !(cmpMode && activePartners().length)) return state.obs;
+  if (!range && !filterClasses.size && !favMode && !(cmpMode && activePartners().length)) return state.obs;
   const stats = favMode === 'need' || favMode === 'new' ? favStats() : null, act = cmpMode ? activePartners() : [];
   return state.obs.filter(o => {
     if (cmpMode && act.length && !cmpPass(o, act)) return false;
-    if (rarityActive() && !rarityMatches(o)) return false;
     if (favMode === 'others') { if (!(o.ff > 0)) return false; }
     else if (favMode === 'theirs') { if (!o.fav) return false; }
     else if (favMode === 'mine') { if (!o.mf) return false; }
@@ -1963,12 +1851,9 @@ function drawChips() {
     () => { filterClasses.clear(); try { localStorage.setItem('inat_fclass', ''); } catch {} drawFilterChips(); scheduleShow(); }, 'Clear group filter');
   if (!nearby && favMode) add({ need: 'star', theirs: 'star', others: 'heart', mine: 'user-round', new: 'refresh-cw' }[favMode], { need: 'Needs favourite', theirs: 'Their favourites', others: 'Faved by others', mine: 'Faved by me', new: 'New since favourite' }[favMode],
     () => { favMode = ''; drawFilterChips(); scheduleShow(); }, 'Clear favourite filter');
-  if (!nearby && rareMax) add('gem', `Under ${rareMax.toLocaleString()} observations worldwide`, () => { rareMax = 0; drawRarityChips(); scheduleShow(); }, 'Clear rarity filter');
-  if (!nearby && rareConcern) add('shield-alert', 'Conservation concern', () => { rareConcern = false; drawRarityChips(); scheduleShow(); }, 'Clear conservation filter');
-  if (!nearby && raritySort) add(raritySort === 'threat' ? 'shield-alert' : 'gem', raritySort === 'threat' ? 'Most threatened first' : 'Rarest first', () => { raritySort = ''; drawRarityChips(); scheduleShow(); }, 'Clear rarity sort');
   if (!nearby && cmpMode) add('git-compare', cmpLabel(cmpMode), () => { cmpMode = ''; drawCmpChips(); scheduleShow(); }, 'Clear comparison');
   const has = (id, on) => $(id).classList.toggle('has', !!on);
-  has('brare', rarityActive() || raritySort); has('bcmp', cmpMode); has('bdate', dv !== 'all'); has('areabtn', area); has('bclass', filterClasses.size); has('bfav', favMode);
+  has('bcmp', cmpMode); has('areabtn', area); has('bfilter', dv !== 'all' || filterClasses.size || favMode);
 }
 // Largest circle that fits inside the map's current view (with a little margin).
 function viewportCircle() {
@@ -1987,7 +1872,7 @@ function drawArea(a = area) {
 let suppressMove = false;
 function moveMap(fn) { suppressMove = true; try { fn(); } finally { suppressMove = false; } }
 
-const markerKey = () => `${rareMax}|${rareConcern}|${Object.keys(rarity).length}|${cmpMode}|${partners.join()}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
+const markerKey = () => `${Object.keys(rarity).length}|${cmpMode}|${partners.join()}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
 function drawAreaMarkers() {
   if (!areaMap) return;
   markerSig = markerKey();
@@ -2028,28 +1913,30 @@ async function openAreaPanel(open) {
   drawArea();
   drawAreaMarkers();
 }
-// Icon bar: each filter icon opens its own small panel (one at a time); the map-area panel is one of them too.
-const PANELS = { bsearch: 'psearch', bdate: 'pdate', bclass: 'pclass', brare: 'prare', bcmp: 'pcmp', bfav: 'pfav', bsort: 'psort' };
+// Bottom bar: Sort, Filter and Compare open a sheet each (one at a time); Location opens the map sheet.
+const PANELS = { bsort: 'psort', bfilter: 'pfilter', bcmp: 'pcmp' };
+const anyPanelOpen = () => Object.values(PANELS).some(p => !$(p).hidden) || !$('areapanel').hidden;
 function closePanels(except) {
   for (const [btn, pan] of Object.entries(PANELS)) if (pan !== except) { $(pan).hidden = true; $(btn).classList.remove('open'); }
   if (except !== 'areapanel' && !$('areapanel').hidden) { openAreaPanel(false); $('areabtn').classList.remove('open'); }
+  $('sheetbg').hidden = !anyPanelOpen();
 }
 for (const [btn, pan] of Object.entries(PANELS)) {
   $(btn).onclick = () => {
     const opening = $(pan).hidden;
     closePanels(pan);
-    $(pan).hidden = !opening; $(btn).classList.toggle('open', opening);
-    if (opening && btn === 'bsearch') $('jump').focus();
+    $(pan).hidden = !opening; $(btn).classList.toggle('open', opening); $('sheetbg').hidden = !opening;
     if (opening && btn === 'bcmp') drawCmpChips();
-    if (opening && btn === 'bsort') drawSortChips();
-    if (opening && btn === 'brare') { refreshRarityUI(); if (rarityMissing().length) loadRarityData(); }
+    if (opening && btn === 'bsort') { drawSortChips(); drawGroupChips(); }
+    if (opening && btn === 'bfilter') { $('fsJump').hidden = $('fsFav').hidden = view === 'explore'; }
   };
 }
 $('areabtn').onclick = () => {
   closePanels('areapanel');
   const opening = $('areapanel').hidden;
-  openAreaPanel(opening); $('areabtn').classList.toggle('open', opening);
+  openAreaPanel(opening); $('areabtn').classList.toggle('open', opening); $('sheetbg').hidden = !opening;
 };
+$('sheetbg').onclick = () => closePanels();
 $('follow').onchange = () => {
   if (!areaMap) { $('follow').checked = false; return; }
   setArea($('follow').checked ? viewportCircle() : null);
@@ -3001,43 +2888,6 @@ function drawChips2(box, set, storeKey, onChange, extra) {
 const loadSet = (set, key) => { try { (localStorage.getItem(key) || '').split(',').filter(c => EXP_CLASSES.some(x => x[0] === c)).forEach(c => set.add(c)); } catch {} };
 // Same chips as a filter on my own observations (Recent, Taxonomy, Place).
 loadSet(filterClasses, 'inat_fclass');
-// Shuffling replaces any rarity sort.
-function stopRaritySort() { if (raritySort) { raritySort = ''; drawRarityChips(); drawChips(); } }
-// Rarity panel: threshold chips, conservation, sort, and the data-loading status.
-function drawRarityChips() {
-  const box = $('rarechips'), opts = $('rareopts');
-  box.replaceChildren(); opts.replaceChildren();
-  for (const n of [100, 1000, 10000, 100000]) {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'cls' + (rareMax === n ? ' on' : ''); b.innerHTML = ic('gem', 14) + ` ${n.toLocaleString()}`;
-    b.setAttribute('aria-pressed', String(rareMax === n));
-    b.onclick = () => { rareMax = rareMax === n ? 0 : n; drawRarityChips(); scheduleShow(); };
-    box.append(b);
-  }
-  const mk = (icon, text, on, fn) => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'cls' + (on ? ' on' : ''); b.innerHTML = ic(icon, 14) + ' ' + text; b.setAttribute('aria-pressed', String(on)); b.onclick = fn; opts.append(b);
-  };
-  mk('shield-alert', 'Conservation concern', rareConcern, () => { rareConcern = !rareConcern; drawRarityChips(); scheduleShow(); });
-  for (const [mode, icon, text] of [['rare', 'gem', 'Rarest first'], ['threat', 'shield-alert', 'Most threatened first']]) {
-    mk(icon, text, raritySort === mode, () => {
-      raritySort = raritySort === mode ? '' : mode; // the two sorts exclude each other
-      if (raritySort) { recentSeed = null; shuffleSeed = null; syncRecentTools(); } // sorting and shuffling exclude each other
-      drawRarityChips(); scheduleShow();
-    });
-  }
-  refreshRarityUI();
-}
-function refreshRarityUI() {
-  if (!$('rarenote')) return;
-  const ids = raritySpeciesIds(), missing = rarityMissing().length;
-  $('rarenote').textContent = !ids.length ? 'No species to check yet.'
-    : missing ? `Rarity known for ${ids.length - missing} of ${ids.length} species${rarityBusy ? ' (checking…)' : ''}.`
-    : `Rarity known for all ${ids.length} species. Conservation status and counts are refreshed monthly.`;
-  $('rarecheck').hidden = !missing || rarityBusy;
-  $('rarecheck').textContent = `Check rarity (${missing} species)`;
-}
-$('rarecheck').onclick = loadRarityData;
 // Favourite-status chips (mutually exclusive), appended to the class chip row with live species counts.
 // Favourite filters differ with whose observations are shown: my own (curating my favourites) or someone else's.
 let lastFavOther = false;
@@ -3198,10 +3048,8 @@ function refreshViewing() {
     if (meLogin) { const b = document.createElement('button'); b.className = 'secondary'; b.textContent = 'Back to mine'; b.onclick = () => { location.href = redirectUri(); }; box.append(b); }
   }
   $('share').hidden = !(other || state.user?.login || meLogin);
-  $('bfav').hidden = false;
   if (favMode && !favModes().some(m => m[0] === favMode)) { favMode = ''; drawFilterChips(); drawChips(); } // e.g. a filter that only exists for my own observations
-  $('bcmp').hidden = !(other || candidates().length);
-  $('brare').hidden = !state.obs.length;
+  $('bcmp').hidden = !other; // comparing only makes sense while viewing someone else
   $('loadall').hidden = state.complete !== false;
   $('loadall').textContent = `Load full history${state.total ? ` (${state.total.toLocaleString()} observations)` : ''}`;
 }
@@ -3224,10 +3072,8 @@ function buildShareUrl() {
   if (filterClasses.size) p.set('cls', [...filterClasses].join(','));
   if (area) p.set('area', `${area.lat.toFixed(4)},${area.lng.toFixed(4)},${Math.round(area.r)}`);
   if (cmpMode) p.set('cmp', cmpMode);
-  if (rareMax) p.set('rare', rareMax);
-  if (rareConcern) p.set('concern', '1');
-  if (raritySort) p.set('rsort', raritySort);
-  if (recentUnique) p.set('uniq', '1');
+  if (raritySort && view === 'recent') p.set('rsort', 'rare');
+  if (groupMode !== 'all') p.set('uniq', groupMode);
   return `${redirectUri()}?${p}`;
 }
 $('share').onclick = async () => {
@@ -3253,34 +3099,29 @@ function applyUrlState() {
   const ar = (g('area') || '').split(',').map(Number);
   if (ar.length === 3 && ar.every(Number.isFinite) && ar[2] > 0) { area = { lat: ar[0], lng: ar[1], r: ar[2] }; $('follow').checked = true; }
   if (['missing', 'common'].includes(g('cmp'))) cmpMode = g('cmp');
-  if ([100, 1000, 10000, 100000].includes(+g('rare'))) rareMax = +g('rare');
-  if (g('concern') === '1') rareConcern = true;
-  if (g('rsort') === '1' || g('rsort') === 'rare') raritySort = 'rare'; else if (g('rsort') === 'threat') raritySort = 'threat';
-  if (g('uniq') === '1') { recentUnique = true; syncRecentTools(); }
+  if (g('rsort') === '1' || g('rsort') === 'rare' || g('rsort') === 'threat') { raritySort = 'rare'; view = 'recent'; }
+  if (['day', 'species'].includes(g('uniq')) || g('uniq') === '1') { groupMode = g('uniq') === 'day' ? 'day' : 'species'; syncRecentTools(); }
 }
 
 const scrollPos = {}; // scroll offset remembered per tab
+const SORTS = [['recent', 'Latest'], ['rare', 'Rarest'], ['tree', 'Taxonomy'], ['place', 'Place'], ['explore', 'Common']];
+const sortId = () => view === 'recent' && raritySort ? 'rare' : view;
+function updateSortUi() { $('sortlabel').textContent = SORTS.find(x => x[0] === sortId())[1]; }
 function setView(v) {
   if (v !== view) scrollPos[view] = scrollY;
   view = v;
   if (isGal(v)) lastGal = v;
+  if (v !== 'recent' && raritySort) { raritySort = ''; try { localStorage.removeItem('inat_rsort'); } catch {} }
   try { localStorage.setItem(VIEW_KEY, v); } catch {}
   const g = isGal(v);
-  $('tabRecent').classList.toggle('active', g);
-  $('tabExplore').classList.toggle('active', v === 'explore');
   $('gal').hidden = !g;
   $('pathbar').hidden = true;
   $('explore').hidden = v !== 'explore';
-  $('galTools').hidden = !g;
-  $('bsort').hidden = !g;
-  $('jumpwrap').hidden = !g;
-  $('bsearch').hidden = !g;
-  if (!g) { $('psearch').hidden = true; $('bsearch').classList.remove('open'); $('psort').hidden = true; $('bsort').classList.remove('open'); }
-  document.body.classList.toggle('stkview', g); // dark mode: a felt-green desk behind the Polaroids
-  syncRecentTools();
-  document.body.classList.toggle('vexplore', v === 'explore'); // Nearby keeps only the date and group filter buttons
-  if (v === 'explore') closePanels();
+  document.body.classList.toggle('stkview', g); // the dot-grid desk behind the Polaroids
+  document.body.classList.toggle('vexplore', v === 'explore'); // Common keeps only the date and group filters
   $('locTools').hidden = v !== 'place';
+  closePanels();
+  syncRecentTools(); updateSortUi();
   if (v === 'explore') { initExpMap(); drawChips(); renderExplore(); if (explore.selected && !explore.items.length && !explore.loading) loadExplore(); }
   if (state.obs.length) show();
   // each sort keeps its own scroll position (re-applied once more next frame in case layout settles late)
@@ -3288,33 +3129,28 @@ function setView(v) {
   scrollTo({ top: y });
   requestAnimationFrame(() => scrollTo({ top: y }));
 }
-const SORTS = [['recent', 'By date', 'calendar'], ['tree', 'Taxonomy', 'list-tree'], ['place', 'By place', 'map']];
+function chooseSort(k) {
+  closePanels();
+  if (k === 'rare') {
+    raritySort = 'rare'; shuffleSeed = recentSeed = null; try { localStorage.setItem('inat_rsort', 'rare'); } catch {}
+    if (view !== 'recent') setView('recent'); else { syncRecentTools(); updateSortUi(); drawChips(); show(true); }
+    if (rarityMissing().length) loadRarityData();
+    return;
+  }
+  if (raritySort) { raritySort = ''; try { localStorage.removeItem('inat_rsort'); } catch {} }
+  if (view === k) { updateSortUi(); show(true); } else setView(k);
+}
 function drawSortChips() {
   const box = $('sortchips'); box.replaceChildren();
   for (const [k, label] of SORTS) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (view === k ? ' on' : ''); b.textContent = label;
-    b.setAttribute('aria-pressed', String(view === k));
-    b.onclick = () => { closePanels(); if (view !== k) setView(k); };
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (sortId() === k ? ' on' : ''); b.textContent = label;
+    b.setAttribute('aria-pressed', String(sortId() === k));
+    b.onclick = () => chooseSort(k);
     box.append(b);
   }
 }
-// Tapping a tab switches to it; tapping the already-active tab scrolls it back to the top.
-// Web and World are full-screen but leave the tab bar visible (and usable): tapping another tab closes them.
-function syncOverlayTabs() {
-  const tabs = document.querySelector('.tabs'), open = web.isOpen || world.isOpen;
-  if (open) document.documentElement.style.setProperty('--tabs-h', tabs.offsetHeight + 'px');
-  document.body.classList.toggle('ovl', open);
-  tabs.classList.toggle('dim', open);
-  $('tabWeb').classList.toggle('on-ovl', web.isOpen); $('tabWorld').classList.toggle('on-ovl', world.isOpen);
-}
-function tabTap(v) {
-  for (const o of [web, world]) if (o.isOpen) o.close();
-  if (v === view) scrollTo({ top: 0, behavior: 'smooth' });
-  else setView(v);
-}
-$('tabRecent').onclick = () => tabTap(isGal(view) ? view : lastGal);
-$('tabExplore').onclick = () => tabTap('explore');
-
+const syncTabsHeight = () => document.documentElement.style.setProperty('--tabs-h', document.querySelector('.tabs').offsetHeight + 'px');
+new ResizeObserver(syncTabsHeight).observe(document.querySelector('.tabs'));
 let favHintToasted = false;
 function updateFavHint() {
   const missing = !isOther() && state.obs.length > 0 && state.obs.every(o => o.fav === undefined);
@@ -3472,8 +3308,6 @@ $('forget').onclick = () => {
 $('oauth').onclick = oauthLogin;
 $('redirecturi').textContent = redirectUri();
 $('clientid').value = clientId();
-$('photoproxy').value = getPhotoProxy();
-$('photoproxy').onchange = () => { try { localStorage.setItem('inat_photo_proxy', $('photoproxy').value.trim()); } catch {} toast('Photo proxy saved'); };
 $('clearcache').onclick = async () => {
   await idb.clear(); state = { user: null, obs: [], complete: true, total: null, names: {}, places: {}, updated: null }; people = []; partners = []; cmpData = new Map(); mine = { obs: [] }; renderPeople();
   $('results').hidden = true; log('all cached data cleared'); status('Cache cleared.');
@@ -3501,88 +3335,26 @@ function toast(msg) {
   }
 })();
 
+const GMODES = [['all', 'Every observation'], ['day', 'One per species per day'], ['species', 'One per species']];
+function drawGroupChips() {
+  $('fsGroupMode').hidden = view !== 'recent';
+  const box = $('gmodechips'); box.replaceChildren();
+  for (const [k, label] of GMODES) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (groupMode === k ? ' on' : ''); b.textContent = label;
+    b.setAttribute('aria-pressed', String(groupMode === k));
+    b.onclick = () => { groupMode = k; try { localStorage.setItem('inat_group_mode', k); } catch {} drawGroupChips(); show(true); };
+    box.append(b);
+  }
+}
 function syncRecentTools() {
   $('unshuffle').hidden = shuffleSeed == null && recentSeed == null;
-  $('runique').hidden = view !== 'recent';
-  $('runique').classList.toggle('active', recentUnique);
-  $('runique').setAttribute('aria-pressed', String(recentUnique));
+  $('shuffle').classList.toggle('on', !$('unshuffle').hidden);
+  drawGroupChips();
 }
-$('runique').onclick = () => {
-  recentUnique = !recentUnique;
-  try { localStorage.setItem(UNIQUE_KEY, recentUnique ? '1' : '0'); } catch {}
-  syncRecentTools(); show(true);
-};
-// one seed shuffles every sort of the gallery
-$('shuffle').onclick = () => { shuffleSeed = recentSeed = Math.floor(Math.random() * 2 ** 31); stopRaritySort(); syncRecentTools(); show(true); };
-$('unshuffle').onclick = () => { shuffleSeed = recentSeed = null; syncRecentTools(); show(true); };
-syncRecentTools();
-// ---------- the icon bar sticks to the top: it tucks away when scrolling down and returns on any scroll up ----------
-(() => {
-  const bar = $('iconbar');
-  let lastY = scrollY, hidden = false, frame = 0;
-  const setVar = () => document.documentElement.style.setProperty('--bar-h', hidden ? '0px' : `${bar.offsetHeight}px`);
-  const panelOpen = () => !$('jumpsug').hidden || [...document.querySelectorAll('.fpanel, #areapanel')].some(p => !p.hidden);
-  function setHidden(v) {
-    if (v === hidden) return;
-    hidden = v;
-    bar.style.top = v ? `-${bar.offsetHeight + 4}px` : '0px';
-    if (v && bar.contains(document.activeElement)) document.activeElement.blur();
-    setVar();
-  }
-  function update() {
-    frame = 0;
-    const y = scrollY, dy = y - lastY;
-    bar.classList.toggle('stuck', y > 0 && bar.getBoundingClientRect().top <= 0.5 && !hidden);
-    if (y < 80) { lastY = y; setHidden(false); return; }
-    if (Math.abs(dy) < 4) return;
-    lastY = y;
-    if (dy > 0) { if (y > 120 && !panelOpen()) setHidden(true); }
-    else setHidden(false);
-  }
-  addEventListener('scroll', () => { if (!frame) frame = requestAnimationFrame(update); }, { passive: true });
-  addEventListener('resize', setVar);
-  new ResizeObserver(setVar).observe(bar);
-  setVar();
-})();
-
-// ---------- swipe left/right to change tab ----------
-(() => {
-  const order = ['gal', 'explore'];
-  const results = $('results');
-  let sx = 0, sy = 0, st = 0, ok = false;
-  // don't hijack horizontal gestures that belong to something else (carousels, maps, chip rows, inputs, overlays)
-  const blocked = el => {
-    if (!el.closest) return true;
-    if (el.closest('input, textarea, select, .leaflet-container, .ctrack, .clsrow, #detail, #viewer, #web, #world, #jumpsug, #expsug, [data-noswipe]')) return true;
-    for (let e = el; e && e !== results; e = e.parentElement) {
-      const cs = getComputedStyle(e);
-      if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 2) return true;
-    }
-    return false;
-  };
-  results.addEventListener('touchstart', e => {
-    const t = e.touches[0];
-    ok = e.touches.length === 1 && t.clientX > 28 && t.clientX < innerWidth - 28 && !blocked(e.target); // edges belong to the browser's back gesture
-    sx = t.clientX; sy = t.clientY; st = Date.now();
-  }, { passive: true });
-  results.addEventListener('touchend', e => {
-    if (!ok) return;
-    ok = false;
-    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6 || Date.now() - st > 700) return;
-    const next = order.indexOf(isGal(view) ? 'gal' : view) + (dx < 0 ? 1 : -1);
-    if (next < 0 || next >= order.length) return;
-    results.classList.remove('swipe-next', 'swipe-prev');
-    void results.offsetWidth;
-    results.classList.add(dx < 0 ? 'swipe-next' : 'swipe-prev');
-    setTimeout(() => results.classList.remove('swipe-next', 'swipe-prev'), 300);
-    const target = order[next] === 'gal' ? lastGal : order[next];
-    setView(target);
-    log(`swipe → ${target}`);
-  }, { passive: true });
-})();
-
-// ---------- jump-to search (Taxonomy / Place): autocomplete over group and species names, then scroll to the item ----------
+// one seed shuffles every sort of the gallery (a shuffle replaces the Rarest sort)
+$('shuffle').onclick = () => { if (raritySort) { raritySort = ''; try { localStorage.removeItem('inat_rsort'); } catch {} } shuffleSeed = recentSeed = Math.floor(Math.random() * 2 ** 31); syncRecentTools(); updateSortUi(); closePanels(); show(true); };
+$('unshuffle').onclick = () => { shuffleSeed = recentSeed = null; syncRecentTools(); closePanels(); show(true); };
+// ---------- jump to (in the Filter sheet): autocomplete over group and species names, then scroll to the item ----------
 let jumpIndex = null;
 function buildJumpIndex() {
   const out = [], seen = new Set();
@@ -3646,881 +3418,23 @@ $('jump').addEventListener('keydown', e => {
 });
 document.addEventListener('click', e => { if (!e.target.closest('#jumpwrap')) $('jumpsug').hidden = true; });
 
-// One button: collapses every group, or (when they are all collapsed) expands every group.
-function syncExpCol() {
-  const col = collapsed[gal.sort], all = gal.groups.length > 0 && gal.groups.every(g => col.has(g.key));
-  $('expcol').hidden = !gal.groups.length;
-  setIcon($('expcol'), all ? 'chevrons-up-down' : 'chevrons-down-up');
-  $('expcol').title = all ? 'Expand all' : 'Collapse all';
-  $('expcol').setAttribute('aria-label', $('expcol').title);
-}
-$('expcol').onclick = () => {
-  const col = collapsed[gal.sort], all = gal.groups.length > 0 && gal.groups.every(g => col.has(g.key));
-  if (all) col.clear(); else gal.groups.forEach(g => col.add(g.key));
-  drawGallery();
-  if (!all) scrollTo({ top: Math.max(0, $('gal').getBoundingClientRect().top + scrollY - barHeight() - 60) });
-};
 
 
 
-
-// ---------- Web: a full-screen honeycomb of the species, related ones side by side ----------
-// Every species is one hexagonal cell filled with its photo. Kin are placed together, so each group (genus, family, order, class...) is a
-// patch of the honeycomb with an irregular outline; thin dark borders show where one group ends and the next begins, thicker for more
-// distant relatives. The photo nearest the middle of the screen is described at the bottom. Pan, pinch, double-tap (and slide) to zoom.
-const web = (() => {
-  const root = $('web'), cv = $('webcanvas'), ctx = cv.getContext('2d');
-  const KEEP = new Set(['kingdom', 'class', 'order', 'family', 'genus']);
-  const S = 30, SQ3 = Math.sqrt(3);                       // hexagon "radius" (centre to corner) in world units
-  const D = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]]; // axial neighbours
-  const BORDER = [10, 7.5, 5.5, 4, 2.5];                       // border width by how many ranks two neighbours share (0 = nothing, 4 = family)
-  const MAX_HI = 4, TIERS = [['square', 96], ['small', 192], ['medium', 384], ['large', 640]], KEEP_SHARP = 240; // photo size and sprite width by how big the cell is on screen
-  let cells = [], byKey = new Map(), borders = [], leaves = [];
-  let W = 0, H = 0, dpr = 1, dirty = false, raf = 0, loadingHi = 0, focus = null, anim = null, sharp = new Set();
-  let arrange = 'kin', kinBorders = [], morph = null, pendingColour = false, colourErr = false;
-  const view = { x: 0, y: 0, k: 1 };
-  const pointers = new Map();
-  let pan = null, pinch = null, tap = null, dz = null, lastTap = null, pendingOpen = 0, queue = [], loading = 0;
-  const api = { isOpen: false };
-
-  const redraw = () => { dirty = true; if (!raf && api.isOpen) raf = requestAnimationFrame(frame); };
-  function frame() {
-    raf = 0; if (!api.isOpen) return;
-    dirty = false;
-    if (anim) { const t = Math.min(1, (performance.now() - anim.t0) / anim.ms), e = 1 - (1 - t) ** 3; view.k = anim.k0 + (anim.k1 - anim.k0) * e; view.x = anim.x0 + (anim.x1 - anim.x0) * e; view.y = anim.y0 + (anim.y1 - anim.y0) * e; if (t >= 1) anim = null; else dirty = true; }
-    if (morph) {
-      const t = Math.min(1, (performance.now() - morph.t0) / morph.ms), e = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-      for (const n of leaves) { n.x = n.fx + (n.gx - n.fx) * e; n.y = n.fy + (n.gy - n.fy) * e; }
-      if (t >= 1) finishMorph(); else dirty = true;
-    }
-    draw(); if (dirty) raf = requestAnimationFrame(frame);
-  }
-  const cx = (q, r) => S * SQ3 * (q + r / 2), cy = r => S * 1.5 * r;
-  const key = (q, r) => q * 20011 + r;
-  function hexAt(x, y) { // axial cell containing a world point
-    const fq = (SQ3 / 3 * x - y / 3) / S, fr = (2 / 3 * y) / S, fs = -fq - fr;
-    let q = Math.round(fq), r = Math.round(fr), s2 = Math.round(fs);
-    const dq = Math.abs(q - fq), dr = Math.abs(r - fr), ds = Math.abs(s2 - fs);
-    if (dq > dr && dq > ds) q = -r - s2; else if (dr > ds) r = -q - s2;
-    return [q, r];
-  }
-
-  // Kin go side by side: each photo takes the free cell nearest the middle of its closest relatives already placed (genus, else family...).
-  function layout(ordered) {
-    const groups = new Map(), taken = new Map();
-    const ring = (q0, r0, k, fn) => {
-      if (k === 0) { fn(q0, r0); return; }
-      let q = q0 + D[4][0] * k, r = r0 + D[4][1] * k;
-      for (let i = 0; i < 6; i++) for (let j = 0; j < k; j++) { fn(q, r); q += D[i][0]; r += D[i][1]; }
-    };
-    ordered.forEach((n, i) => {
-      let tx = 0, ty = 0;
-      for (let d = n.chain.length; d >= 1; d--) {
-        const g = groups.get(n.chain.slice(0, d).join('/'));
-        if (g && g.n) { tx = g.sx / g.n; ty = g.sy / g.n; break; }
-      }
-      const [q0, r0] = hexAt(tx, ty);
-      let best = null, bd = Infinity;
-      for (let k = 0; k < 400; k++) {
-        ring(q0, r0, k, (q, r) => {
-          if (taken.has(key(q, r))) return;
-          const dx = cx(q, r) - tx, dy = cy(r) - ty, d = dx * dx + dy * dy;
-          if (d < bd) { bd = d; best = [q, r]; }
-        });
-        if (best && Math.sqrt(bd) <= 1.5 * S * k + 0.5 * S) break; // nothing nearer can be in a later ring
-      }
-      n.q = best[0]; n.r = best[1]; n.x = cx(n.q, n.r); n.y = cy(n.r); n.idx = i;
-      taken.set(key(n.q, n.r), n);
-      for (let d = 1; d <= n.chain.length; d++) {
-        const gk = n.chain.slice(0, d).join('/'), g = groups.get(gk) || groups.set(gk, { sx: 0, sy: 0, n: 0 }).get(gk);
-        g.sx += n.x; g.sy += n.y; g.n++;
-      }
-    });
-    return taken;
-  }
-
-  function build() {
-    const obs = filteredObs(), bySp = new Map();
-    for (const o of obs) { const id = speciesIdOf(o) ?? o.tid; if (!bySp.has(id)) bySp.set(id, []); bySp.get(id).push(o); }
-    // a small tree of the groups, only to put big groups first and keep each group's members together
-    const rootNode = { kids: [], leaves: 0 }, internal = new Map();
-    for (const [sid, list] of bySp) {
-      const first = list[0];
-      const chain = (first.anc || []).filter(id => id !== sid && KEEP.has(state.names[id]?.rank));
-      let parent = rootNode;
-      for (const id of chain) {
-        let g = internal.get(id);
-        if (!g) { g = { kids: [], leaves: 0 }; internal.set(id, g); parent.kids.push(g); }
-        parent = g;
-      }
-      const nm = state.names[sid] || {};
-      parent.kids.push({ leaf: true, chain, tid: sid, label: nm.common || first.common || first.name, sci: nm.name || first.name, obs: thumbObs(list), sprite: null, base: null, tier: 0, pend: 0, count: list.length });
-    }
-    const count = n => (n.leaves = n.leaf ? 1 : n.kids.reduce((a, k) => a + count(k), 0));
-    count(rootNode);
-    const dfs = n => n.leaf ? [n] : n.kids.slice().sort((a, b) => b.leaves - a.leaves).flatMap(dfs);
-    leaves = dfs(rootNode);
-    byKey = leaves.length ? layout(leaves) : new Map();
-    // borders between neighbouring cells of different groups
-    borders = BORDER.map(() => []);
-    const common = (a, b) => { let i = 0; while (i < a.chain.length && i < b.chain.length && a.chain[i] === b.chain[i]) i++; return i; };
-    for (const n of leaves) for (const [dq, dr] of D) {
-      const m = byKey.get(key(n.q + dq, n.r + dr));
-      if (!m || m.idx < n.idx) continue;
-      const c = common(n, m);
-      if (c >= n.chain.length && c >= m.chain.length) continue; // same group
-      const mx = (n.x + m.x) / 2, my = (n.y + m.y) / 2, ex = -(m.y - n.y), ey = m.x - n.x, el = Math.hypot(ex, ey) || 1, hx = ex / el * S / 2, hy = ey / el * S / 2;
-      borders[Math.min(4, c)].push([mx - hx, my - hy, mx + hx, my + hy]);
-    }
-    for (const n of leaves) { n.tq = n.q; n.tr = n.r; n.tx = n.x; n.ty = n.y; }
-    kinBorders = borders; arrange = 'kin'; pendingColour = false; morph = null;
-    queue = leaves.slice().sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y)); // photos: nearest the middle first
-    loading = 0; loadingHi = 0; focus = null; sharp = new Set();
-    pump();
-  }
-
-  // ---- photos → hexagonal sprites, a few at a time; closer in, a larger photo (and sprite) is swapped in ----
-  function sprite(img, w) {
-    const h = Math.round(w * 2 / SQ3), c = document.createElement('canvas'); c.width = w; c.height = h;
-    const g = c.getContext('2d'), R = h / 2;
-    g.beginPath();
-    for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 30); g[i ? 'lineTo' : 'moveTo'](w / 2 + R * Math.cos(a), h / 2 + R * Math.sin(a)); }
-    g.closePath(); g.clip();
-    const asp = w / h, iw = img.naturalWidth, ih = img.naturalHeight;
-    let sw, sh; if (iw / ih > asp) { sh = ih; sw = ih * asp; } else { sw = iw; sh = iw / asp; }
-    g.imageSmoothingQuality = 'high';
-    g.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, w, h);
-    return c;
-  }
-  // average colour of a photo (centre part), as luminance / hue / saturation; null if the browser won't let us read the pixels
-  function avgColour(img) {
-    try {
-      const c = document.createElement('canvas'); c.width = c.height = 12;
-      const g = c.getContext('2d', { willReadFrequently: true }), iw = img.naturalWidth, ih = img.naturalHeight, m = Math.min(iw, ih) * 0.7;
-      g.drawImage(img, (iw - m) / 2, (ih - m) / 2, m, m, 0, 0, 12, 12);
-      const d = g.getImageData(0, 0, 12, 12).data;
-      let r = 0, gg = 0, b = 0;
-      for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; }
-      const n = d.length / 4; r /= n * 255; gg /= n * 255; b /= n * 255;
-      const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), l = (mx + mn) / 2, dl = mx - mn;
-      const sat = dl === 0 ? 0 : dl / (1 - Math.abs(2 * l - 1));
-      let h = 0;
-      if (dl) h = mx === r ? ((gg - b) / dl + 6) % 6 : mx === gg ? (b - r) / dl + 2 : (r - gg) / dl + 4;
-      return { y: 0.299 * r + 0.587 * gg + 0.114 * b, h: h * 60, s: sat };
-    } catch (e) { if (!colourErr) { colourErr = true; log(`colour: reading pixels failed (${e.name}: ${e.message})`, 'w'); } return null; }
-  }
-  // iNaturalist serves photos from two hosts; whichever one allows the page to read pixels is used for the colour reading
-  const ALT_HOST = { 'static.inaturalist.org': 'inaturalist-open-data.s3.amazonaws.com', 'inaturalist-open-data.s3.amazonaws.com': 'static.inaturalist.org' };
-  const hostOf = u => { try { return new URL(u).hostname; } catch { return '?'; } };
-  const hostStats = {};
-  const stat = (u, ok) => { const h = hostOf(u), st = hostStats[h] || (hostStats[h] = { ok: 0, refused: 0 }); st[ok ? 'ok' : 'refused']++; };
-  // Photo colours are remembered by photo address, so a photo is only ever read once (and never again through the proxy).
-  let colCache = null, colDirty = 0;
-  const photoProxy = getPhotoProxy;
-  const proxied = u => { const base = photoProxy(); return base ? `${base}${base.includes('?') ? '&' : '?'}url=${encodeURIComponent(u)}` : null; };
-  const blocked = new Set(); // hosts that refused a cross-origin read during this visit: don't ask them again
-  function saveColours() { if (colDirty) { colDirty = 0; idb.set('photocol', colCache); } }
-  function pump() {
-    if (!colCache) { colCache = {}; idb.get('photocol').then(c => { colCache = Object.assign(c || {}, colCache); pump(); }); return; }
-    while (api.isOpen && loading < 6 && queue.length) {
-      const n = queue.shift(), url = photosOf(n.obs || {})[0];
-      if (!url) { n.col = null; continue; }
-      loading++;
-      const size = sized(url, TIERS[0][0]), alt = ALT_HOST[hostOf(size)] ? size.replace(hostOf(size), ALT_HOST[hostOf(size)]) : null;
-      // where to try the photo, in order: [address, readable?]. A remembered colour means it only needs showing.
-      const cands = [];
-      if (colCache[size] !== undefined) cands.push([size, false]);
-      else {
-        if (!blocked.has(hostOf(size))) cands.push([size, true]);
-        if (alt && !blocked.has(hostOf(alt))) cands.push([alt, true]);
-        const px = proxied(size); if (px && !blocked.has(hostOf(px))) cands.push([px, true]);
-        cands.push([size, false]);
-      }
-      const attempt = i => {
-        const [src, read] = cands[i], im = new Image();
-        if (read) im.crossOrigin = 'anonymous'; // lets the page read the colours; some servers refuse
-        im.onload = () => {
-          n.base = n.sprite = sprite(im, TIERS[0][1]); n.tier = 0;
-          if (read) { n.col = avgColour(im); stat(src, !!n.col); if (n.col) { colCache[size] = n.col; if (++colDirty >= 25) saveColours(); } }
-          else n.col = colCache[size] || null;
-          loading--; redraw(); pump(); colourProgress();
-        };
-        im.onerror = () => {
-          if (read) {
-            const h = hostOf(src);
-            if (!blocked.has(h)) { blocked.add(h); log(`colour: ${h} did not allow a cross-origin read of ${src.slice(0, 120)}${i + 1 < cands.length - 1 ? '; trying the next route' : ''}`, 'w'); }
-            attempt(i + 1); return;
-          }
-          n.col = colCache[size] || null; loading--; pump(); colourProgress();
-        };
-        im.src = src;
-      };
-      attempt(0);
-    }
-  }
-
-  function upgrade(n, tier) {
-    n.pend = tier; loadingHi++;
-    const im = new Image();
-    im.onload = () => { n.sprite = sprite(im, TIERS[tier][1]); n.tier = tier; n.pend = 0; loadingHi--; sharp.add(n); trimSharp(); redraw(); };
-    im.onerror = () => { n.pend = 0; n.tier = Math.max(n.tier, tier); loadingHi--; }; // don't keep asking for a size that fails
-    im.src = sized(photosOf(n.obs)[0], TIERS[tier][0]);
-  }
-  // keep memory in check: sharp sprites of cells that are no longer on screen go back to the small one
-  function trimSharp() {
-    if (sharp.size <= KEEP_SHARP) return;
-    const k = view.k, x0 = -view.x / k, y0 = -view.y / k, x1 = (W - view.x) / k, y1 = (H - view.y) / k;
-    for (const n of sharp) {
-      if (sharp.size <= KEEP_SHARP * 0.7) break;
-      if (n.x < x0 - 100 || n.x > x1 + 100 || n.y < y0 - 100 || n.y > y1 + 100) { n.sprite = n.base; n.tier = 0; sharp.delete(n); }
-    }
-  }
-
-  // ---- arrangement: by relatedness (the honeycomb of groups) or by average colour (same shape, rows from light to dark, each row by hue) ----
-  const reindex = () => { byKey = new Map(); for (const n of leaves) byKey.set(key(n.q, n.r), n); };
-  function colourSlots() {
-    const rows = new Map();
-    for (const n of leaves) { if (!rows.has(n.tr)) rows.set(n.tr, []); rows.get(n.tr).push(n); }
-    const slots = [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, cs]) => cs.sort((a, b) => a.tx - b.tx).map(c => ({ q: c.tq, r: c.tr, x: c.tx, y: c.ty })));
-    const order = leaves.slice().sort((a, b) => (b.col ? b.col.y : -1) - (a.col ? a.col.y : -1)); // lightest first; unreadable ones last
-    let i = 0;
-    for (const row of slots) {
-      const chunk = order.slice(i, i + row.length); i += row.length;
-      chunk.sort((a, b) => (a.col && a.col.s >= 0.12 ? a.col.h : -1) - (b.col && b.col.s >= 0.12 ? b.col.h : -1)); // greys first, then round the colour wheel
-      chunk.forEach((n, j) => { n.cq = row[j].q; n.cr = row[j].r; n.cx = row[j].x; n.cy = row[j].y; });
-    }
-  }
-  function startMorph(toColour) {
-    if (morph) finishMorph();
-    for (const n of leaves) { n.fx = n.x; n.fy = n.y; n.gx = toColour ? n.cx : n.tx; n.gy = toColour ? n.cy : n.ty; n.gq = toColour ? n.cq : n.tq; n.gr = toColour ? n.cr : n.tr; }
-    arrange = toColour ? 'colour' : 'kin';
-    borders = toColour ? [] : kinBorders;
-    morph = { t0: performance.now(), ms: 700 };
-    redraw();
-  }
-  function finishMorph() {
-    for (const n of leaves) { n.x = n.gx; n.y = n.gy; n.q = n.gq; n.r = n.gr; }
-    morph = null; reindex();
-  }
-  const colourReady = () => leaves.every(n => n.col !== undefined);
-  function colourProgress() {
-    if (!pendingColour) return;
-    const done = leaves.filter(n => n.col !== undefined).length;
-    if (done < leaves.length) { $('webtitle').textContent = `Reading colours… ${done}/${leaves.length}`; return; }
-    pendingColour = false;
-    saveColours();
-    log(`colour reading finished: ${leaves.filter(n => n.col).length} of ${leaves.length} photos readable; by host ${JSON.stringify(hostStats)}`);
-    if (!leaves.some(n => n.col)) { // the photo server doesn't let the page read pixels
-      arrange = 'kin'; $('webcolour').classList.remove('on'); $('webcolour').setAttribute('aria-pressed', 'false');
-      $('webtitle').textContent = 'Colours can’t be read from these photos here';
-      return;
-    }
-    $('webtitle').textContent = `${leaves.length.toLocaleString()} species · by colour`;
-    colourSlots(); startMorph(true);
-  }
-  function setArrange(mode) {
-    const btn = $('webcolour');
-    btn.classList.toggle('on', mode === 'colour'); btn.setAttribute('aria-pressed', String(mode === 'colour'));
-    if (mode === 'colour') {
-      if (arrange === 'colour' || pendingColour) return;
-      pendingColour = true; arrange = 'kin'; colourProgress();
-    } else {
-      pendingColour = false;
-      $('webtitle').textContent = `${leaves.length.toLocaleString()} species`;
-      if (arrange === 'colour' || morph) startMorph(false);
-    }
-  }
-  $('webcolour').onclick = () => setArrange($('webcolour').classList.contains('on') ? 'kin' : 'colour');
-
-  // ---- drawing ----
-  const toWorld = (px, py) => ({ x: (px - view.x) / view.k, y: (py - view.y) / view.k });
-  const focusPoint = () => ({ x: W / 2, y: (H - 40) / 2 + 24 }); // the middle of what is visible between the top bar and the description
-  function hexPath(x, y, r) {
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) { const a = Math.PI / 180 * (60 * i - 30); ctx[i ? 'lineTo' : 'moveTo'](x + r * Math.cos(a), y + r * Math.sin(a)); }
-    ctx.closePath();
-  }
-  function setFocus() {
-    const f = focusPoint(), w = toWorld(f.x, f.y);
-    let best = null, bd = Infinity;
-    for (const n of leaves) { const d = (n.x - w.x) ** 2 + (n.y - w.y) ** 2; if (d < bd) { bd = d; best = n; } }
-    if (best === focus) return;
-    focus = best;
-    const info = $('webinfo');
-    info.hidden = !best;
-    if (!best) return;
-    $('webname').textContent = best.label;
-    $('websci').textContent = best.sci && best.sci !== best.label ? best.sci : '';
-    const nm = id => state.names[id]?.common || state.names[id]?.name || '';
-    $('webrank').textContent = best.chain.map(nm).filter(Boolean).join(' › ') || '';
-  }
-  const tierFor = dev => dev > 420 ? 3 : dev > 190 ? 2 : dev > 70 ? 1 : 0; // on-screen width of a cell (device pixels) → photo size to use
-  function draw() {
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, W, H);
-    const k = view.k, x0 = -view.x / k - 60, y0 = -view.y / k - 60, x1 = (W - view.x) / k + 60, y1 = (H - view.y) / k + 60;
-    ctx.save(); ctx.translate(view.x, view.y); ctx.scale(k, k);
-    setFocus();
-    const w = SQ3 * S + 0.8, h = 2 * S + 0.8; // a hair larger than the cell so no gap shows between neighbours
-    for (const n of leaves) {
-      if (n.x < x0 || n.x > x1 || n.y < y0 || n.y > y1) continue;
-      if (n.sprite) {
-        ctx.drawImage(n.sprite, n.x - w / 2, n.y - h / 2, w, h);
-        if (!n.pend && loadingHi < MAX_HI) { const need = Math.min(n === focus ? 3 : 2, tierFor(w * k * dpr)); if (n.tier < need) upgrade(n, need); }
-      } else { hexPath(n.x, n.y, S + 0.4); ctx.fillStyle = '#1d2a2f'; ctx.fill(); }
-    }
-    ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(8,14,16,.92)';
-    borders.forEach((list, i) => {
-      if (!list.length) return;
-      ctx.beginPath();
-      for (const e of list) { ctx.moveTo(e[0], e[1]); ctx.lineTo(e[2], e[3]); }
-      ctx.lineWidth = Math.max(BORDER[i], 1.2 / k); ctx.stroke();
-    });
-    if (focus) { // the photo nearest the middle gets a thin outline
-      hexPath(focus.x, focus.y, S); ctx.lineJoin = 'round';
-      ctx.lineWidth = 2.2 / k; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.stroke();
-    }
-    ctx.restore();
-    const f = focusPoint(); // a small mark where "the middle" is
-    ctx.beginPath(); ctx.arc(f.x, f.y, 2.5, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fill();
-  }
-
-  // ---- view ----
-  function resize() {
-    dpr = Math.min(leaves.length > 700 ? 1.25 : 2, devicePixelRatio || 1);
-    W = root.clientWidth; H = root.clientHeight;
-    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-    redraw();
-  }
-  function fit() {
-    anim = null;
-    if (!leaves.length) return;
-    let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
-    for (const n of leaves) { a = Math.min(a, n.x - S); b = Math.min(b, n.y - S); c = Math.max(c, n.x + S); d = Math.max(d, n.y + S); }
-    const k = Math.max(0.08, Math.min(1.4, Math.min(W / (c - a + 30), (H - 150) / (d - b + 30))));
-    view.k = k; view.x = W / 2 - (a + c) / 2 * k; view.y = (H - 40) / 2 + 24 - (b + d) / 2 * k;
-    redraw();
-  }
-  function zoomTo(px, py, k) {
-    k = Math.max(0.08, Math.min(8, k));
-    const w = toWorld(px, py);
-    view.k = k; view.x = px - w.x * k; view.y = py - w.y * k;
-    redraw();
-  }
-  function animateZoom(px, py, factor) { // a quick glide for double-tap
-    const k1 = Math.max(0.08, Math.min(8, view.k * factor)), w = toWorld(px, py);
-    anim = { t0: performance.now(), ms: 220, k0: view.k, x0: view.x, y0: view.y, k1, x1: px - w.x * k1, y1: py - w.y * k1 };
-    redraw();
-  }
-  const hit = (px, py) => {
-    const w = toWorld(px, py), [q, r] = hexAt(w.x, w.y);
-    return byKey.get(key(q, r)) || null;
-  };
-
-  // ---- pointer: drag to pan; pinch or wheel to zoom; double-tap to zoom in, double-tap and slide to zoom smoothly; tap a photo to open it ----
-  const pos = e => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-  cv.addEventListener('pointerdown', e => {
-    cv.setPointerCapture(e.pointerId);
-    const p = pos(e); pointers.set(e.pointerId, p);
-    anim = null;
-    if (pointers.size === 2) {
-      const [a, b] = [...pointers.values()];
-      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, k: view.k, wx: toWorld((a.x + b.x) / 2, (a.y + b.y) / 2) };
-      pan = null; tap = null; dz = null; clearTimeout(pendingOpen);
-      return;
-    }
-    if (lastTap && Date.now() - lastTap.t < 320 && Math.hypot(p.x - lastTap.x, p.y - lastTap.y) < 40) { // second tap: hold and slide to zoom
-      clearTimeout(pendingOpen); lastTap = null;
-      dz = { x: p.x, y: p.y, k0: view.k, moved: false };
-      pan = null; tap = null;
-      return;
-    }
-    tap = { x: p.x, y: p.y, t: Date.now(), node: hit(p.x, p.y), moved: false };
-    pan = { x: p.x, y: p.y, vx: view.x, vy: view.y };
-    cv.style.cursor = 'grabbing';
-  });
-  cv.addEventListener('pointermove', e => {
-    const p = pos(e);
-    if (!pointers.has(e.pointerId)) return;
-    pointers.set(e.pointerId, p);
-    if (dz) {
-      if (Math.abs(p.y - dz.y) > 6) dz.moved = true;
-      if (dz.moved) zoomTo(dz.x, dz.y, dz.k0 * Math.exp((p.y - dz.y) * 0.008)); // slide down to zoom in, up to zoom out
-      return;
-    }
-    if (tap && Math.hypot(p.x - tap.x, p.y - tap.y) > 7) tap.moved = true;
-    if (pinch && pointers.size >= 2) {
-      const [a, b] = [...pointers.values()], d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
-      const k = Math.max(0.08, Math.min(8, pinch.k * d / pinch.d)), cx2 = (a.x + b.x) / 2, cy2 = (a.y + b.y) / 2;
-      view.k = k; view.x = cx2 - pinch.wx.x * k; view.y = cy2 - pinch.wx.y * k;
-      redraw();
-    } else if (pan) { view.x = pan.vx + (p.x - pan.x); view.y = pan.vy + (p.y - pan.y); redraw(); }
-  });
-  const release = e => {
-    if (!pointers.delete(e.pointerId)) return;
-    if (pointers.size < 2) pinch = null;
-    if (dz) {
-      if (!dz.moved && e.type === 'pointerup') animateZoom(dz.x, dz.y, 2.4); // plain double-tap
-      dz = null; cv.style.cursor = 'grab';
-      return;
-    }
-    if (tap && !tap.moved && Date.now() - tap.t < 450 && e.type === 'pointerup') {
-      lastTap = { x: tap.x, y: tap.y, t: Date.now() };
-      const n = tap.node;
-      if (n) { clearTimeout(pendingOpen); pendingOpen = setTimeout(() => { lastTap = null; openSpecies(n.tid, n.obs); }, 330); } // wait in case it is a double-tap
-    }
-    if (!pointers.size) { pan = null; tap = null; cv.style.cursor = 'grab'; }
-  };
-  cv.addEventListener('pointerup', release);
-  cv.addEventListener('pointercancel', release);
-  cv.addEventListener('wheel', e => { e.preventDefault(); const p = pos(e); zoomTo(p.x, p.y, view.k * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
-  $('webinfo').onclick = () => { if (focus) openSpecies(focus.tid, focus.obs); };
-
-  // ---- open / close ----
-  api.open = () => {
-    if (api.isOpen) { api.close(); return; } // the tab tapped again
-    if (!state.obs.length) { toast('Load some observations first.'); return; }
-    const from = world.isOpen; if (from) world.hide(); // going straight from the other full-screen view: no extra history entry
-    root.hidden = false; api.isOpen = true;
-    document.body.style.overflow = 'hidden';
-    history[from ? 'replaceState' : 'pushState']({ web: 1 }, '');
-    syncOverlayTabs();
-    $('webcolour').classList.remove('on'); $('webcolour').setAttribute('aria-pressed', 'false');
-    resize(); build(); resize(); fit();
-    $('webtitle').textContent = leaves.length ? `${leaves.length.toLocaleString()} species` : 'Nothing to show for the current filters';
-  };
-  api.hide = () => {
-    api.isOpen = false; cancelAnimationFrame(raf); raf = 0; clearTimeout(pendingOpen);
-    root.hidden = true; if (!detail.isOpen) document.body.style.overflow = '';
-    leaves = []; byKey = new Map(); borders = []; kinBorders = []; morph = null; pendingColour = false; queue = []; sharp = new Set(); pointers.clear(); pan = pinch = tap = dz = lastTap = focus = anim = null;
-    $('webinfo').hidden = true;
-    syncOverlayTabs();
-  };
-  api.close = () => { if (api.isOpen) history.back(); };
-  $('webclose').onclick = api.close;
-  $('webfit').onclick = fit;
-  $('tabWeb').onclick = api.open;
-  window.addEventListener('resize', () => { if (api.isOpen) resize(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && api.isOpen && !detail.isOpen && !viewer.isOpen) api.close(); });
-  api.debug = () => ({ arrange, pendingColour, coloured: leaves.filter(n => n.col).length, leaves: leaves.length, tiers: [0, 1, 2, 3].map(t => leaves.filter(n => n.sprite && n.tier === t).length), withSprite: leaves.filter(n => n.sprite).length, view: { ...view }, focus: focus && focus.label, borders: borders.map(b => b.length) });
-  api.positions = () => leaves.map(n => [n.x, n.y]);
-  api.colours = () => leaves.map(n => ({ x: Math.round(n.x), y: Math.round(n.y), col: n.col }));
-  return api;
-})();
-
-
-// ---------- World: the most observed animal over each country ----------
-// A plain map of country shapes (a small public data file) with the photo of the top animal on each country. "Everyone" asks iNaturalist for
-// the most observed species in each country (one request each, remembered for a month); "Mine" counts your own observations per country.
-const world = (() => {
-  const root = $('world'), ctl = { isOpen: false };
-  const TTL = 30 * 864e5;
-  const GROUPS = [['', 'All animals'], ...EXP_CLASSES.slice(0, 8)];
-  // the data file abbreviates some names; iNaturalist spells others differently
-  const ALIAS = {
-    'United States of America': ['United States'], 'Dem. Rep. Congo': ['Democratic Republic of the Congo', 'Congo (Kinshasa)'], 'Congo': ['Republic of the Congo', 'Congo (Brazzaville)'],
-    'Dominican Rep.': ['Dominican Republic'], 'Central African Rep.': ['Central African Republic'], 'Bosnia and Herz.': ['Bosnia and Herzegovina'], 'Eq. Guinea': ['Equatorial Guinea'],
-    'S. Sudan': ['South Sudan'], 'W. Sahara': ['Western Sahara'], 'Solomon Is.': ['Solomon Islands'], 'Falkland Is.': ['Falkland Islands'],
-    'Fr. S. Antarctic Lands': ['French Southern and Antarctic Lands', 'French Southern Territories'], 'eSwatini': ['Eswatini', 'Swaziland'], 'Czechia': ['Czech Republic'],
-    "Côte d'Ivoire": ['Ivory Coast'], 'N. Cyprus': ['Northern Cyprus'], 'North Macedonia': ['Macedonia'], 'Myanmar': ['Burma'], 'Timor-Leste': ['East Timor'],
-    'Russia': ['Russian Federation'], 'South Korea': ['Korea, Republic of', 'Republic of Korea'], 'North Korea': ['Korea, Democratic People\'s Republic of'],
-    'Palestine': ['Palestinian Territories', 'State of Palestine'], 'Laos': ['Lao People\'s Democratic Republic'], 'Vietnam': ['Viet Nam'], 'Syria': ['Syrian Arab Republic'],
-    'Iran': ['Iran, Islamic Republic of'], 'Moldova': ['Moldova, Republic of'], 'Brunei': ['Brunei Darussalam'], 'Tanzania': ['Tanzania, United Republic of'], 'Bolivia': ['Bolivia, Plurinational State of'],
-    'Venezuela': ['Venezuela, Bolivarian Republic of'], 'Libya': ['Libyan Arab Jamahiriya'], 'Gambia': ['The Gambia'], 'Bahamas': ['The Bahamas'], 'Turkey': ['Türkiye'],
-  };
-  const norm = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/^the /, '');
-  const variants = name => [name, ...(ALIAS[name] || [])];
-  const hueOf = id => (Math.imul(id | 0, 2654435761) >>> 0) % 360;
-
-  let map = null, geo = [], layerOf = new Map(), // name -> [layers]
-   markerOf = new Map(), results = new Map(), places = {}, topCache = {};
-  let mode = 'all', group = '', seq = 0, selected = null, loadingNote = '', seenCounts = new Map(); // species id → how many times I have observed it
-  // Requests are spaced by their START time (not start + answer + pause), so two can be in flight and the answers' latency is hidden.
-  // iNaturalist asks for no more than about 60 requests a minute and throttles beyond ~100; 750 ms is 80, slowing down if it ever says 429.
-  let nextSlot = 0, paceMs = 750, seenLimited = 0, cachesLoaded = false;
-  const pace = async () => {
-    if (apiStats.limited > seenLimited) { seenLimited = apiStats.limited; paceMs = Math.min(2500, Math.round(paceMs * 1.6)); log(`world: iNaturalist asked us to slow down; one request every ${paceMs} ms now`, 'w'); }
-    const now = performance.now(), at = Math.max(now, nextSlot);
-    nextSlot = at + paceMs;
-    if (at > now) await sleep(at - now);
-  };
-
-  // ---- country shapes: the TopoJSON file turned into GeoJSON, with a point for the marker and the size of the main landmass ----
-  function topoToGeo(topo) {
-    const { scale, translate } = topo.transform;
-    const arcs = topo.arcs.map(a => { let x = 0, y = 0; return a.map(([dx, dy]) => { x += dx; y += dy; return [x * scale[0] + translate[0], y * scale[1] + translate[1]]; }); });
-    const arc = i => i >= 0 ? arcs[i] : arcs[~i].slice().reverse();
-    const ring = idx => { // a ring that crosses the date line is made continuous (longitudes past 180) so it is drawn as one shape
-      const pts = idx.flatMap((i, j) => { const a = arc(i); return j ? a.slice(1) : a; });
-      let off = 0;
-      for (let i = 1; i < pts.length; i++) { const d = pts[i][0] + off - pts[i - 1][0]; if (d > 180) off -= 360; else if (d < -180) off += 360; pts[i] = [pts[i][0] + off, pts[i][1]]; }
-      return pts;
-    };
-    const geom = g => g.type === 'Polygon' ? { type: 'Polygon', coordinates: g.arcs.map(ring) } : { type: 'MultiPolygon', coordinates: g.arcs.map(pg => pg.map(ring)) };
-    return topo.objects.countries.geometries.map(g => ({ type: 'Feature', id: g.id, properties: g.properties || {}, geometry: geom(g) }));
-  }
-  function describe(f) { // marker position (centre of the largest piece of land) and that piece's bounds
-    const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
-    let best = null, bestA = -1;
-    for (const pg of polys) {
-      const r = pg[0]; let a = 0, cx = 0, cy = 0, w = 180, e = -180, s2 = 90, n = -90;
-      for (let i = 0; i < r.length - 1; i++) {
-        const [x0, y0] = r[i], [x1, y1] = r[i + 1], c = x0 * y1 - x1 * y0;
-        a += c; cx += (x0 + x1) * c; cy += (y0 + y1) * c;
-        w = Math.min(w, x0); e = Math.max(e, x0); s2 = Math.min(s2, y0); n = Math.max(n, y0);
-      }
-      const area = Math.abs(a) / 2;
-      if (area > bestA) { bestA = area; best = { lng: a ? cx / (3 * a) : (w + e) / 2, lat: a ? cy / (3 * a) : (s2 + n) / 2, w, e, s: s2, n, area }; }
-    }
-    return best;
-  }
-  async function loadGeo() {
-    if (geo.length) return;
-    let topo = await idb.get('worldgeo');
-    if (!topo) {
-      const res = await fetch(VENDOR + 'world-atlas/countries-110m.json').catch(() => null);
-      if (!res || !res.ok) throw new Error(`${VENDOR}world-atlas/countries-110m.json is missing (this site was not built with the Pages workflow)`);
-      topo = await res.json(); await idb.set('worldgeo', topo);
-      log('country shapes loaded from vendor/ (pinned world-atlas 2.0.2)');
-    }
-    geo = topoToGeo(topo).filter(f => f.properties.name && f.properties.name !== 'Antarctica');
-    for (const f of geo) {
-      f.name = f.properties.name; f.info = describe(f); f.norms = new Set(variants(f.name).map(norm));
-      const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
-      f.wraps = polys.some(pg => pg.some(r => r.some(pt => pt[0] > 180 || pt[0] < -180)));
-      if (f.info.lng > 180) f.info.lng -= 360; else if (f.info.lng < -180) f.info.lng += 360;
-    }
-  }
-
-  // ---- results: per country a list of up to 10 species (partial = the list is known only as far as it goes) ----
-  const shown = r => r && r.items && r.items.length;
-  function paint(name) {
-    const f = geo.find(x => x.name === name), lay = layerOf.get(name), r = results.get(name), top = shown(r) ? r.items[0].taxon : null;
-    if (lay) for (const l of lay) l.setStyle({ fillColor: top ? `hsl(${hueOf(top.id)} 45% 36%)` : '#17262e', fillOpacity: top ? 0.7 : 0.9 });
-    let m = markerOf.get(name);
-    if (!top) { if (m) { m.remove(); markerOf.delete(name); } return; }
-    if (!m) {
-      const icon = L.divIcon({ className: 'wm', html: '<div class="wmi"><img alt=""></div>', iconSize: [0, 0] });
-      m = L.marker([f.info.lat, f.info.lng], { icon, keyboard: false }).addTo(map);
-      m.on('click', () => select(name));
-      markerOf.set(name, m);
-    }
-    const img = m.getElement() && m.getElement().querySelector('img');
-    if (img && img.getAttribute('src') !== top.photo) img.src = top.photo || '';
-    m.getElement() && m.getElement().firstChild.classList.toggle('seen', seenCounts.has(top.id));
-    layout();
-  }
-  function layout() { // photo size follows how big the country is on screen; tiny ones wait until zoomed in
-    if (!map) return;
-    for (const [name, m] of markerOf) {
-      const f = geo.find(x => x.name === name), el = m.getElement() && m.getElement().firstChild;
-      if (!f || !el) continue;
-      const a = map.latLngToContainerPoint([f.info.s, f.info.w]), b = map.latLngToContainerPoint([f.info.n, f.info.e]);
-      const size = Math.min(62, Math.min(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) * 0.8);
-      el.style.display = size < 14 && name !== selected ? 'none' : 'block';
-      el.style.width = el.style.height = Math.max(20, size) + 'px';
-      el.classList.toggle('sel', name === selected);
-    }
-  }
-  function drawSheet(name) {
-    const r = results.get(name), list = $('worldlist');
-    list.replaceChildren();
-    $('worldcountry').textContent = name;
-    $('worldnote').textContent = mode === 'mine' ? 'Your most observed' + (group ? ' ' + GROUPS.find(g => g[0] === group)[1].toLowerCase() : ' animals') : 'Most observed (research grade)' + (group ? ', ' + GROUPS.find(g => g[0] === group)[1].toLowerCase() : '');
-    (r.items || []).slice(0, 10).forEach((it, i) => {
-      const li = document.createElement('li');
-      const rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = i + 1;
-      const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.src = it.taxon.photo || '';
-      const nm = document.createElement('span'); nm.className = 'nm';
-      const seen = seenCounts.get(it.taxon.id); if (seen) li.classList.add('seen');
-      const b = document.createElement('b'); b.textContent = it.taxon.common || it.taxon.name; nm.append(b);
-      if (it.taxon.common && it.taxon.common !== it.taxon.name) { const sci = document.createElement('i'); sci.textContent = it.taxon.name; nm.append(sci); }
-      if (seen) { const you = document.createElement('span'); you.className = 'you'; you.textContent = `✓ You've seen it · ${seen} observation${seen > 1 ? 's' : ''}`; nm.append(you); }
-      const ct = document.createElement('span'); ct.className = 'ct'; ct.textContent = it.count.toLocaleString() + (mode === 'mine' ? ' obs' : '');
-      li.append(rk, img, nm, ct);
-      li.onclick = () => openSpecies(it.taxon.id, it.obs);
-      list.append(li);
-    });
-    if (r.partial && mode === 'all') { const li = document.createElement('li'); li.className = 'wait'; li.textContent = 'Loading the full top 10…'; list.append(li); }
-  }
-  function select(name) {
-    selected = name; layout();
-    const r = results.get(name);
-    if (!shown(r)) { $('worldsheet').hidden = true; return; }
-    $('worldsheet').hidden = false; drawSheet(name);
-    if (mode === 'all' && r.partial) loadFull(name);
-  }
-  $('worldsheetclose').onclick = () => { selected = null; $('worldsheet').hidden = true; layout(); };
-  // a country whose list came from the "All animals" answers (or an older save) only has the species we already knew about: ask for the rest
-  async function loadFull(name) {
-    const pl = places[name], my = seq, gk = group;
-    if (!pl) return;
-    try {
-      await pace();
-      const d = await api(`/observations/species_counts?place_id=${pl.id}&per_page=10&quality_grade=research&${gk ? 'iconic_taxa=' + gk : 'taxon_id=1'}`);
-      if (my !== seq || gk !== group) return;
-      const items = slimItems(d.results);
-      topCache[`${pl.id}|${gk}`] = { t: Date.now(), items };
-      results.set(name, { items, partial: false });
-      paint(name);
-      if (selected === name) drawSheet(name);
-      idb.set('worldtop', topCache);
-    } catch (e) { log(`world: top 10 for ${name} failed: ${e.message}`, 'w'); }
-  }
-  const slimItems = results => (results || []).slice(0, 10).map(r => ({ count: r.count, taxon: { id: r.taxon.id, name: r.taxon.name, common: r.taxon.preferred_common_name || '', iconic: r.taxon.iconic_taxon_name || '',
-    photo: r.taxon.default_photo?.square_url ? sized(r.taxon.default_photo.square_url, 'small') : (r.taxon.default_photo?.medium_url || '') } }));
-
-  // ---- "Mine": count my own observations per country ----
-  async function computeMine() {
-    $('worldtitle').textContent = 'Looking up places…';
-    await ensurePlaces();
-    const byNorm = new Map();
-    for (const f of geo) for (const v of f.norms) byNorm.set(v, f.name);
-    const per = new Map(), unmatched = new Set();
-    const inGroup = o => group ? o.anc.some(id => (CLASS_IDS[id] || (CLASS_NAMES.has(state.names[id]?.name) ? state.names[id].name : null)) === group) : o.anc.includes(1);
-    for (const o of state.obs) {
-      if (!inGroup(o)) continue;
-      for (const pid of o.pids || []) {
-        const pl = state.places[pid];
-        if (!pl || pl.missing || pl.level !== 0) continue;
-        const poly = byNorm.get(norm(pl.name));
-        if (!poly) { unmatched.add(pl.name); break; }
-        const sid = speciesIdOf(o) ?? o.tid;
-        if (!per.has(poly)) per.set(poly, new Map());
-        const m = per.get(poly);
-        if (!m.has(sid)) m.set(sid, []);
-        m.get(sid).push(o);
-        break;
-      }
-    }
-    if (unmatched.size) log(`world: no map shape for ${[...unmatched].join(', ')}`, 'w');
-    results = new Map();
-    for (const [poly, m] of per) {
-      const ranked = [...m.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 10);
-      results.set(poly, { partial: false, items: ranked.map(([sid, list]) => {
-        const th = thumbObs(list), nm = state.names[sid] || {};
-        return { count: list.length, obs: th, taxon: { id: sid, name: nm.name || th.name, common: nm.common || th.common, photo: photosOf(th)[0] ? sized(photosOf(th)[0], 'small') : '' } };
-      }) });
-    }
-    for (const f of geo) paint(f.name);
-    $('worldtitle').textContent = `${isOther() ? '@' + (state.user?.login || '') : 'Your'} top animal per country · ${results.size} countries`;
-  }
-
-  // ---- "Everyone": iNaturalist's most observed species in each country ----
-  // iNaturalist's country places have ids in a few known stretches; reading those in bulk (50 ids per request) finds nearly every country
-  // at once, instead of one search per country. Whatever it misses is searched for by name.
-  const SCAN = [[1, 50], [6600, 7500]];
-  let countryIdx = null;
-  const searched = new Set(); // names already searched for in this visit
-  let scanning = null;
-  const scanCountries = () => scanning || (scanning = scanCountriesOnce().finally(() => { scanning = null; })); // one scan at a time, however many callers
-  async function scanCountriesOnce() {
-    if (countryIdx) return;
-    const saved = await idb.get('worldscan');
-    if (saved && saved.v === 1) { countryIdx = new Map(saved.list.map(c => [c.n, c])); return; }
-    const list = [];
-    $('worldtitle').textContent = 'Finding the countries on iNaturalist…';
-    for (const [lo, hi] of SCAN) for (let start = lo; start <= hi; start += 50) {
-      const ids = []; for (let i = start; i < Math.min(start + 50, hi + 1); i++) ids.push(i);
-      await pace();
-      try {
-        const d = await api(`/places/${ids.join(',')}?per_page=50`);
-        for (const p of d.results || []) if (p.admin_level === 0) for (const t of [p.name, p.display_name]) if (t) list.push({ n: norm(t), id: p.id, name: p.name });
-      } catch (e) { log(`world: country scan ${start}: ${e.message}`, 'w'); }
-    }
-    countryIdx = new Map(list.map(c => [c.n, c]));
-    log(`world: bulk scan found ${new Set(list.map(c => c.id)).size} countries`);
-    if (list.length) await idb.set('worldscan', { v: 1, list });
-  }
-  async function findPlace(f) {
-    const wanted = variants(f.name).map(norm);
-    for (const w of wanted) { const c = countryIdx && countryIdx.get(w); if (c) return { id: c.id, name: c.name }; }
-    if (places[f.name] === 0 && searched.has(f.name)) return 0;
-    searched.add(f.name);
-    for (const v of variants(f.name)) {
-      await pace();
-      const d = await api(`/places/autocomplete?q=${encodeURIComponent(v)}&per_page=10`);
-      const cands = (d.results || []).filter(p => p.admin_level === 0);
-      const hit = cands.find(p => [p.name, p.display_name].some(t => wanted.includes(norm(t)))) || (cands.length === 1 && v === f.name ? cands[0] : null);
-      if (hit) return { id: hit.id, name: hit.name };
-    }
-    log(`world: no iNaturalist country for "${f.name}"`, 'w');
-    return 0;
-  }
-  // an answer saved as a single species (earlier version) becomes a list that is known as far as its first entry
-  const normEntry = e => {
-    if (!e) return e;
-    if (!e.items) { e.items = e.none ? [] : [{ count: e.count, taxon: e.taxon }]; e.partial = !e.none; delete e.count; delete e.taxon; }
-    return e;
-  };
-  // answers cached earlier don't say which group a species is in: look that up (30 species per request)
-  async function fillIconic() {
-    const need = new Map();
-    for (const [k, e] of Object.entries(topCache)) if (k.endsWith('|') && e) for (const it of e.items || []) if (it.taxon.iconic === undefined) { if (!need.has(it.taxon.id)) need.set(it.taxon.id, []); need.get(it.taxon.id).push(it.taxon); }
-    const ids = [...need.keys()];
-    if (!ids.length) return;
-    $('worldtitle').textContent = 'Checking which group each top animal is in…';
-    for (let i = 0; i < ids.length; i += 30) {
-      await pace();
-      const d = await api(`/taxa/${ids.slice(i, i + 30).join(',')}?per_page=30`);
-      const got = new Set();
-      for (const t of d.results || []) { got.add(t.id); for (const tx of need.get(t.id) || []) tx.iconic = t.iconic_taxon_name || ''; }
-      for (const id of ids.slice(i, i + 30)) if (!got.has(id)) for (const tx of need.get(id)) tx.iconic = '';
-    }
-    await idb.set('worldtop', topCache);
-  }
-  // the members of one group within an "All animals" list are that group's top species, as far as the list reaches
-  const groupPart = (all, g) => { const items = all.items.filter(i => i.taxon.iconic === g); return items.length ? { t: all.t, items, partial: all.partial || items.length < 10 } : null; };
-  async function loadEveryone() {
-    const my = ++seq, gk = group;
-    results = new Map();
-    if (!cachesLoaded) { // read once; afterwards the copies in memory are the newest (a switch can interrupt a save)
-      [places, topCache] = await Promise.all([idb.get('worldplaces').then(x => x || {}), idb.get('worldtop').then(x => x || {})]);
-      for (const e of Object.values(topCache)) normEntry(e);
-      cachesLoaded = true;
-    }
-    const fresh = e => e && Date.now() - e.t < TTL;
-    // A group's top species is the overall top species whenever that one already belongs to the group, so the "All animals" answers are reused.
-    if (gk) await fillIconic();
-    if (my !== seq) return;
-    const todo = [];
-    let reused = 0;
-    for (const f of geo) {
-      const pl = places[f.name], key = pl ? `${pl.id}|${gk}` : '';
-      let e = pl ? topCache[key] : null;
-      if (pl && gk && !fresh(e)) {
-        const b = topCache[`${pl.id}|`], part = fresh(b) && !b.none ? groupPart(b, gk) : null;
-        if (part) { e = topCache[key] = part; reused++; }
-      }
-      if (e && fresh(e)) { if (e.items.length) results.set(f.name, { items: e.items, partial: !!e.partial }); } else todo.push(f);
-    }
-    if (reused) { log(`world: ${reused} countries took their ${gk} list from "All animals" (its top animals already included some)`); await idb.set('worldtop', topCache); }
-    ctl.reused = reused;
-    for (const f of geo) paint(f.name);
-    const c = map.getCenter();
-    todo.sort((a, b) => Math.hypot(a.info.lat - c.lat, a.info.lng - c.lng) - Math.hypot(b.info.lat - c.lat, b.info.lng - c.lng)); // what is on screen first
-    let done = geo.length - todo.length, errors = 0, saved = 0;
-    const label = () => group ? GROUPS.find(g => g[0] === group)[1].toLowerCase() : 'animal';
-    const title = () => { $('worldtitle').textContent = `Top ${label()} per country · ${done}/${geo.length}`; };
-    title();
-    if (todo.some(f => !places[f.name])) { await scanCountries(); if (my !== seq) return; } // countries not yet matched to an iNaturalist place
-    const next = (() => { let i = 0; return () => todo[i++]; })();
-    const worker = async () => {
-      for (let f = next(); f; f = next()) {
-        if (my !== seq || !ctl.isOpen || errors >= 5) return;
-        try {
-          let pl = places[f.name];
-          if (!pl) { pl = places[f.name] = (pl === undefined || countryIdx) ? await findPlace(f) : 0; if (my !== seq) return; } // a miss from before the bulk scan existed is tried again
-          if (pl) {
-            await pace();
-            const d = await api(`/observations/species_counts?place_id=${pl.id}&per_page=10&quality_grade=research&${group ? 'iconic_taxa=' + group : 'taxon_id=1'}`);
-            if (my !== seq || !ctl.isOpen) return;
-            const items = slimItems(d.results), rec = { t: Date.now(), items, partial: false };
-            topCache[`${pl.id}|${gk}`] = rec;
-            if (!gk) for (const g of GROUPS) { // each group's part of this list is that group's top too: keep it for when the group is chosen
-              if (!g[0]) continue;
-              const old = topCache[`${pl.id}|${g[0]}`], part = groupPart(rec, g[0]);
-              if (part && (!fresh(old) || (old.partial && part.partial === false))) topCache[`${pl.id}|${g[0]}`] = part;
-            }
-            if (items.length) setResultItems(f.name, items);
-          }
-          done++; errors = 0; title();
-          if (++saved % 10 === 0) { await idb.set('worldplaces', places); await idb.set('worldtop', topCache); }
-        } catch (e) {
-          log(`world: ${f.name} failed: ${e.message}`, 'w');
-          if (++errors >= 5) { $('worldtitle').textContent = 'iNaturalist is not answering; try again later'; return; }
-          await sleep(2000);
-        }
-      }
-    };
-    await Promise.all([worker(), worker()]);
-    await idb.set('worldplaces', places); await idb.set('worldtop', topCache);
-    if (my === seq && errors < 5) $('worldtitle').textContent = `Top ${label()} per country · ${results.size} countries`;
-  }
-  function setResultItems(name, items) { results.set(name, { items, partial: false }); paint(name); }
-
-  async function refresh() {
-    seq++;
-    selected = null; $('worldsheet').hidden = true;
-    results = new Map();
-    seenCounts = myObs().length ? mySpeciesCounts() : new Map(); // who has seen what (my own observations)
-    for (const f of geo) paint(f.name); // clears the previous markers
-    if (mode === 'mine') await computeMine(); else await loadEveryone();
-  }
-
-  // ---- UI ----
-  function drawChips() {
-    const box = $('worldchips'); box.replaceChildren();
-    for (const [k, label] of GROUPS) {
-      const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = group === k ? 'on' : '';
-      b.onclick = () => { group = k; drawChips(); refresh(); };
-      box.append(b);
-    }
-  }
-  for (const b of $('worldmode').querySelectorAll('button')) b.onclick = () => {
-    mode = b.dataset.mode;
-    for (const x of $('worldmode').querySelectorAll('button')) x.classList.toggle('on', x === b);
-    refresh();
-  };
-
-  ctl.open = async () => {
-    if (ctl.isOpen) { ctl.close(); return; } // the tab tapped again
-    const from = web.isOpen; if (from) web.hide();
-    root.hidden = false; ctl.isOpen = true;
-    document.body.style.overflow = 'hidden';
-    history[from ? 'replaceState' : 'pushState']({ world: 1 }, '');
-    syncOverlayTabs();
-    drawChips();
-    $('worldtitle').textContent = 'Loading the map…';
-    try {
-      await ensureLeaflet(); await loadGeo();
-    } catch (e) { log(`world: ${e.stack || e}`, 'e'); $('worldtitle').textContent = `Could not load the map (${e.message})`; return; }
-    if (!ctl.isOpen) return;
-    if (!map) {
-      map = L.map('worldmap', { zoomSnap: 0.25, minZoom: 1, maxBounds: [[-85, -200], [85, 200]], maxBoundsViscosity: 0.8, attributionControl: false, zoomControl: false, worldCopyJump: false });
-      L.control.zoom({ position: 'bottomright' }).addTo(map);
-      const shift = (f, d) => ({ ...f, geometry: { type: f.geometry.type, coordinates: f.geometry.type === 'Polygon' ? f.geometry.coordinates.map(r => r.map(([x, y]) => [x + d, y])) : f.geometry.coordinates.map(pg => pg.map(r => r.map(([x, y]) => [x + d, y]))) } });
-      const feats = [];
-      for (const f of geo) { feats.push(f); if (f.wraps) feats.push(shift(f, -360)); }
-      L.geoJSON({ type: 'FeatureCollection', features: feats }, {
-        style: () => ({ color: '#0b1a22', weight: 0.8, fillColor: '#17262e', fillOpacity: 0.9 }),
-        onEachFeature: (f, lay) => { const n = f.properties.name; if (!layerOf.has(n)) layerOf.set(n, []); layerOf.get(n).push(lay); lay.on('click', () => select(n)); },
-      }).addTo(map);
-      map.on('zoomend moveend', layout);
-      map.fitBounds([[-56, -168], [78, 178]]);
-    }
-    map.invalidateSize(); map.fitBounds([[-56, -168], [78, 178]], { animate: false });
-    refresh();
-  };
-  ctl.hide = () => {
-    ctl.isOpen = false; seq++;
-    root.hidden = true; if (!detail.isOpen) document.body.style.overflow = '';
-    $('worldsheet').hidden = true;
-    syncOverlayTabs();
-  };
-  ctl.close = () => { if (ctl.isOpen) history.back(); };
-  $('worldclose').onclick = ctl.close;
-  $('tabWorld').onclick = ctl.open;
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && ctl.isOpen && !detail.isOpen && !viewer.isOpen) ctl.close(); });
-  ctl.select = select;
-  ctl.debug = () => ({ reused: ctl.reused || 0, mode, group, countries: geo.length, results: results.size, markers: markerOf.size, places: Object.keys(places).length,
-    sample: [...results.entries()].slice(0, 4).map(([k, v]) => [k, v.items[0].taxon.common || v.items[0].taxon.name, v.items[0].count, v.items.length, !!v.partial]) });
-  return ctl;
-})();
 
 setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-41 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-42 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
   keepStorage();
+  ['worldplaces', 'worldtop', 'worldscan', 'worldgeo', 'photocol'].forEach(k => { try { idb.del(k); } catch {} }); // data of the removed World and Web views
   await loadCache();
   renderPeople();
   drawCmpChips();
-  drawRarityChips();
   backfillPrefMeta();
   if (state.obs.length) { show(); status('Showing cached data; refreshing…'); }
   await oauthCallback();

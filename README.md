@@ -8,7 +8,7 @@ The token is cached in `localStorage`; observations and taxonomy are cached in I
 
 Enable Pages: Settings → Pages → Build and deployment → Source: **GitHub Actions**. The workflow in `.github/workflows/pages.yml` installs the
 pinned third-party packages from `package-lock.json` (`npm ci --ignore-scripts`), copies the few files the page needs into `vendor/`
-(`scripts/vendor.mjs`: Leaflet, markercluster, the country shapes and the fonts), and deploys the site. `vendor/` is
+(`scripts/vendor.mjs`: Leaflet, markercluster and the fonts), and deploys the site. `vendor/` is
 not committed. There is no CDN fallback: the maps need `vendor/`, so Pages must use the GitHub Actions source (a plain
 branch deploy, or opening `index.html` directly, has no `vendor/` and those features report the missing file). To change a version: edit `package.json`, run `npm install --ignore-scripts`, commit `package-lock.json`.
 To try the vendored copy locally: `npm ci --ignore-scripts && npm run vendor`, then serve the folder.
@@ -32,27 +32,19 @@ your cached observations. iNaturalist API calls are never cached by the service 
 are stored separately (IndexedDB key `nearby`, up to 15) and can be reopened from the history button on the Nearby map.
 Bump `VER` in `sw.js` to force the cached libraries, tiles and photos to be dropped.
 
-## World map
+## Controls
 
-The **World** tab shows the most observed animal over each country. *Everyone* asks iNaturalist for the top species per country (two
-requests per country the first time, about four minutes; answers are kept in IndexedDB for 30 days), *Mine* counts your own observations
-per country. The animal group chips narrow it to birds, mammals and so on. Country outlines come from the `world-atlas` file on jsDelivr.
+A bottom bar has the main controls; each opens a sheet above it.
 
-## Photo proxy (optional)
+- **Sort**: *Latest* (grouped by year, month, day), *Rarest* (species with the fewest iNaturalist observations first), *Taxonomy*, *Place* and *Common* (the most observed species around a place, the former Nearby screen).
+  For Latest and Rarest, *Same species* chooses between every observation, one per species per day, or one per species (grouped entries look like a small pile of Polaroids). *Shuffle* randomises the order.
+- **Filter**: jump to a group or species, group (birds, plants…), favourite-photo status, and date.
+- **Location**: a map where the orange circle filters your observations to the area in view.
+- **Compare**: only while viewing someone else's observations (species missing from yours, or seen by both).
 
-Reading photo colours needs the page to be allowed to read the photo pixels. If iNaturalist's photo servers refuse, create a free
-Cloudflare Worker that forwards only iNaturalist photo addresses (see the code in the project notes / chat), paste its address under
-⚙ → "Or use an API token / OAuth settings" → "Photo proxy address". Colours are remembered per photo, so a photo goes through the proxy once.
-
-## Photos tab
-
-Recent, Taxonomy and Place are one **Photos** tab; the sort button (arrows icon) switches between *By date*, *Taxonomy* and *By place*. Every photo is a Polaroid
-(white frame, handwritten name in Caveat, a small random tilt fixed per observation) in one strict grid. A group is not a row in between: its coloured
-handwriting-font label (Caveat; common name large, scientific name small) sits above the first Polaroid of the group. Dates are grouped as
-[2026][March][5th], taxonomy by rank, places by country/state/county/city.
-
-Tap a label to collapse every group of its level into small overlapping stacks of Polaroids (tap a label or a stack again to expand them all; the group you tapped stays where it is on screen); the button on the right of the icon bar collapses or expands everything. While scrolling, the labels of the group you are in sit side by side
-(wrapping onto more lines) in a sticky header under the icon bar. Fonts are pinned in `package.json` and copied into `vendor/fonts/` at deploy time.
+Every photo is a Polaroid (white frame, handwritten name in Caveat, a small random tilt fixed per observation) in one strict grid. A group is not a row in between: its overlapping
+chevron tab (graph paper, linen and denim in turn by level) sits above the first Polaroid of the group. Tap a tab to collapse every group of its level into a small overlapping stack of Polaroids (collapsing a group collapses everything inside it; tapping again expands one level; the group you tapped stays where it is on screen).
+While scrolling, the tabs of the group you are in are shown at the top. Fonts are pinned in `package.json` and copied into `vendor/fonts/` at deploy time.
 
 ## Design prototype
 
