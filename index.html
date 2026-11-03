@@ -440,6 +440,10 @@
   #gal.st-simple .pgrid .tile .cap { display:block; height:auto; padding:5px 2px 0; text-align:left; color:var(--fg); transform:none; overflow:visible; line-height:1.05; }
   #gal.st-simple .pgrid .tile .cap:hover { color:var(--accent); }
   #gal.st-simple .pgrid .tile.piled::before, #gal.st-simple .pgrid .tile.piled::after { background:rgba(255,255,255,.55); border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+  /* Simple style: no Polaroid frames anywhere, also not on stacks of collapsed groups or piles of the same species */
+  #gal.st-simple .stack .mini { background:none; padding:0; aspect-ratio:1; border-radius:6px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.45); }
+  #gal.st-simple .stack .mini img { height:100%; }
+  #gal.st-simple .pgrid .tile.piled::before, #gal.st-simple .pgrid .tile.piled::after { inset:0 0 auto 0; height:auto; aspect-ratio:1; } /* the pile sits behind the photo only, never behind the name */
 </style>
 </head>
 <body>
@@ -3305,7 +3309,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-55 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-56 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
