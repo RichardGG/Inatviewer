@@ -141,7 +141,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .swipe-prev #gal, .swipe-prev #explore { animation:slideInL .22s ease-out; }
   #controls { margin:0 0 6px; }
   #iconbar { position:sticky; top:0; z-index:60; display:flex; align-items:center; gap:2px; margin:0 -16px 8px; padding:0 10px; flex-wrap:wrap; background:var(--card); border-top:1px solid var(--line); border-bottom:1px solid var(--line); transition:top .22s ease, box-shadow .2s; }
-  body.vexplore #bcmp { display:none !important; }
   #iconbar.stuck { box-shadow:0 2px 8px rgba(0,0,0,.18); }
   .ibgroup { display:inline-flex; gap:2px; align-items:center; }
   .sp1 { flex:1; }
@@ -535,8 +534,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .albcurl { position:absolute; right:0; bottom:0; width:46px; height:46px; background:linear-gradient(315deg, #232733 50%, #4a4a52 50%); clip-path:polygon(100% 0, 100% 100%, 0 100%); box-shadow:-3px -3px 6px rgba(0,0,0,.5); pointer-events:none; }
   #viewer .nav { background:rgba(0,0,0,.35); border-radius:50%; }
   /* Common: species you have not seen are muted */
-  .pgrid .tile.muted .pic img { filter:saturate(.25) brightness(.95); }
-  .pgrid .tile.muted:hover .pic img { filter:none; }
+  .pgrid .tile .pic img.mutedimg { filter:saturate(.25) brightness(.95); }
+  .pgrid .tile:hover .pic img.mutedimg { filter:none; }
   .dvroot1 { margin-top:6px; }
   /* comparing: my photo and the other people's photos of the species side by side; an empty frame when they have none */
   .pgrid .tile .pic.cmp { display:grid; grid-template-columns:repeat(var(--n, 2), minmax(0, 1fr)); gap:3px; aspect-ratio:var(--n, 2) / 1; }
@@ -545,6 +544,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .dark .noph { background:repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 6px, transparent 6px 12px), #2c3035; box-shadow:inset 0 0 0 2px rgba(255,255,255,.1); }
   .pgrid .tile .pic.cmp .cph { position:relative; display:block; min-width:0; overflow:hidden; }
   .pgrid .tile .pic.cmp .cph > img, .pgrid .tile .pic.cmp .cph > .noph { display:block; width:100%; height:100%; }
+  .pic.cmp .seentag { right:auto; left:6px; } /* the tick belongs to my photo, the first one */
   .ava { position:absolute; left:4px; bottom:4px; z-index:3; width:24px; height:24px; border-radius:50%; border:2px solid #fff; background:#7a8a80 center/cover; color:#fff; font:700 13px/20px Arial, sans-serif; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.5); pointer-events:none; }
 </style>
 </head>
@@ -2848,6 +2848,24 @@ function myPhotoBySpecies() {
 }
 // iNaturalist's species list is searched by radius; very wide circles are cut to the nearest 100 km.
 const exploreKm = () => Math.min(100, Math.max(0.1, area.r / 1000));
+// Switching to Common with no area chosen: start around where I am (10 km); if that is not possible, open the Location sheet to pick a place.
+let geoBusy = false;
+function useMyLocationForCommon() {
+  const pick = () => { if (view === 'explore' && !area && $('areapanel').hidden) $('areabtn').click(); };
+  if (!navigator.geolocation || geoBusy) return setTimeout(pick, 150);
+  geoBusy = true; status('Finding your location…');
+  navigator.geolocation.getCurrentPosition(pos => {
+    geoBusy = false; status('');
+    log(`geolocation: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (±${Math.round(pos.coords.accuracy)} m)`);
+    if (area) return;
+    $('follow').checked = true; areaFitted = false;
+    setArea({ lat: pos.coords.latitude, lng: pos.coords.longitude, r: 10000 });
+  }, err => {
+    geoBusy = false; status('');
+    log(`geolocation error ${err.code}: ${err.message}`, 'w');
+    pick();
+  }, { timeout: 12000, maximumAge: 120000 });
+}
 // Open Common around where an observation was made.
 async function exploreFromObs(o) {
   const ll = parseLoc(o);
@@ -2921,7 +2939,12 @@ function renderExplore() {
     return;
   }
   const mine = mySpeciesCounts(), myPhoto = myPhotoBySpecies();
-  const rows = explore.items.filter(it => !exploreHideSeen || !mine.has(it.taxon.id));
+  const act = activePartners().filter(p => lc(p.login) !== lc(meLogin)); // my own photo is already the first one
+  const rows = explore.items.filter(it => {
+    if (exploreHideSeen && mine.has(it.taxon.id)) return false;
+    if (cmpMode && act.length) { const all = act.every(p => partnerSpecies(p).has(it.taxon.id)); if (cmpMode === 'common' ? !all : act.some(p => partnerSpecies(p).has(it.taxon.id))) return false; }
+    return true;
+  });
   const seenN = explore.items.filter(it => mine.has(it.taxon.id)).length;
   const where = `within ${fmtDist(Math.min(area.r, 100000))}${area.r > 100000 ? ' (the nearest 100 km)' : ''}`;
   const note = explore.err && !explore.items.length ? explore.err
@@ -2933,7 +2956,7 @@ function renderExplore() {
     draw([para(explore.err ? explore.err : explore.loading ? note : explore.items.length ? 'Nothing to show for this filter.' : `No species found ${where}.`)]);
   } else {
     const grid = document.createElement('div'); grid.className = 'pgrid top';
-    for (const it of rows) { const cell = document.createElement('div'); cell.className = 'cell'; cell.append(commonTile(it, mine, myPhoto)); grid.append(cell); }
+    for (const it of rows) { const cell = document.createElement('div'); cell.className = 'cell'; cell.append(commonTile(it, mine, myPhoto, act)); grid.append(cell); }
     draw([para(note), ...oneFolder(grid)]);
   }
   $('exprefresh').hidden = !explore.cachedAt || explore.loading;
@@ -2941,14 +2964,26 @@ function renderExplore() {
   $('expmore').textContent = `Show more (${explore.total - explore.items.length} left)`;
 }
 // One Polaroid for a species in Common: my own favourite photo if I have one, otherwise iNaturalist's; a green tick when I have seen it.
-function commonTile(it, mine, myPhoto) {
+function commonTile(it, mine, myPhoto, act = []) {
   const t = it.taxon, n = mine.get(t.id), mp = myPhoto.get(t.id);
-  const tile = document.createElement('div'); tile.className = 'tile' + (n ? '' : ' muted'); markBrow(tile, t.id);
+  const tile = document.createElement('div'); tile.className = 'tile'; markBrow(tile, t.id);
   tile.style.setProperty('--rot', ((Math.imul(t.id, 2654435761) >>> 0) % 1300 / 100 - 6.5).toFixed(2) + 'deg');
   tile.title = `${t.preferred_common_name || t.name} · ${it.count.toLocaleString()} observations here${n ? ` · you have seen it (${n})` : ''}`;
   const b = document.createElement('button'); b.type = 'button'; b.className = 'pic'; b.setAttribute('aria-label', 'Open species');
   const src = mp ? sized(mp.url, 'medium') : (t.default_photo?.medium_url || t.default_photo?.square_url || '');
-  if (src) { const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.src = src; b.append(im); }
+  if (src) {
+    const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.src = src; if (!n) im.classList.add('mutedimg');
+    if (act.length) {
+      b.classList.add('cmp'); b.style.setProperty('--n', act.length + 1);
+      const cell = (child, login) => { const c = document.createElement('span'); c.className = 'cph'; c.append(child); c.append(avatarBadge(login)); return c; };
+      b.append(cell(im, meLogin || state.user?.login));
+      for (const p of act) {
+        const url = partnerPhoto(p, t.id), who = '@' + p.login;
+        if (url) { const pim = document.createElement('img'); pim.alt = ''; pim.loading = 'lazy'; pim.src = sized(url, 'medium'); pim.title = who; b.append(cell(pim, p.login)); }
+        else { const e = document.createElement('span'); e.className = 'noph'; e.title = `${who} has not seen this`; b.append(cell(e, p.login)); }
+      }
+    } else b.append(im);
+  }
   if (n) { const k = document.createElement('span'); k.className = 'seentag'; k.textContent = '✓'; k.title = `You have seen this (${n})`; b.append(k); }
   b.onclick = () => openSpecies(t.id);
   const cap = document.createElement('a');
@@ -3224,7 +3259,7 @@ function setView(v) {
   if (v === 'explore') {
     drawChips(); renderExplore();
     if (area && !explore.items.length && !explore.loading) loadExplore();
-    else if (!area) setTimeout(() => { if (view === 'explore' && !area && $('areapanel').hidden) $('areabtn').click(); }, 150);
+    else if (!area) useMyLocationForCommon();
   }
   if (state.obs.length) show();
   // each sort keeps its own scroll position (re-applied once more next frame in case layout settles late)
@@ -3566,7 +3601,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-74 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-76 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
