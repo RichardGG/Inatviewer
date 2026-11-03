@@ -1670,17 +1670,9 @@ function partnerPhoto(p, sid) {
   }
   return p._pm.best.get(sid);
 }
-// Sticker colour from what the label says: the animal / plant group for taxonomy, the month for dates, otherwise a colour taken from the name.
-const GROUP_COLORS = { Aves: '#9fd2f2', Mammalia: '#e6b98a', Reptilia: '#b9d98a', Amphibia: '#7fd6c2', Actinopterygii: '#7ec8d8', Insecta: '#f9bd80', Arachnida: '#d9a3dc', Mollusca: '#f2a9bb', Plantae: '#b3df9c', Fungi: '#d9c3a0' };
+// Sticker colour: every group gets its own colour, made from the group's name as a seed, so photos of the same group share a colour.
 const hueOf = str => shuffleKey(String(str), 'sticker') % 360;
-function stickerColor(tag, o) {
-  if (gal.sort === 'tree') {
-    for (const id of [o.tid, ...(o.anc || [])]) { const k = CLASS_IDS[id] || (CLASS_NAMES.has(state.names[id]?.name) ? state.names[id].name : null); if (k && GROUP_COLORS[k]) return GROUP_COLORS[k]; }
-  }
-  const m = /^(\d{4})-(\d\d)/.exec(tag.key);
-  if (gal.sort === 'recent' && m && tag.rank !== 'year') return `hsl(${(+m[2] - 1) * 30 + 10} 70% 78%)`; // a colour per month
-  return `hsl(${hueOf(tag.main)} 62% 80%)`;
-}
+function stickerColor(tag) { return `hsl(${hueOf(tag.key + '|' + tag.main)} 68% 80%)`; }
 function polTile(o, tag) {
   const ph = photosOf(o);
   const t = document.createElement('div');
@@ -1716,7 +1708,7 @@ function polTile(o, tag) {
   const sp = document.createElement('span'); sp.textContent = o.common || o.name; cap.append(sp); capObserver.observe(cap);
   t.append(b, cap);
   if (tag) { // a group too small for its own folder: a sticker on the photo says which group it belongs to
-    const st = document.createElement('span'); st.className = 'gsticker'; st.style.background = stickerColor(tag, o); st.title = `${tag.rank}: ${tag.main}${tag.sub ? ' (' + tag.sub + ')' : ''}`;
+    const st = document.createElement('span'); st.className = 'gsticker'; st.style.background = stickerColor(tag); st.title = `${tag.rank}: ${tag.main}${tag.sub ? ' (' + tag.sub + ')' : ''}`;
     st.append(tag.main);
     if (tag.sub) { const sm = document.createElement('small'); sm.textContent = tag.sub; if (gal.sort === 'tree') sm.className = 'sci'; st.append(sm); }
     t.append(st);
@@ -3681,7 +3673,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-88 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-89 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
