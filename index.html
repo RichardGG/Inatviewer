@@ -2502,24 +2502,7 @@ let suppressMove = false;
 function moveMap(fn) { suppressMove = true; try { fn(); } finally { suppressMove = false; } }
 
 const markerKey = () => `${Object.keys(rarity).length}|${cmpMode}|${partners.join()}|${$('datesel').value}|${$('dfrom').value}|${$('dto').value}|${[...filterClasses].join()}|${favMode}|${favVer}|${state.obs.length}|${textFiltered().length}`;
-// Zoomed in far enough, the dots become the observations' own photos.
-const PHOTO_ZOOM = 15;
-let areaPhotos = null;
-function updatePhotoMarkers() {
-  if (!areaMap || !window.L) return;
-  if (!areaPhotos) areaPhotos = L.layerGroup();
-  const close = areaMap.getZoom() >= PHOTO_ZOOM;
-  if (!close) { areaMap.removeLayer(areaPhotos); areaPhotos.clearLayers(); if (!areaMap.hasLayer(areaCluster)) areaMap.addLayer(areaCluster); return; }
-  const b = areaMap.getBounds().pad(0.1), list = [];
-  for (const o of textFiltered()) { const ll = parseLoc(o); if (ll && b.contains(ll) && photosOf(o).length) list.push([ll, o]); if (list.length >= 150) break; }
-  areaPhotos.clearLayers();
-  for (const [ll, o] of list) {
-    const icon = L.divIcon({ className: 'pmk', html: `<img alt="" src="${sized(photosOf(o)[0], 'square')}">`, iconSize: [50, 56], iconAnchor: [25, 28] });
-    L.marker(ll, { icon, bubblingMouseEvents: false }).bindPopup(() => obsPopup(o), { minWidth: 200 }).addTo(areaPhotos);
-  }
-  if (areaMap.hasLayer(areaCluster)) areaMap.removeLayer(areaCluster);
-  if (!areaMap.hasLayer(areaPhotos)) areaMap.addLayer(areaPhotos);
-}
+function updatePhotoMarkers() {} // photos are now the markers at every zoom (see drawAreaMarkers)
 function drawAreaMarkers() {
   if (!areaMap) return;
   markerSig = markerKey();
@@ -2527,7 +2510,11 @@ function drawAreaMarkers() {
   const markers = [];
   for (const o of textFiltered()) {
     const ll = parseLoc(o);
-    if (ll) markers.push(L.circleMarker(ll, { radius: 7, color: '#fff', weight: 2, fillColor: '#c8453b', fillOpacity: 1 }).bindPopup(() => obsPopup(o), { minWidth: 200 }));
+    if (!ll) continue;
+    const ph = photosOf(o)[0]; // the observation's own photo as a small print; a red dot only when it has none
+    const m = ph ? L.marker(ll, { icon: L.divIcon({ className: 'pmk', html: `<img alt="" loading="lazy" src="${sized(ph, 'square')}">`, iconSize: [50, 56], iconAnchor: [25, 28] }), bubblingMouseEvents: false })
+                 : L.circleMarker(ll, { radius: 7, color: '#fff', weight: 2, fillColor: '#c8453b', fillOpacity: 1 });
+    markers.push(m.bindPopup(() => obsPopup(o), { minWidth: 200 }));
   }
   areaCluster.addLayers(markers);
   updatePhotoMarkers();
@@ -3980,7 +3967,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-140 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-141 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
