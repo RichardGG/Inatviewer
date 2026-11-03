@@ -538,7 +538,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .pgrid .tile:hover .pic img.mutedimg { filter:none; }
   .dvroot1 { margin-top:6px; }
   /* comparing: my photo and the other people's photos of the species side by side; an empty frame when they have none */
-  .pgrid .tile .pic.cmp { display:grid; grid-template-columns:repeat(var(--n, 2), minmax(0, 1fr)); gap:3px; aspect-ratio:var(--n, 2) / 1; }
+  .pgrid .tile .pic.cmp { display:grid; grid-template-columns:repeat(var(--n, 2), minmax(0, 1fr)); gap:3px; grid-template-rows:minmax(0, 1fr); aspect-ratio:var(--n, 2) / 1; }
   .pgrid .tile .pic.cmp img { position:static; width:100%; height:100%; min-height:0; object-fit:cover; }
   .noph { background:repeating-linear-gradient(135deg, rgba(0,0,0,.07) 0 6px, transparent 6px 12px), #e6e3d6; box-shadow:inset 0 0 0 2px rgba(0,0,0,.12); }
   .dark .noph { background:repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 6px, transparent 6px 12px), #2c3035; box-shadow:inset 0 0 0 2px rgba(255,255,255,.1); }
@@ -546,6 +546,15 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .pgrid .tile .pic.cmp .cph > img, .pgrid .tile .pic.cmp .cph > .noph { display:block; width:100%; height:100%; }
   .pic.cmp .seentag { right:auto; left:6px; } /* the tick belongs to my photo, the first one */
   .ava { position:absolute; left:4px; bottom:4px; z-index:3; width:24px; height:24px; border-radius:50%; border:2px solid #fff; background:#7a8a80 center/cover; color:#fff; font:700 13px/20px Arial, sans-serif; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.5); pointer-events:none; }
+  /* a species I have not seen: iNaturalist's photo, muted, as a small postage stamp */
+  .pgrid .tile .pic.hasstamp, .pgrid .tile .pic .cph:has(.stamp3) { display:flex; align-items:center; justify-content:center; background:#d9d9d2; }
+  .pgrid .tile .pic.cmp.hasstamp { display:grid; align-items:stretch; justify-content:stretch; }
+  .pgrid .tile .pic .cph:has(.stamp3) { display:flex; }
+  .stamp3 { display:block; width:72%; filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)); }
+  .stamp3in { display:block; padding:7px; background:#fff;
+              -webkit-mask:linear-gradient(#000 0 0) content-box no-repeat, radial-gradient(circle 3.5px at 0 0, transparent 97%, #000) 0 0/12px 12px;
+              mask:linear-gradient(#000 0 0) content-box no-repeat, radial-gradient(circle 3.5px at 0 0, transparent 97%, #000) 0 0/12px 12px; }
+  .pgrid .tile .stamp3in img { position:static; display:block; width:100%; height:auto; aspect-ratio:1; }
 </style>
 </head>
 <body>
@@ -2973,16 +2982,18 @@ function commonTile(it, mine, myPhoto, act = []) {
   const src = mp ? sized(mp.url, 'medium') : (t.default_photo?.medium_url || t.default_photo?.square_url || '');
   if (src) {
     const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.src = src; if (!n) im.classList.add('mutedimg');
+    // a species I have not seen shows iNaturalist's photo, muted, as a small postage stamp (and is not marked with my picture)
+    const shown = n ? im : (() => { const o = document.createElement('span'), i = document.createElement('span'); o.className = 'stamp3'; i.className = 'stamp3in'; i.append(im); o.append(i); b.classList.add('hasstamp'); return o; })();
     if (act.length) {
       b.classList.add('cmp'); b.style.setProperty('--n', act.length + 1);
-      const cell = (child, login) => { const c = document.createElement('span'); c.className = 'cph'; c.append(child); c.append(avatarBadge(login)); return c; };
-      b.append(cell(im, meLogin || state.user?.login));
+      const cell = (child, login) => { const c = document.createElement('span'); c.className = 'cph'; c.append(child); if (login) c.append(avatarBadge(login)); return c; };
+      b.append(cell(shown, n ? (meLogin || state.user?.login) : ''));
       for (const p of act) {
         const url = partnerPhoto(p, t.id), who = '@' + p.login;
         if (url) { const pim = document.createElement('img'); pim.alt = ''; pim.loading = 'lazy'; pim.src = sized(url, 'medium'); pim.title = who; b.append(cell(pim, p.login)); }
         else { const e = document.createElement('span'); e.className = 'noph'; e.title = `${who} has not seen this`; b.append(cell(e, p.login)); }
       }
-    } else b.append(im);
+    } else b.append(shown);
   }
   if (n) { const k = document.createElement('span'); k.className = 'seentag'; k.textContent = '✓'; k.title = `You have seen this (${n})`; b.append(k); }
   b.onclick = () => openSpecies(t.id);
@@ -3601,7 +3612,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-76 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-77 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
