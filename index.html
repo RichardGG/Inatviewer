@@ -639,13 +639,25 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .dark #areapanel .row label, .dark #areapanel .row .status { color:#a9bdf2; } .dark #areapanel input[type=checkbox] { accent-color:#a9bdf2; }
   .dark #areapanel #areafit { border-color:#a9bdf2; color:#a9bdf2; }
   .dark .leaflet-control-attribution { background:rgba(38,44,54,.88) !important; color:#8fa6cf !important; } .dark .leaflet-control-attribution a { color:#a9bdf2 !important; }
+  /* the top of the page is the cover of a field notes book: cloth boards, a stitched edge, a paper label and gold buttons */
+  header.cover { position:relative; margin:6px 0 14px; padding:16px 16px 16px 18px; border-radius:16px; isolation:isolate;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px), #232733; box-shadow:0 10px 24px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12); }
+  header.cover::after { content:''; position:absolute; inset:5px; border:2px dashed rgba(240,215,160,.4); border-radius:12px; pointer-events:none; }
+  header.cover::before { content:''; position:absolute; top:0; bottom:0; right:78px; width:16px; background:linear-gradient(90deg, rgba(0,0,0,.35), rgba(255,255,255,.07) 40%, rgba(0,0,0,.35)); z-index:-1; } /* the elastic band */
+  .clabel { position:relative; padding:7px 22px 9px; background:var(--grain), #f6f2e4; color:#27348b; border-radius:3px; transform:rotate(-1.2deg); box-shadow:0 3px 7px rgba(0,0,0,.5), inset 0 0 0 1px rgba(0,0,0,.12); text-align:center; line-height:1; }
+  .clabel::before { content:''; position:absolute; inset:3px; border:1.5px solid rgba(39,52,139,.35); pointer-events:none; }
+  .clabel small { display:block; font:700 10px 'Trebuchet MS', Arial, sans-serif; letter-spacing:.28em; text-transform:uppercase; color:#37507a; font-size-adjust:none; }
+  .clabel h1 { margin:2px 0 0; font:700 34px/1 var(--hw); font-size-adjust:.5; color:#27348b; }
+  .clabel #covername { display:block; margin-top:1px; font:700 17px var(--hw); color:#5a6590; } .clabel #covername:empty { display:none; }
+  header.cover .ib, header.cover .ib:hover { background:none; border:0; color:#d9b45a; filter:drop-shadow(0 -1px 0 rgba(0,0,0,.65)); width:38px; height:38px; }
+  .dark .clabel { background:var(--grain), #262c36; color:#a9bdf2; } .dark .clabel h1 { color:#a9bdf2; } .dark .clabel small { color:#8fa6cf; } .dark .clabel #covername { color:#8fa6cf; } .dark .clabel::before { border-color:rgba(169,189,242,.35); }
 </style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="rough" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="3" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3"/></filter></svg>
 <main>
-  <header class="top">
-    <h1>iNat Viewer</h1>
+  <header class="top cover">
+    <div class="clabel"><small>Field notes</small><h1>iNat Viewer</h1><span id="covername"></span></div>
     <span class="ibgroup">
       <button class="ib" id="share" aria-label="Share link" title="Share a link to this view" hidden><i data-i="share-2"></i></button>
       <button class="ib" id="acct" aria-label="Account and sync" title="Account &amp; sync" aria-expanded="false"><i data-i="settings"></i></button>
@@ -3369,6 +3381,7 @@ function refreshViewing() {
     if (meLogin) { const b = document.createElement('button'); b.className = 'secondary'; b.textContent = 'Back to mine'; b.onclick = () => { location.href = redirectUri(); }; box.append(b); }
   }
   $('share').hidden = !(other || state.user?.login || meLogin);
+  { const who = state.user?.login || (other ? viewLogin : meLogin); $('covername').textContent = who ? `of @${who}` : ''; }
   if (favMode && !favModes().some(m => m[0] === favMode)) { favMode = ''; drawFilterChips(); drawChips(); } // e.g. a filter that only exists for my own observations
   $('fsCompare').hidden = !(other || candidates().length); // comparing needs someone to compare with
   $('loadall').hidden = state.complete !== false;
@@ -3802,7 +3815,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-104 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-105 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
