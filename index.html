@@ -11,11 +11,20 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="iNat Viewer">
+<script>
+// Appearance: 'auto' follows the device, or force 'light' / 'dark'. Set before the first paint.
+var THEME_KEY = 'inat_theme', themeMq = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
+function applyTheme(t) {
+  try { t = t || localStorage.getItem(THEME_KEY) || 'auto'; } catch (e) { t = t || 'auto'; }
+  document.documentElement.classList.toggle('dark', t === 'dark' || (t === 'auto' && !!themeMq && themeMq.matches));
+}
+applyTheme();
+if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', function () { applyTheme(); });
+</script>
 <style>
   :root { --bg:#fafaf7; --fg:#1d2a1f; --muted:#6b7a6d; --accent:#4a8a2a; --line:#dde3d8; --card:#fff; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#14181a; --fg:#e6ece6; --muted:#8c9a8e; --accent:#7fc45a; --line:#2a3330; --card:#1b2124; }
-  }
+  :root.dark { --bg:#14181a; --fg:#e6ece6; --muted:#8c9a8e; --accent:#7fc45a; --line:#2a3330; --card:#1b2124; color-scheme:dark; }
+  :root:not(.dark) { color-scheme:light; }
   * { box-sizing: border-box; }
   html, body, main, #gal { overflow-x:clip; } /* rotated Polaroids and tabs may poke a pixel or two past the edge; that must never widen the page */
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; } /* handwriting everywhere (Caveat); font-size-adjust keeps its small letters readable */
@@ -235,7 +244,6 @@
   .tile.cut { background:radial-gradient(circle at 50% 42%, #f6f8f3 0%, #d3ddcf 100%); }
   .tile.cut .pic img { object-fit:contain; padding:6%; filter:drop-shadow(0 3px 5px rgba(0,0,0,.35)); }
   .tile.cutwait .pic img { opacity:.78; }
-  @media (prefers-color-scheme: dark) { .tile.cut { background:radial-gradient(circle at 50% 42%, #33443d 0%, #18211e 100%); } }
   .tile .cap { position:absolute; left:0; right:0; bottom:0; padding:14px 6px 4px; color:#fff; font-size:11px; text-align:left;
                background:linear-gradient(transparent, rgba(0,0,0,.65)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; text-decoration:none; z-index:1; }
   .tile .cap:hover { text-decoration:underline; }
@@ -276,10 +284,8 @@
   /* the desk the Polaroids lie on */
   body.stkview { --desk:#f1ecdc; --dot:rgba(60,60,85,.38); --paper:radial-gradient(circle, var(--dot) 1.3px, transparent 1.7px) 0 0/22px 22px, url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .25  0 0 0 0 .2  0 0 0 0 .1  0 0 0 .4 -.1'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"); background:var(--paper), var(--desk); } /* bullet-journal dot grid, scrolling with the page */
   body.stkview #iconbar { background:#f7f3e6; }
-  @media (prefers-color-scheme: dark) {
-    body.stkview { --desk:#233d2e; --dot:rgba(190,225,195,.3); }
-    body.stkview #iconbar { background:#1c3326; }
-  }
+  .dark body.stkview { --desk:#233d2e; --dot:rgba(190,225,195,.3); }
+  .dark body.stkview #iconbar { background:#1c3326; }
   #gal { background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
   /* one strict grid: every Polaroid is a cell; a group's label sits in the cell of its first Polaroid, above it */
   .pgrid { --cols:2; --gx:14px; display:grid; grid-template-columns:repeat(var(--cols), minmax(0, 1fr)); gap:20px 14px; padding:12px 8px 4px; align-items:end; }
@@ -473,6 +479,35 @@
   .strip .sn { margin-left:auto; flex:none; min-width:28px; padding:2px 8px; border-radius:12px; background:rgba(0,0,0,.65); color:#fff; font-size:14px; text-align:center; }
   /* desktop: nested folders are inset a little on each side, so the edges of the folders they lie over show; on mobile they stay edge to edge */
   @media (min-width: 800px) { .dvb > .dv { margin-left:18px; margin-right:18px; } .dvroot { padding:4px 6px 6px; } }
+  /* ---------- dark mode textures: the folders, tabs, species notebook and sheets ---------- */
+  .dark .dv.d0, .dark .dv.d3 { --dvc:#26372d; --dvfg:#bcd2f2; --dvbg:linear-gradient(rgba(140,180,240,.2) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(140,180,240,.2) 1px, transparent 1px) 0 0/10px 10px, #26372d; }
+  .dark .dv.d1, .dark .dv.d4 { --dvc:#34352f; --dvfg:#e6dcc3; --dvbg:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), #34352f; }
+  .dark .dv.d2, .dark .dv.d5 { --dvc:#1f4a30; --dvfg:#cfeccf; --dvbg:repeating-linear-gradient(135deg, rgba(255,255,255,.1) 0 2px, transparent 2px 5px), #1f4a30; }
+  .dark .tag.m0 { color:#bcd2f2; background:linear-gradient(rgba(140,180,240,.2) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(140,180,240,.2) 1px, transparent 1px) 0 0/10px 10px, #26372d; }
+  .dark .tag.m1 { color:#e6dcc3; background:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), #34352f; }
+  .dark .tag.m2 { color:#cfeccf; background:repeating-linear-gradient(135deg, rgba(255,255,255,.1) 0 2px, transparent 2px 5px), #1f4a30; }
+  .dark #gal.st-simple .pgrid .tile .cap { color:#f1ede0; }
+  .dark .strip img { box-shadow:0 1px 4px rgba(0,0,0,.7); }
+  .dark .nbpage { background:var(--grain), #262c36; color:#a9bdf2; }
+  .dark .nbpr { background:var(--grain), repeating-linear-gradient(transparent 0 29px, rgba(150,180,230,.22) 29px 30px), #262c36; background-position:0 0, 0 6px, 0 0; }
+  .dark .nbhead, .dark .nblab, .dark .nbpr h3, .dark .nbdesc::before { color:#8fa6cf; }
+  .dark .nbf { border-bottom-color:#4a5873; }
+  .dark .nbv, .dark .nbchk, .dark .ccap, .dark .crumbs, .dark .crumbs button, .dark .nbdesc p, .dark .nbdesc a, .dark .nbpr p.status, .dark .nbpr .season-l { color:#a9bdf2; }
+  .dark .nbdesc p { background:repeating-linear-gradient(transparent 0 29px, #4a5873 29px 30px); }
+  .dark .nbchk::before { color:#7fc45a; } .dark .nbchk.warn, .dark .nbchk.no::before, .dark .nbpr .season-l .me { color:#ff8f84; }
+  .dark .nbform .cons { color:#a9bdf2; border-bottom-color:#4a5873; } .dark .nbform .cons .status { color:#8fa6cf; }
+  .dark .nbpr .season div { background:repeating-linear-gradient(135deg, #8fa6cf 0 2px, #4a5873 2px 4px); }
+  .dark .nbpr .mine .alt { background:#e9e5d6; } .dark .nbpr .mine .alt .badge { color:#27348b; }
+  .dark .nbpr .mine .alt.sel { outline-color:#a9bdf2; }
+  .dark .fpanel, .dark #areapanel, .dark #pexplore { background:var(--grain), #262c36 !important; color:#a9bdf2; }
+  .dark .fpanel h4 { color:#8fa6cf; } .dark .fpanel .status, .dark #areapanel .status { color:#8fa6cf; }
+  .dark .fpanel .cls { border-color:#a9bdf2; color:#a9bdf2; }
+  .dark .fpanel .cls.on { background:rgba(250,225,60,.5); color:#fff6c2; border-color:#a9bdf2; }
+  .dark .fpanel select, .dark .fpanel input[type=date], .dark .fpanel input[type=search], .dark #jump { color:#a9bdf2 !important; border-bottom-color:#4a5873 !important; }
+  .dark .fpanel #jumpsug { background:#2f3642; }
+  .dark #areamap { border-color:#e9e5d6; }
+  .dark .nbform .cons.crit::after, .dark .nbform .cons.threat::after { border-color:#ff8f84; color:#ff8f84; }
+  .dark .fpanel::before, .dark #areapanel::before { background:rgba(169,189,242,.35); }
 </style>
 </head>
 <body>
@@ -557,6 +592,8 @@
           <h4>Common</h4>
           <div id="commonchips" class="clsrow" role="group" aria-label="Options for the Common sort"></div>
         </div>
+        <h4>Appearance</h4>
+        <div id="themechips" class="clsrow" role="group" aria-label="Light or dark"></div>
         <h4>Groups</h4>
         <div id="groupchips" class="clsrow" role="group" aria-label="How groups are shown"></div>
         <h4>Style</h4>
@@ -3331,6 +3368,8 @@ function drawLookChips() {
       box.append(b);
     }
   };
+  let theme = 'auto'; try { theme = localStorage.getItem('inat_theme') || 'auto'; } catch {}
+  mk($('themechips'), [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']], theme, k => { try { localStorage.setItem('inat_theme', k); } catch {} applyTheme(k); });
   mk($('groupchips'), [['dividers', 'Dividers'], ['tabs', 'Tabs']], galGroups, k => { galGroups = k; try { localStorage.setItem('inat_gal_groups', k); } catch {} if (isGal(view) && gal.items.length) drawGallery(); });
   mk($('stylechips'), [['polaroid', 'Polaroid'], ['simple', 'Simple']], galStyle, k => { galStyle = k; try { localStorage.setItem('inat_gal_style', k); } catch {} });
   mk($('sizechips'), [['xl', 'XL'], ['l', 'L'], ['m', 'M'], ['s', 'S']], galSize, k => { galSize = k; try { localStorage.setItem('inat_gal_size', k); } catch {} });
@@ -3418,7 +3457,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-68 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-69 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();

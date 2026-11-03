@@ -40,6 +40,7 @@ A bottom bar has the main controls; each opens a sheet above it.
   For Latest and Rarest, *Same species* chooses between every observation, one per species per day, or one per species (grouped entries look like a small pile of Polaroids). *Shuffle* randomises the order.
 - **Filter**: jump to a group or species, group (birds, plants…), favourite-photo status, and date.
 - **Location**: one map for every sort. The orange circle is the current view of the map; it filters your observations to the area and is the area Common searches (within 100 km). Buttons on the map jump to your location or search for a place by name.
+- **View** (the eye): style, size, groups and *Appearance* (Auto follows the device, or force Light or Dark; dark mode has its own dark folder, notebook and sheet textures).
 - **Compare**: species missing from another person's list, or seen by both (available from your own account and while viewing someone else).
 
 Groups are shown as horizontal folder dividers by default (a card across the page with a tab on its top edge; nested groups sit inside it and their tabs step across by level, the common name and scientific name on one line); the View sheet can switch back to chevron *Tabs* above the first photo of each group. Every photo is a Polaroid (white frame, handwritten name in Caveat, a small random tilt fixed per observation) in one strict grid. A group is not a row in between: its overlapping
