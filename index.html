@@ -466,6 +466,11 @@
          font:700 16px/22px 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; white-space:nowrap; cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
   .dvt small { margin-left:6px; font-size:12px; font-weight:400; opacity:.8; } .dvt small.sci { font-style:italic; }
   .dvt:active { filter:brightness(.95); }
+  /* a collapsed group in the dividers layout: a row of small photos */
+  .strip { display:flex; align-items:center; gap:6px; padding:8px 6px; cursor:pointer; overflow:hidden; min-height:74px; }
+  .strip img { flex:none; width:58px; height:58px; box-sizing:border-box; object-fit:cover; border-radius:3px; background:#d9d9d2; box-shadow:0 1px 4px rgba(0,0,0,.4); }
+  #gal.st-polaroid .strip img { border:3px solid #fbfaf4; border-bottom-width:9px; }
+  .strip .sn { margin-left:auto; flex:none; min-width:28px; padding:2px 8px; border-radius:12px; background:rgba(0,0,0,.65); color:#fff; font-size:14px; text-align:center; }
 </style>
 </head>
 <body>
@@ -1579,6 +1584,32 @@ function renderGallery(obs) {
 let galGroups = 'dividers'; // how groups are shown: 'tabs' (chevron tabs above the first photo of a group) or 'dividers' (the group splits the page into a horizontal folder-divider section)
 try { if (localStorage.getItem('inat_gal_groups') === 'tabs') galGroups = 'tabs'; } catch {}
 // A divider section: a card with a folder tab on its top edge; sections nest, and their tabs step across the page by level.
+// A collapsed group in the dividers layout: small photos sampled evenly across the group, as many as fit the width, and the count at the end.
+const STRIP_PX = 58;
+function stripEl(g) {
+  const st = document.createElement('div'); st.className = 'strip'; st.dataset.key = g.key;
+  st.setAttribute('role', 'button'); st.title = `${g.main}: tap to expand every ${g.rank}`; st.tabIndex = 0;
+  st.onclick = () => toggleRank(g.key, false);
+  stripObserver.observe(st);
+  return st;
+}
+function fillStrip(st) {
+  const g = gal.byKey.get(st.dataset.key), W = st.clientWidth;
+  if (!g || !W || st.dataset.w === String(W)) return;
+  st.dataset.w = W;
+  const total = g.last - g.first + 1, room = Math.max(1, Math.floor((W - 12 - 44) / (STRIP_PX + 6))), n = Math.min(room, total);
+  const frag = document.createDocumentFragment();
+  for (let j = 0; j < n; j++) {
+    const idx = g.first + Math.round(j * (total - 1) / Math.max(1, n - 1)), ph = photosOf(gal.items[idx].o);
+    if (!ph.length) continue;
+    const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
+    im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
+    frag.append(im);
+  }
+  const c = document.createElement('span'); c.className = 'sn'; c.textContent = total; frag.append(c);
+  st.replaceChildren(frag);
+}
+const stripObserver = new ResizeObserver(es => es.forEach(e => fillStrip(e.target)));
 function dvSection(g) {
   const sec = document.createElement('section'); sec.className = 'dv d' + (g.depth % 3); sec.dataset.key = g.key; sec.style.setProperty('--dd', g.depth);
   const t = document.createElement('button'); t.type = 'button'; t.className = 'dvt'; t.dataset.key = g.key; t.dataset.rank = g.rank;
@@ -1591,6 +1622,7 @@ function dvSection(g) {
   return { el: sec, body };
 }
 function drawDividers() {
+  stripObserver.disconnect();
   const el = $('gal'), items = gal.items, col = collapsed[gal.sort];
   const root = document.createElement('div'); root.className = 'dvroot';
   const open = [{ g: null, body: root }]; // the sections the current photo is inside, outermost first
@@ -1605,8 +1637,14 @@ function drawDividers() {
     let m = 1; while (m < open.length && m - 1 < vis.length && open[m].g === vis[m - 1]) m++;
     open.length = m;
     for (let j = m - 1; j < vis.length; j++) { const sec = dvSection(vis[j]); open[open.length - 1].body.append(sec.el); open.push({ g: vis[j], body: sec.body }); }
+    if (k >= 0) { // a collapsed group: a row of small photos across the whole width of its folder
+      const st = stripEl(it.path[k]);
+      open[open.length - 1].body.append(st); n++;
+      gal.cells.push({ el: st, tagGroups: [], path: vis });
+      continue;
+    }
     const cell = document.createElement('div'); cell.className = 'cell'; cell.dataset.i = i;
-    cell.append(k < 0 ? polTile(it.o) : stackEl(it.path[k]));
+    cell.append(polTile(it.o));
     gridIn(open[open.length - 1].body).append(cell); n++;
     gal.cells.push({ el: cell, tagGroups: [], path: vis });
   }
@@ -3378,7 +3416,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-66 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-67 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
