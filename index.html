@@ -349,7 +349,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   main { padding-bottom:calc(110px + env(safe-area-inset-bottom)); }
   #toast { bottom:calc(100px + env(safe-area-inset-bottom)) !important; }
   .fpanel, #areapanel { position:fixed; left:50%; transform:translateX(-50%); bottom:var(--tabs-h, 58px); width:min(100%, 900px); max-height:min(72vh, calc(100vh - var(--tabs-h, 58px) - 24px)); overflow:auto; z-index:69; margin:0; border-radius:16px 16px 0 0; border-bottom:0; box-shadow:0 -8px 24px rgba(0,0,0,.3); padding:14px 14px 18px; }
-  .fpanel[hidden], #areapanel[hidden] { display:none; }
+  .fpanel[hidden] { display:none; }
   .fpanel .clsrow { margin-bottom:6px; }
   .fpanel h4 { margin:20px 0 8px; font-size:18px; } .fpanel h4:first-child { margin-top:0; }
   /* sheets are paper pages: printed small-caps headings, handwritten values, ink-stamp chips */
@@ -630,14 +630,9 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .msearch input::placeholder { color:#6a76a8; }
   .msug { background:var(--grain), #f6f2e4; color:#27348b; border-radius:0 0 10px 10px; box-shadow:0 6px 16px rgba(0,0,0,.45); font:700 18px var(--hw); }
   .msug button { background:none; color:#27348b; border-top:1px solid #c8cfe6; font:700 20px var(--hw); } .msug button small { color:#5a6590; font:700 14px var(--hw); }
-  #areapanel .row { margin-top:12px; align-items:center; }
-  #areapanel .row label, #areapanel .row .status { font:700 20px var(--hw); font-size-adjust:.5; color:#27348b; }
   #areapanel input[type=checkbox] { accent-color:#27348b; width:20px; height:20px; }
-  #areapanel #areafit { border:2.5px solid #27348b; border-radius:7px; background:none; color:#27348b; text-transform:uppercase; letter-spacing:.05em; font:700 17px var(--hw); padding:5px 12px; }
   .dark .leaflet-popup-content-wrapper { background:var(--grain), #262c36; color:#a9bdf2; } .dark .leaflet-popup-tip { background:#262c36; } .dark .leaflet-popup-content a, .dark .leaflet-popup-close-button { color:#a9bdf2 !important; } .dark .mp .d { color:#8fa6cf; }
   .dark .msearch input, .dark .msug { background:var(--grain), #262c36; color:#a9bdf2; border-color:#a9bdf2; } .dark .msug button { color:#a9bdf2; border-top-color:#3a4256; } .dark .msug button small { color:#8fa6cf; }
-  .dark #areapanel .row label, .dark #areapanel .row .status { color:#a9bdf2; } .dark #areapanel input[type=checkbox] { accent-color:#a9bdf2; }
-  .dark #areapanel #areafit { border-color:#a9bdf2; color:#a9bdf2; }
   .dark .leaflet-control-attribution { background:rgba(38,44,54,.88) !important; color:#8fa6cf !important; } .dark .leaflet-control-attribution a { color:#a9bdf2 !important; }
   /* the top of the page is the cover of a field notes memo book: kraft board, a bold printed title, small print, staples down the spine */
   header.cover { position:relative; display:flex; flex-direction:column; min-height:calc(100vh - 44px); min-height:calc(100dvh - 44px); margin:6px 0 14px; padding:22vh 56px 110px 34px; padding-top:22dvh; border-radius:10px; text-align:center; isolation:isolate;
@@ -712,16 +707,18 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
                   background:linear-gradient(90deg, rgba(0,0,0,.22), transparent 28%, rgba(255,255,255,.22) 60%, rgba(0,0,0,.2)), var(--mc); clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%); filter:drop-shadow(0 3px 3px rgba(0,0,0,.45)); }
   .marks button:hover { height:74px; } .marks button.on { height:80px; }
   .marks button svg { stroke:#fff; } .marks button span { font:700 14px/1 var(--hw); font-size-adjust:.5; text-shadow:0 1px 1px rgba(0,0,0,.5); }
-  /* the map peeking in from the bottom right corner, tilted like a card slid under the page */
-  #mapcorner { position:fixed; z-index:66; right:-86px; bottom:calc(88px + env(safe-area-inset-bottom)); width:190px; height:150px; padding:0; border:0; background:none; cursor:pointer; transform:rotate(-14deg); transform-origin:100% 100%; transition:transform .22s ease, opacity .25s; }
-  #mapcorner:hover { transform:rotate(-10deg) translate(-22px, -6px); }
-  #mapcorner.opening { transform:rotate(0deg) translate(-120px, -60px) scale(1.6); opacity:.4; }
-  #mapcorner .mcmap { position:absolute; inset:0; overflow:hidden; background:#cfd8c8; border:7px solid #fbfaf4; border-radius:2px; box-shadow:0 8px 20px rgba(0,0,0,.55); }
-  #mapcorner .mcmap img { position:absolute; width:256px; height:256px; max-width:none; margin:-7px 0 0 -7px; }
-  .dark #mapcorner .mcmap img { filter:brightness(.75) saturate(.8); }
-  #mapcorner .mcring { position:absolute; left:50%; top:50%; width:70px; height:70px; margin:-35px 0 0 -35px; border:3px dotted #27348b; border-radius:50%; background:rgba(245,216,50,.22); }
-  #mapcorner .mcpin { position:absolute; z-index:2; left:18px; top:-8px; width:60px; height:20px; transform:rotate(-8deg); background:repeating-linear-gradient(45deg, #f3b6c6 0 8px, #fbe3ea 8px 16px); opacity:.92; box-shadow:0 1px 2px rgba(0,0,0,.3); }
-  body:not(.scrolled) #mapcorner, body.sheet-open #mapcorner { opacity:0; pointer-events:none; transform:rotate(-14deg) translate(40px, 40px); }
+  /* Location map: one element. Docked it sits tilted in the bottom right corner with just a corner showing; opened it slides into the normal sheet position. */
+  #areapanel { padding:8px !important; border-radius:6px !important; background:#fbfaf4 !important; transition:transform .38s cubic-bezier(.3,1.1,.5,1), opacity .25s; }
+  #areapanel::before { display:none; }
+  #areapanel .amwrap { position:relative; }
+  #areapanel #areamap { border:0; box-shadow:none; height:min(62vh, 560px); }
+  #areapanel[hidden] { display:block !important; transform-origin:0 0; transform:translateX(calc(50vw - 64px)) translateY(calc(100% + var(--tabs-h, 70px) - 150px)) rotate(-12deg); cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.6) !important; }
+  #areapanel[hidden] > * { pointer-events:none; }
+  body:not(.scrolled) #areapanel[hidden], body.sheet-open #areapanel[hidden] { opacity:0; pointer-events:none; }
+  .onlyhere { position:absolute; z-index:1200; left:10px; bottom:30px; display:flex; align-items:center; gap:8px; padding:5px 12px 6px 8px; background:var(--grain), #fbf6e2; color:#27348b; border-radius:3px; transform:rotate(-1.5deg); box-shadow:0 2px 6px rgba(0,0,0,.5); font:700 21px/1 var(--hw); font-size-adjust:.5; cursor:pointer; }
+  .onlyhere small { font:700 16px var(--hw); color:#5a6590; } .onlyhere small:empty { display:none; }
+  .onlyhere input { accent-color:#27348b; width:20px; height:20px; margin:0; }
+  .dark #areapanel { background:#e9e5d6 !important; } .dark .onlyhere { background:var(--grain), #262c36; color:#a9bdf2; } .dark .onlyhere small { color:#8fa6cf; } .dark .onlyhere input { accent-color:#a9bdf2; }
 </style>
 </head>
 <body>
@@ -836,12 +833,11 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
         </div>
       </div>
       <div class="card" id="areapanel" hidden>
-        <div id="areamap"></div>
-        <div class="row">
-          <label style="display:flex;align-items:center;gap:8px;flex:1;min-width:150px"><input type="checkbox" id="follow"> Filter to the map view</label>
-          <span id="radiuslabel" class="status"></span>
-          <button class="secondary" id="areafit">Show all</button>
+        <div class="amwrap">
+          <div id="areamap"></div>
+          <label class="onlyhere"><input type="checkbox" id="follow"> <span>Only here</span> <small id="radiuslabel"></small></label>
         </div>
+      </div>
       </div>
     </div>
     </div><!-- /controls -->
@@ -854,7 +850,6 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
     <button class="secondary" id="exprefresh" hidden style="margin:12px 12px 0">Refresh from iNaturalist</button>
   </div>
 <div id="sheetbg" hidden></div>
-<button type="button" id="mapcorner" aria-label="Open the location map" title="Open the location map"><span class="mcmap"></span><span class="mcpin"></span></button>
 </main>
 
 <div id="toast"></div>
@@ -2421,7 +2416,7 @@ async function ensureLeaflet() {
 }
 
 function setArea(a) {
-  area = a; setTimeout(drawCornerMap, 0);
+  area = a;
   try { a ? localStorage.setItem(AREA_KEY, JSON.stringify(a)) : localStorage.removeItem(AREA_KEY); } catch {}
   $('follow').checked = !!a;
   drawArea(); drawChips(); scheduleShow();
@@ -2551,16 +2546,14 @@ function addMapButtons(map) {
   });
   button('search', 'Search for a place', () => { wrap.hidden = !wrap.hidden; if (!wrap.hidden) inp.focus(); else close(); });
 }
-async function openAreaPanel(open) {
-  $('areapanel').hidden = !open;
-  $('areabtn').setAttribute('aria-expanded', String(open));
-  if (!open) return;
-  try { await ensureLeaflet(); } catch (e) { log(String(e), 'e'); return status(`Map library failed to load: ${e.message}`, true); }
-  if (!areaMap) {
+// The Location map is a real element that lives docked in the bottom right corner (tilted, barely on screen); opening it slides it into place.
+let areaMapReady = null;
+function initAreaMap() {
+  if (areaMapReady) return areaMapReady;
+  return areaMapReady = (async () => {
+    try { await ensureLeaflet(); } catch (e) { log(String(e), 'e'); areaMapReady = null; status(`Map library failed to load: ${e.message}`, true); return; }
     areaMap = L.map('areamap', { preferCanvas: true, worldCopyJump: true });
-    L.tileLayer(TILE_TEMPLATE, {
-      maxZoom: 19, attribution: TILE_ATTR,
-    }).addTo(areaMap);
+    L.tileLayer(TILE_TEMPLATE, { maxZoom: 19, attribution: TILE_ATTR }).addTo(areaMap);
     areaCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40, showCoverageOnHover: false });
     areaMap.addLayer(areaCluster);
     areaMap.setView([20, 0], 2);
@@ -2568,7 +2561,15 @@ async function openAreaPanel(open) {
     // While filtering, the circle tracks the view live; the filter itself updates when the move ends.
     areaMap.on('move', () => { if ($('follow').checked && !suppressMove) drawArea(viewportCircle()); });
     areaMap.on('moveend', () => { if ($('follow').checked && !suppressMove) setArea(viewportCircle()); });
-  }
+    drawArea(); drawAreaMarkers();
+  })();
+}
+async function openAreaPanel(open) {
+  $('areapanel').hidden = !open;
+  $('areabtn').setAttribute('aria-expanded', String(open));
+  if (!open) return;
+  await initAreaMap();
+  if (!areaMap) return;
   moveMap(() => areaMap.invalidateSize({ animate: false }));
   drawArea();
   drawAreaMarkers();
@@ -2599,14 +2600,11 @@ $('areabtn').onclick = () => {
   openAreaPanel(opening); $('areabtn').classList.toggle('open', opening); $('sheetbg').hidden = !opening; document.body.classList.toggle('sheet-open', opening);
 };
 $('sheetbg').onclick = () => closePanels();
+$('areapanel').addEventListener('click', () => { if ($('areapanel').hidden) $('areabtn').click(); }, true);
+{ const once = () => { if (scrollY > 120) { initAreaMap(); removeEventListener('scroll', once); } }; addEventListener('scroll', once, { passive: true }); once(); }
 $('follow').onchange = () => {
   if (!areaMap) { $('follow').checked = false; return; }
   setArea($('follow').checked ? viewportCircle() : null);
-};
-$('areafit').onclick = () => {
-  if (!areaMap) return;
-  areaFitted = false; drawAreaMarkers();
-  if ($('follow').checked) setArea(viewportCircle());
 };
 let showTimer;
 function scheduleShow() { clearTimeout(showTimer); showTimer = setTimeout(() => show(), 250); }
@@ -3120,24 +3118,6 @@ function useMyLocationForCommon() {
     pick();
   }, { timeout: 12000, maximumAge: 120000 });
 }
-// ---- the map peeks in from the bottom right corner of the screen, tilted; tapping it brings the Location map into view ----
-const MC_W = 190, MC_H = 150;
-function drawCornerMap() {
-  const box = document.querySelector('#mapcorner .mcmap'); if (!box) return;
-  let lat = 20, lng = 0, z = 2;
-  if (area) { lat = area.lat; lng = area.lng; z = Math.max(2, Math.min(15, Math.round(Math.log2(70 * 156543 * Math.cos(lat * Math.PI / 180) / Math.max(1, 2 * area.r))))); }
-  else { const p = state.obs.map(parseLoc).find(Boolean); if (p) { lat = p[0]; lng = p[1]; z = 8; } }
-  const sig = `${lat.toFixed(3)},${lng.toFixed(3)},${z},${!!area}`; if (box.dataset.sig === sig) return; box.dataset.sig = sig;
-  const [cx, cy] = mercator(lat, lng, z), n = 2 ** z, ox = cx - MC_W / 2, oy = cy - MC_H / 2, frag = document.createDocumentFragment();
-  for (let ty = Math.floor(oy / 256); ty <= Math.floor((oy + MC_H) / 256); ty++) for (let tx = Math.floor(ox / 256); tx <= Math.floor((ox + MC_W) / 256); tx++) {
-    if (ty < 0 || ty >= n) continue;
-    const im = document.createElement('img'); im.alt = ''; im.draggable = false; im.src = tileUrl(z, ((tx % n) + n) % n, ty);
-    im.style.cssText = `left:${Math.round(tx * 256 - ox)}px;top:${Math.round(ty * 256 - oy)}px`; frag.append(im);
-  }
-  if (area) { const ring = document.createElement('i'); ring.className = 'mcring'; frag.append(ring); }
-  box.replaceChildren(frag);
-}
-$('mapcorner').onclick = () => { const m = $('mapcorner'); m.classList.add('opening'); setTimeout(() => { m.classList.remove('opening'); if ($('areapanel').hidden) $('areabtn').click(); }, 220); };
 // Open Common around where an observation was made.
 async function exploreFromObs(o) {
   const ll = parseLoc(o);
@@ -3581,7 +3561,7 @@ function drawSortChips() {
   }
 }
 // the sheets sit just above the floating bar: --tabs-h is the distance from the bottom of the screen to the top of the bar, plus a small gap
-const syncTabsHeight = () => { const r = document.querySelector('.tabs').getBoundingClientRect(); if (r.height) document.documentElement.style.setProperty('--tabs-h', Math.round(innerHeight - r.top + 8) + 'px'); };
+const syncTabsHeight = () => { const t = document.querySelector('.tabs'); if (t.offsetHeight) document.documentElement.style.setProperty('--tabs-h', (t.offsetHeight + 24 + (parseFloat(getComputedStyle(t).bottom) || 14) - 14) + 'px'); };
 new ResizeObserver(syncTabsHeight).observe(document.querySelector('.tabs'));
 // the ribbon bookmark pokes out above whichever button has its sheet open
 function syncRibbon() {
@@ -3613,7 +3593,6 @@ function show(keepStatus) {
   const obs = filteredObs();
   const filtered = obs.length !== state.obs.length;
   let species;
-  drawCornerMap();
   if (!$('areapanel').hidden && markerSig !== markerKey()) drawAreaMarkers();
   if (isGal(view)) {
     renderGallery(obs);
@@ -3903,12 +3882,11 @@ document.addEventListener('click', e => { if (!e.target.closest('#jumpwrap')) $(
 
 applyGalLook();
 drawMarks();
-drawCornerMap();
 setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-120 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-123 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
