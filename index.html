@@ -580,7 +580,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbpr .mine { padding:8px 2px 4px; }
   .nbpr .season { margin-top:0; }
   .cntpill { position:absolute; right:6px; bottom:6px; z-index:3; padding:2px 9px 3px; background:#fbf6e2; color:#3a2a14; border-radius:3px; transform:rotate(2.5deg); box-shadow:0 2px 4px rgba(0,0,0,.45);
-             font:700 16px/1 var(--hw); font-size-adjust:.5; pointer-events:none; white-space:nowrap; } /* a paper sticker with the count */
+             font:700 16px/1 var(--hw); font-size-adjust:.5; pointer-events:none; white-space:nowrap; display:flex; align-items:center; gap:4px; } /* a paper sticker with the count */
   /* a group too small for a folder: a paper sticker stuck on the photo */
   .gsticker { position:absolute; z-index:6; top:-9px; left:6px; max-width:92%; padding:2px 9px 3px; background:#ffe27a; color:#3a2a14; border-radius:3px; transform:rotate(-2.5deg); box-shadow:0 2px 4px rgba(0,0,0,.4);
               font:700 15px/1 var(--hw); font-size-adjust:.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
@@ -1709,7 +1709,7 @@ function polTile(o, tag) {
   cap.className = 'cap'; cap.href = `https://www.inaturalist.org/taxa/${o.tid}`; cap.target = '_blank'; cap.rel = 'noopener';
   speciesLink(cap, o.tid);
   const sp = document.createElement('span'); sp.textContent = o.common || o.name; cap.append(sp); capObserver.observe(cap);
-  if (raritySort && view === 'recent') { const r = rarityOf(o); if (r) { const c = document.createElement('span'); c.className = 'cntpill'; c.textContent = `${fmtCount(r.n)} seen`; c.title = `${r.n.toLocaleString()} observations on iNaturalist worldwide`; b.append(c); } }
+  if (raritySort && view === 'recent') { const r = rarityOf(o); if (r) { const c = document.createElement('span'); c.className = 'cntpill'; c.innerHTML = ic('eye', 15) + ' ' + fmtCount(r.n); c.title = `${r.n.toLocaleString()} observations on iNaturalist worldwide`; b.append(c); } }
   t.append(b, cap);
   if (tag) { // a group too small for its own folder: a sticker on the photo says which group it belongs to
     const st = document.createElement('span'); st.className = 'gsticker'; st.style.background = stickerColor(tag); st.title = `${tag.rank}: ${tag.main}${tag.sub ? ' (' + tag.sub + ')' : ''}`;
@@ -3061,7 +3061,7 @@ function commonTile(it, mine, myPhoto, act = []) {
     } else b.append(shown);
   }
   if (n) { const k = document.createElement('span'); k.className = 'seentag'; k.textContent = '✓'; k.title = `You have seen this (${n})`; b.append(k); }
-  { const c = document.createElement('span'); c.className = 'cntpill'; c.textContent = `${fmtCount(it.count)} seen`; c.title = `${it.count.toLocaleString()} observations here in this area`; b.append(c); }
+  { const c = document.createElement('span'); c.className = 'cntpill'; c.innerHTML = ic('eye', 15) + ' ' + fmtCount(it.count); c.title = `${it.count.toLocaleString()} observations here in this area`; b.append(c); }
   b.onclick = () => openSpecies(t.id);
   const cap = document.createElement('a');
   cap.className = 'cap'; cap.href = `https://www.inaturalist.org/taxa/${t.id}`; cap.target = '_blank'; cap.rel = 'noopener';
@@ -3691,7 +3691,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-92 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-93 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
