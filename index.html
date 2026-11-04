@@ -3403,7 +3403,7 @@ function renderExplore() {
   } else {
     const grid = document.createElement('div'); grid.className = 'pgrid top';
     for (const it of rows) { const cell = document.createElement('div'); cell.className = 'cell'; cell.append(commonTile(it, mine, myPhoto, act)); grid.append(cell); }
-    draw([para(note), ...oneFolder(grid)]);
+    draw([para(''), ...oneFolder(grid)]); // the welcome page already says this
   }
   if (!explore.loading && !geoBusy) finishBm();
   $('exprefresh').hidden = !explore.cachedAt || explore.loading;
@@ -4219,7 +4219,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-161 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-162 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
