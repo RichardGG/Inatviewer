@@ -30,7 +30,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   :root.dark { --bg:#14181a; --fg:#e6ece6; --muted:#8c9a8e; --accent:#7fc45a; --line:#2a3330; --card:#1b2124; color-scheme:dark; }
   :root:not(.dark) { color-scheme:light; }
   * { box-sizing: border-box; }
-  html, body, main, #gal { overflow-x:clip; } /* rotated Polaroids and tabs may poke a pixel or two past the edge; that must never widen the page */
+  html, body, main, .galv { overflow-x:clip; } /* rotated Polaroids and tabs may poke a pixel or two past the edge; that must never widen the page */
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 'Caveat','Segoe Print','Bradley Hand','Comic Sans MS',cursive; font-size-adjust:.5; } /* handwriting everywhere (Caveat); font-size-adjust keeps its small letters readable */
   button, input, select { font-family:inherit; }
   main { max-width:900px; margin:0 auto; padding:24px 16px 64px; }
@@ -141,8 +141,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   /* tabs + view controls: stuck to the top, slide away while scrolling down, return on scroll up */
   @keyframes slideInR { from { opacity:0; transform:translateX(36px); } to { opacity:1; transform:none; } }
   @keyframes slideInL { from { opacity:0; transform:translateX(-36px); } to { opacity:1; transform:none; } }
-  .swipe-next #gal, .swipe-next #explore { animation:slideInR .22s ease-out; }
-  .swipe-prev #gal, .swipe-prev #explore { animation:slideInL .22s ease-out; }
+  .swipe-next .galv, .swipe-next #explore { animation:slideInR .22s ease-out; }
+  .swipe-prev .galv, .swipe-prev #explore { animation:slideInL .22s ease-out; }
   #controls { margin:0 0 6px; }
   #iconbar { position:sticky; top:0; z-index:60; display:flex; align-items:center; gap:2px; margin:0 -16px 8px; padding:0 10px; flex-wrap:wrap; background:var(--card); border-top:1px solid var(--line); border-bottom:1px solid var(--line); transition:top .22s ease, box-shadow .2s; }
   #iconbar.stuck { box-shadow:0 2px 8px rgba(0,0,0,.18); }
@@ -273,9 +273,9 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   /* phones and small tablets: the lists and galleries use the full width instead of sitting in a padded card */
   @media (max-width: 899px) {
     main { padding:10px 0 64px; }
-    header.top, #locTools, #filterwrap, #login { margin-left:12px; margin-right:12px; }
+    header.top, .locTools, #filterwrap, #login { margin-left:12px; margin-right:12px; }
     #iconbar { margin:0 0 6px; padding:0 6px; }
-    #gal { border-left:0; border-right:0; border-radius:0; padding:6px 3px; }
+    .galv { border-left:0; border-right:0; border-radius:0; padding:6px 3px; }
     #explore { border-left:0; border-right:0; border-radius:0; padding:8px 8px; }
     .dbody { padding:10px 10px 48px; }
   }
@@ -289,7 +289,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   body.stkview #iconbar { background:#f7f3e6; }
   .dark body.stkview { --desk:#233d2e; --dot:rgba(190,225,195,.3); }
   .dark body.stkview #iconbar { background:#1c3326; }
-  #gal { touch-action:pan-y; background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
+  .galv { touch-action:pan-y; background:none; border:0; border-radius:0; box-shadow:none; padding:4px 2px; }
   /* one strict grid: every Polaroid is a cell; a group's label sits in the cell of its first Polaroid, above it */
   .pgrid { --cols:2; --gx:14px; display:grid; grid-template-columns:repeat(var(--cols), minmax(0, 1fr)); gap:20px 14px; padding:12px 8px 4px; align-items:end; }
   @media (min-width:560px) { .pgrid { --cols:3; --gx:18px; gap:26px 18px; } }
@@ -331,10 +331,10 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .stack .sn { position:absolute; right:0; bottom:0; z-index:9; min-width:24px; padding:2px 7px; border-radius:12px; background:rgba(0,0,0,.72); color:#fff; font-size:12px; text-align:center; }
   /* sticky header: the labels of the group you are in; zero height so showing it never shifts the grid */
   @media (max-width:480px) { #iconbar .ib.tb { width:36px; } }
-  #pathbar { position:sticky; top:var(--bar-h, 0px); height:0; z-index:65; transition:top .2s; }
-  #pathbar[hidden] { display:none; }
-  #pathbar .pbin { position:absolute; left:0; right:0; top:26px; display:flex; align-items:stretch; flex-wrap:wrap; gap:0; padding:0 0 0 13px; gap:0; }
-  #pathbar .tag { max-width:100%; }
+  .pathbar { position:sticky; top:var(--bar-h, 0px); height:0; z-index:65; transition:top .2s; }
+  .pathbar[hidden] { display:none; }
+  .pathbar .pbin { position:absolute; left:0; right:0; top:26px; display:flex; align-items:stretch; flex-wrap:wrap; gap:0; padding:0 0 0 13px; gap:0; }
+  .pathbar .tag { max-width:100%; }
   /* bottom bar: sort, filter, location, compare; each opens a sheet above it */
   .tabs { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(14px + env(safe-area-inset-bottom)); width:min(calc(100% - 28px), 440px); z-index:70; display:flex; gap:2px; padding:6px; isolation:isolate; }
   /* the notebook's cloth band: woven dark fabric with a stitched edge, gold-foil icons, and a ribbon bookmark poking out above the open button */
@@ -439,19 +439,19 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .msug button small { color:#666; font-size:11px; }
 
   /* View options: photo size (1, 2, 3 or 4 columns on a phone) and style (Polaroid or simple squares) */
-  #gal.sz-xl .pgrid { --cols:1; gap:34px 14px; } #gal.sz-l .pgrid { --cols:2; } #gal.sz-m .pgrid { --cols:3; gap:18px 10px; } #gal.sz-s .pgrid { --cols:4; gap:14px 8px; padding:10px 6px 4px; }
-  #gal.sz-xl { --pad:12px; --caph:84px; --capfs:38px; } #gal.sz-m { --pad:7px; --caph:46px; --capfs:20px; } #gal.sz-s { --pad:5px; --caph:36px; --capfs:15px; }
-  @media (min-width:560px) { #gal.sz-xl .pgrid { --cols:2; } #gal.sz-l .pgrid { --cols:3; } #gal.sz-m .pgrid { --cols:4; } #gal.sz-s .pgrid { --cols:5; } }
-  @media (min-width:800px) { #gal.sz-xl .pgrid { --cols:3; } #gal.sz-l .pgrid { --cols:4; } #gal.sz-m .pgrid { --cols:5; } #gal.sz-s .pgrid { --cols:6; } }
-  @media (min-width:1100px) { #gal.sz-xl .pgrid { --cols:4; } #gal.sz-l .pgrid { --cols:5; } #gal.sz-m .pgrid { --cols:6; } #gal.sz-s .pgrid { --cols:8; } }
-  #gal.st-simple .pgrid .tile { background:none; box-shadow:none; padding:0; border-radius:0; transform:none; }
-  #gal.st-simple .pgrid .tile:hover { transform:none; }
-  #gal.st-simple .pgrid .tile .pic { border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.35); background:#2b3a32; }
-  #gal.st-simple .pgrid .tile .cap { display:block; height:auto; min-height:2.2em; padding:5px 2px 0; text-align:left; color:var(--fg); transform:none; overflow:visible; line-height:1.05; }
-  #gal.st-simple .pgrid .tile .cap:hover { color:var(--accent); }
+  .galv.sz-xl .pgrid { --cols:1; gap:34px 14px; } .galv.sz-l .pgrid { --cols:2; } .galv.sz-m .pgrid { --cols:3; gap:18px 10px; } .galv.sz-s .pgrid { --cols:4; gap:14px 8px; padding:10px 6px 4px; }
+  .galv.sz-xl { --pad:12px; --caph:84px; --capfs:38px; } .galv.sz-m { --pad:7px; --caph:46px; --capfs:20px; } .galv.sz-s { --pad:5px; --caph:36px; --capfs:15px; }
+  @media (min-width:560px) { .galv.sz-xl .pgrid { --cols:2; } .galv.sz-l .pgrid { --cols:3; } .galv.sz-m .pgrid { --cols:4; } .galv.sz-s .pgrid { --cols:5; } }
+  @media (min-width:800px) { .galv.sz-xl .pgrid { --cols:3; } .galv.sz-l .pgrid { --cols:4; } .galv.sz-m .pgrid { --cols:5; } .galv.sz-s .pgrid { --cols:6; } }
+  @media (min-width:1100px) { .galv.sz-xl .pgrid { --cols:4; } .galv.sz-l .pgrid { --cols:5; } .galv.sz-m .pgrid { --cols:6; } .galv.sz-s .pgrid { --cols:8; } }
+  .galv.st-simple .pgrid .tile { background:none; box-shadow:none; padding:0; border-radius:0; transform:none; }
+  .galv.st-simple .pgrid .tile:hover { transform:none; }
+  .galv.st-simple .pgrid .tile .pic { border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.35); background:#2b3a32; }
+  .galv.st-simple .pgrid .tile .cap { display:block; height:auto; min-height:2.2em; padding:5px 2px 0; text-align:left; color:var(--fg); transform:none; overflow:visible; line-height:1.05; }
+  .galv.st-simple .pgrid .tile .cap:hover { color:var(--accent); }
   /* Simple style: no Polaroid frames anywhere, also not on stacks of collapsed groups or piles of the same species */
-  #gal.st-simple .stack .mini { background:none; padding:0; aspect-ratio:1; border-radius:6px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.45); }
-  #gal.st-simple .stack .mini img { height:100%; }
+  .galv.st-simple .stack .mini { background:none; padding:0; aspect-ratio:1; border-radius:6px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.45); }
+  .galv.st-simple .stack .mini img { height:100%; }
 
   /* groups as horizontal folder dividers: each group is a full-width card with a tab on its top edge; nested groups lie over their parent at the same width, and every tab sticks to the top (every level stacked below its parent; a leaving row slides behind them) while its group is on screen */
   .dvroot { padding:4px 0 6px; }
@@ -477,7 +477,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   /* a collapsed group in the dividers layout: a row of small photos */
   .strip { display:flex; align-items:center; gap:6px; padding:8px 6px; cursor:pointer; overflow:hidden; min-height:74px; }
   .strip img { flex:none; width:58px; height:58px; box-sizing:border-box; object-fit:cover; border-radius:3px; background:#d9d9d2; box-shadow:0 1px 4px rgba(0,0,0,.4); }
-  #gal.st-polaroid .strip img { border:3px solid #fbfaf4; border-bottom-width:9px; }
+  .galv.st-polaroid .strip img { border:3px solid #fbfaf4; border-bottom-width:9px; }
   .strip .sn { margin-left:auto; flex:none; min-width:28px; padding:2px 8px; border-radius:12px; background:rgba(0,0,0,.65); color:#fff; font-size:14px; text-align:center; }
   /* desktop: nested folders are inset a little on each side, so the edges of the folders they lie over show; on mobile they stay edge to edge */
   @media (min-width: 800px) { .dvb > .dv { margin-left:8px; margin-right:8px; } .dvroot { padding:4px 6px 6px; } .dvb .pgrid { padding:14px 26px 22px; } .dvb { padding-bottom:8px; } .strip { padding:12px 26px; } }
@@ -488,7 +488,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .dark .tag.m0 { color:#bcd2f2; background:linear-gradient(rgba(140,180,240,.2) 1px, transparent 1px) 0 0/10px 10px, linear-gradient(90deg, rgba(140,180,240,.2) 1px, transparent 1px) 0 0/10px 10px, #26372d; }
   .dark .tag.m1 { color:#e6dcc3; background:repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px), #34352f; }
   .dark .tag.m2 { color:#cfeccf; background:repeating-linear-gradient(135deg, rgba(255,255,255,.1) 0 2px, transparent 2px 5px), #1f4a30; }
-  .dark #gal.st-simple .pgrid .tile .cap { color:#f1ede0; }
+  .dark .galv.st-simple .pgrid .tile .cap { color:#f1ede0; }
   .dark .strip img { box-shadow:0 1px 4px rgba(0,0,0,.7); }
   .dark .nbpage { background:var(--grain), #262c36; color:#a9bdf2; }
   .dark .nbpr { background:var(--grain), repeating-linear-gradient(transparent 0 29px, rgba(150,180,230,.22) 29px 30px), #262c36; background-position:0 0, 0 -6px, 0 0; }
@@ -610,7 +610,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .gsticker { position:absolute; z-index:6; top:-9px; left:6px; max-width:92%; padding:2px 9px 3px; background:#ffe27a; color:#3a2a14; border-radius:3px; transform:rotate(-2.5deg); box-shadow:0 2px 4px rgba(0,0,0,.4);
               font:700 15px/1 var(--hw); font-size-adjust:.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
   .gsticker small { margin-left:5px; font-size:12px; font-weight:400; opacity:.75; } .gsticker small.sci { font-style:italic; }
-  #gal.st-simple .gsticker { top:6px; left:6px; }
+  .galv.st-simple .gsticker { top:6px; left:6px; }
   /* ---------- map controls in the notebook's style: cloth buttons with gold icons, paper popups and search, sticker clusters ---------- */
   .leaflet-container { font-family:var(--hw); touch-action:none; }
   html .leaflet-container, html .leaflet-container.leaflet-container { background:#a8c8f0; } /* beats leaflet.css, which is loaded after this stylesheet and sets #ddd */ /* the ocean colour of the map tiles, so unloaded or out-of-world areas match it */
@@ -659,19 +659,19 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   header.cover #acct, header.cover #share, header.cover .ib, header.cover .ib:hover { color:#d9b45a !important; }
   header.cover .ib, header.cover .ib:hover { background:none; border:0; color:#d9b45a; filter:drop-shadow(0 -1px 0 rgba(0,0,0,.65)); width:40px; height:40px; }
   /* the lines under the title are written on the cover: what the app is doing, the totals, and the filters in use as paper labels */
-  #welcome .cnote { margin:auto 0 0; padding-top:14px; text-align:left; }
-  #welcome .cnote:not(:has(.status:not(:empty), #chips:not(:empty), #viewing:not([hidden]), #loadall:not([hidden]))) { display:none; }
-  #welcome .status { margin:0 !important; min-height:0 !important; padding:0 !important; font:700 12px/1.5 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; font-size-adjust:none; color:#e9e5d6 !important; text-shadow:0 -1px 0 rgba(0,0,0,.5); }
-  #welcome .status:empty { display:none; } #welcome .status.error { color:#ff9a8c !important; }
-  #welcome #summary { margin-top:4px !important; color:#b79a55 !important; }
-  #welcome #viewing { margin:0 0 8px !important; padding:6px 10px; border:1.5px dashed rgba(217,180,90,.6); border-radius:6px; background:rgba(255,255,255,.07); color:#e9e5d6; font:700 12px/1.5 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; }
-  #welcome #viewing button { background:none; color:#d9b45a; border:1.5px solid #d9b45a; font:700 11px 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; text-transform:uppercase; }
-  #welcome #loadall { margin:8px 0 0 !important; background:none; border:2px solid #d9b45a; color:#d9b45a; border-radius:7px; font:700 11px 'Trebuchet MS', Arial, sans-serif; text-transform:uppercase; letter-spacing:.12em; padding:6px 12px; }
-  #welcome #chips { margin:8px 0 0; gap:8px; }
-  #welcome .chip { background:var(--grain), #f6f2e4; color:#27348b; border:0; border-radius:3px; padding:3px 6px 3px 10px; font:700 12px 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; font-size-adjust:none; box-shadow:0 2px 4px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.1); transform:rotate(-1deg); }
-  #welcome .chip:nth-child(even) { transform:rotate(1.2deg); }
-  #welcome .chip button { color:#37507a; padding:0 4px; }
-  #welcome .chip svg { color:#27348b; }
+  .welcome .cnote { margin:auto 0 0; padding-top:14px; text-align:left; }
+  .welcome .cnote:not(:has(.status:not(:empty), #chips:not(:empty), #viewing:not([hidden]), #loadall:not([hidden]))) { display:none; }
+  .welcome .status { margin:0 !important; min-height:0 !important; padding:0 !important; font:700 12px/1.5 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; font-size-adjust:none; color:#e9e5d6 !important; text-shadow:0 -1px 0 rgba(0,0,0,.5); }
+  .welcome .status:empty { display:none; } .welcome .status.error { color:#ff9a8c !important; }
+  .welcome #summary { margin-top:4px !important; color:#b79a55 !important; }
+  .welcome #viewing { margin:0 0 8px !important; padding:6px 10px; border:1.5px dashed rgba(217,180,90,.6); border-radius:6px; background:rgba(255,255,255,.07); color:#e9e5d6; font:700 12px/1.5 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; }
+  .welcome #viewing button { background:none; color:#d9b45a; border:1.5px solid #d9b45a; font:700 11px 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; text-transform:uppercase; }
+  .welcome #loadall { margin:8px 0 0 !important; background:none; border:2px solid #d9b45a; color:#d9b45a; border-radius:7px; font:700 11px 'Trebuchet MS', Arial, sans-serif; text-transform:uppercase; letter-spacing:.12em; padding:6px 12px; }
+  .welcome #chips { margin:8px 0 0; gap:8px; }
+  .welcome .chip { background:var(--grain), #f6f2e4; color:#27348b; border:0; border-radius:3px; padding:3px 6px 3px 10px; font:700 12px 'Trebuchet MS', Arial, sans-serif; letter-spacing:.06em; font-size-adjust:none; box-shadow:0 2px 4px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.1); transform:rotate(-1deg); }
+  .welcome .chip:nth-child(even) { transform:rotate(1.2deg); }
+  .welcome .chip button { color:#37507a; padding:0 4px; }
+  .welcome .chip svg { color:#27348b; }
   /* every text block inside the right page is a whole number of 30px rows, so no margin may break the rhythm */
   .nbpr h3 { margin:0 !important; line-height:30px; }
   .nbpr p, .nbpr .status { margin:0 !important; }
@@ -681,7 +681,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .nbpr .nbmap, .nbpr > div { padding:0; }
   .clabel #covername { display:block; width:100%; background:none; border:0; border-top:1px solid rgba(217,180,90,.4); border-bottom:1px solid rgba(217,180,90,.4); border-radius:0; cursor:pointer; text-decoration:none; color:#e9e5d6; }
   .clabel #covername:active { background:rgba(255,255,255,.06); }
-  #welcome #summary { text-align:left; }
+  .welcome #summary { text-align:left; }
   header.cover { padding-right:34px; }
   /* the bottom bar slides in once you have scrolled off the top of the cover */
   .tabs { transition:transform .3s ease, opacity .25s; }
@@ -750,30 +750,29 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #coverdown svg { filter:drop-shadow(0 1px 0 rgba(255,240,190,.28)); } /* a pale lip along the bottom edge of the recess */
   #coverdown:active svg { transform:translateY(1px); }
   #results, header.cover { touch-action:pan-y; }
-  #turn { position:fixed; inset:0; z-index:4; overflow:hidden; pointer-events:none; } #turn .leaf { position:absolute; inset:0; isolation:isolate; overflow:hidden; will-change:transform; background:#efe9d4; } .dark #turn .leaf { background:#1c2622; }
   /* the page: grid paper that runs from under the cover to the bottom */
   #content, #pinroom { background-color:#efe9d4; background-image:linear-gradient(rgba(60,100,140,.2) 1px, transparent 1px), linear-gradient(90deg, rgba(60,100,140,.2) 1px, transparent 1px); background-size:24px 24px; background-position:-1px -1px; }
   .dark #content, .dark #pinroom { background-color:#1c2622; background-image:linear-gradient(rgba(140,190,220,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(140,190,220,.12) 1px, transparent 1px); }
   #pinroom { background-position:-1px calc(-1px - var(--ch, 0px)); } /* carries the grid on seamlessly from the pinned page */
-  #welcome { display:flex; flex-direction:column; box-sizing:border-box; min-height:var(--s0, 0px); margin:0; padding:64px 18px 18px; background:none; box-shadow:none; transform:none; color:#2a2418; border-radius:0; position:relative; }
-  .dark #welcome { background:none; color:#e9e5d6; }
-  #welcome::before { display:none; }
-  .dark #welcome text { fill:#e9e5d6; }
-  #welcome .status { color:#2a2418 !important; text-shadow:none !important; font-size:13px !important; }
-  #welcome #summary { color:#6b5a2a !important; }
-  .dark #welcome .status { color:#e9e5d6 !important; } .dark #welcome #summary { color:#b79a55 !important; }
-  #welcome #viewing { color:#2a2418; border-color:rgba(60,50,20,.5); background:rgba(255,255,255,.4); } .dark #welcome #viewing { color:#e9e5d6; }
-  #welcome #viewing button, #welcome #loadall { color:#6b4a00; border-color:#6b4a00; } .dark #welcome #viewing button, .dark #welcome #loadall { color:#d9b45a; border-color:#d9b45a; }
-  #welcome .chip { box-shadow:0 1px 3px rgba(0,0,0,.35); }
+  .welcome { display:flex; flex-direction:column; box-sizing:border-box; min-height:var(--s0, 0px); margin:0; padding:64px 18px 18px; background:none; box-shadow:none; transform:none; color:#2a2418; border-radius:0; position:relative; }
+  .dark .welcome { background:none; color:#e9e5d6; }
+  .welcome::before { display:none; }
+  .dark .welcome text { fill:#e9e5d6; }
+  .welcome .status { color:#2a2418 !important; text-shadow:none !important; font-size:13px !important; }
+  .welcome #summary { color:#6b5a2a !important; }
+  .dark .welcome .status { color:#e9e5d6 !important; } .dark .welcome #summary { color:#b79a55 !important; }
+  .welcome #viewing { color:#2a2418; border-color:rgba(60,50,20,.5); background:rgba(255,255,255,.4); } .dark .welcome #viewing { color:#e9e5d6; }
+  .welcome #viewing button, .welcome #loadall { color:#6b4a00; border-color:#6b4a00; } .dark .welcome #viewing button, .dark .welcome #loadall { color:#d9b45a; border-color:#d9b45a; }
+  .welcome .chip { box-shadow:0 1px 3px rgba(0,0,0,.35); }
   #pinroom { height:var(--s0, 0px); } /* the room below the pinned content is how far the cover has to scroll before the content moves */
   .coverwrap { z-index:5; }
-  #whead { text-align:center; padding:34px 10px 38px; }
-  #welcome h2 { margin:0; font:700 58px/1 var(--hw); color:var(--wc, #c8453b); }
-  #whead h2::after { content:''; display:block; width:90px; height:3px; margin:12px auto 14px; border-radius:2px; background:var(--wc, #c8453b); opacity:.55; transform:rotate(-1.5deg); }
-  #welcome p { margin:0 auto; max-width:300px; font:23px/1.1 var(--hw); opacity:.8; }
-  #wchart .wrow.go { cursor:pointer; } #wchart .wrow.go:active { opacity:.6; } #wchart svg { display:block; width:100%; height:auto; overflow:visible; }
-  #welcome .chip { font-size:13px; } #welcome .chip svg { width:15px; height:15px; flex:none; } #welcome .chip > button:last-child { padding:2px 6px; border-radius:50%; background:rgba(0,0,0,.12); } #welcome .chip > button:last-child svg { width:13px; height:13px; stroke-width:3; }
-  #welcome text { font-family:var(--hw); fill:#2a2418; }
+  .whead { text-align:center; padding:34px 10px 38px; }
+  .welcome h2 { margin:0; font:700 58px/1 var(--hw); color:var(--wc, #c8453b); }
+  .whead h2::after { content:''; display:block; width:90px; height:3px; margin:12px auto 14px; border-radius:2px; background:var(--wc, #c8453b); opacity:.55; transform:rotate(-1.5deg); }
+  .welcome p { margin:0 auto; max-width:300px; font:23px/1.1 var(--hw); opacity:.8; }
+  .wchart .wrow.go { cursor:pointer; } .wchart .wrow.go:active { opacity:.6; } .wchart svg { display:block; width:100%; height:auto; overflow:visible; }
+  .welcome .chip { font-size:13px; } .welcome .chip svg { width:15px; height:15px; flex:none; } .welcome .chip > button:last-child { padding:2px 6px; border-radius:50%; background:rgba(0,0,0,.12); } .welcome .chip > button:last-child svg { width:13px; height:13px; stroke-width:3; }
+  .welcome text { font-family:var(--hw); fill:#2a2418; }
   @media (max-width: 899px) { .coverwrap { margin:0 0 84px; } main { padding-top:0 !important; padding-left:0 !important; padding-right:0 !important; } header.cover { border-radius:0 !important; margin-left:0 !important; margin-right:0 !important; padding-top:calc(22dvh + env(safe-area-inset-top)) !important; padding-left:calc(34px + env(safe-area-inset-left)); } header.cover .ibgroup { top:calc(6px + env(safe-area-inset-top)); } }
   header.cover { margin:0 !important; z-index:1; }
   .marks { z-index:0 !important; }
@@ -801,17 +800,22 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .coverava[hidden] { display:none; }
   .coverava .ava { position:static; display:block; width:64px; height:64px; border:4px solid #fbf6e2; font-size:30px; line-height:56px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); }
   /* a person being compared: a paper chip on the cover with their picture, a three-state eye and an x */
-  #welcome .chip.pchip { padding:3px 4px 3px 4px; gap:6px; }
+  .welcome .chip.pchip { padding:3px 4px 3px 4px; gap:6px; }
   .pchip .ava { position:static; width:24px; height:24px; font-size:13px; line-height:20px; flex:none; }
   .pchip .eyebtn { padding:0 5px; color:#27348b; border-radius:10px; } .pchip.m-off .eyebtn { opacity:.4; }
   .pchip.m-seen .eyebtn { background:rgba(74,155,80,.4); } .pchip.m-unseen .eyebtn { background:rgba(200,69,59,.35); }
-  #welcome .chip.pchip.m-off { opacity:.8; }
+  .welcome .chip.pchip.m-off { opacity:.8; }
   /* edge to edge: the page draws under the status and navigation bars (their colour is the desk's, set by the theme-color tag) and keeps clear of notches and gesture bars */
   html { background:var(--desk, #f1ecdc); }
   .dark html, html.dark { background:#233d2e; }
   main { padding-top:max(24px, env(safe-area-inset-top)); }
   @media (max-width: 899px) { main { padding-top:max(10px, env(safe-area-inset-top)); padding-left:env(safe-area-inset-left); padding-right:env(safe-area-inset-right); } }
   #totop { bottom:calc(16px + env(safe-area-inset-bottom)); }
+  /* every view is its own page: only the current one is shown; during a slide the moving one lies over the other */
+  .pg { display:none; isolation:isolate; } .pg.cur, .pg.out { display:block; } .pg.cur { position:relative; z-index:1; }
+  .pg.out { position:absolute; top:var(--gap, 0px); left:0; right:0; z-index:3; will-change:transform; box-shadow:14px 0 30px rgba(0,0,0,.4);
+    background-color:#efe9d4; background-image:linear-gradient(rgba(60,100,140,.2) 1px, transparent 1px), linear-gradient(90deg, rgba(60,100,140,.2) 1px, transparent 1px); background-size:24px 24px; background-position:-1px calc(-1px - var(--gap, 0px)); }
+  .dark .pg.out { background-color:#1c2622; background-image:linear-gradient(rgba(140,190,220,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(140,190,220,.12) 1px, transparent 1px); }
 </style>
 </head>
 <body>
@@ -915,7 +919,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
     </div>
     <!-- /controls -->
     <div id="content">
-    <section id="welcome"><div id="whead" aria-live="polite"></div><div id="wchart"></div>
+    <div class="pg cur" data-k="recent">
+    <section class="welcome"><div class="whead" aria-live="polite"></div><div class="wchart"></div>
 <div class="cnote">
       <div id="viewing" class="banner" hidden></div>
       <div id="status" class="status" role="status"></div>
@@ -923,14 +928,15 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
       <button class="secondary" id="loadall" hidden>Load full history</button>
       <div id="chips"></div>
     </div>
-</section>
-    <div id="locTools" class="row" style="margin:0 0 10px" hidden>
-      <span id="locnote" class="status"></span>
+    </section>
+    <div class="locTools row" style="margin:0 0 10px" hidden>
+      <span class="locnote status"></span>
     </div>
-    <div id="pathbar" hidden><div class="pbin"></div></div>
-    <div class="card" id="gal"></div>
-    <button class="secondary" id="expmore" hidden style="margin:12px 12px 0">Show more</button>
-    <button class="secondary" id="exprefresh" hidden style="margin:12px 12px 0">Refresh from iNaturalist</button>
+    <div class="pathbar" hidden><div class="pbin"></div></div>
+    <div class="card galv"></div>
+    <button class="secondary expmore" hidden style="margin:12px 12px 0">Show more</button>
+    <button class="secondary exprefresh" hidden style="margin:12px 12px 0">Refresh from iNaturalist</button>
+    </div>
     </div><!-- /content -->
     <div id="pinroom" aria-hidden="true"></div>
   </div>
@@ -1765,16 +1771,35 @@ const isGal = v => GAL.includes(v);
 const GAL_PAGE = 150;
 const TAG_COLORS = ['#faf6e8', '#d9d2bd', '#a6d3a0']; // graph paper, linen and denim in turn by level
 const collapsed = { recent: new Set(), tree: new Set(), place: new Set() }; // keys of the collapsed groups, per sort
-// A gallery page: its own element, path bar and gallery state (items, groups, how many are drawn). The drawing functions work on the current page `pg`;
-// renderGalleryOn / drawGalleryOn / withPage run them on any page, and pageOf finds the page an element belongs to.
-const galPages = [];
-function makePage(el, pathEl) {
-  const p = { el, pathEl, gal: { sort: 'recent', items: [], groups: [], byKey: new Map(), cells: [], limit: GAL_PAGE, shownTo: 0, drawnSort: '' } };
-  galPages.push(p); return p;
+// A gallery page: one per view (Latest, Rarest, Taxonomy, Place, Nearby), each with its own welcome section, path bar, gallery element and gallery state.
+// The drawing functions work on the current page `pg`; renderGalleryOn / drawGalleryOn / withPage run them on any page, and pageOf finds the page an element belongs to.
+const galPages = [], pageByKey = {};
+function makePage(root, key) {
+  const q = sel => root.querySelector(sel);
+  const p = { root, key, el: q('.galv'), pathEl: q('.pathbar'), welcome: q('.welcome'), whead: q('.whead'), wchart: q('.wchart'), locTools: q('.locTools'), locnote: q('.locnote'),
+    more: q('.expmore'), refresh: q('.exprefresh'), welcomeGo: [],
+    gal: { sort: 'recent', items: [], groups: [], byKey: new Map(), cells: [], limit: GAL_PAGE, shownTo: 0, drawnSort: '' } };
+  galPages.push(p); pageByKey[key] = p; return p;
 }
-let pg = makePage(document.getElementById('gal'), document.getElementById('pathbar'));
+const cnote = document.querySelector('.cnote'); // the status / chips block: one real copy, kept in the welcome section of the page being shown
+{
+  const root0 = document.querySelector('.pg'); makePage(root0, 'recent');
+  for (const k of ['rare', 'tree', 'place', 'explore']) {
+    const r = root0.cloneNode(true); r.classList.remove('cur');
+    r.querySelectorAll('.cnote').forEach(n => n.remove()); r.querySelectorAll('[id]').forEach(n => n.removeAttribute('id')); r.dataset.k = k;
+    root0.parentNode.append(r); makePage(r, k);
+  }
+}
+let pg = pageByKey.recent, slideBusy = false;
+const pageFor = k => pageByKey[k] || pageByKey.recent;
+// show only the current page (a slide in progress manages the pages itself)
+function syncPages() {
+  if (slideBusy) return;
+  for (const p of galPages) { p.root.classList.toggle('cur', p === pg); p.root.classList.remove('out'); p.root.style.transform = ''; }
+  pg.welcome.append(cnote);
+}
 function withPage(page, fn) { const prev = pg; pg = page; try { return fn(); } finally { pg = prev; } }
-const pageOf = node => galPages.find(p => p.el.contains(node) || p.pathEl.contains(node)) || pg;
+const pageOf = node => galPages.find(p => p.root.contains(node)) || pg;
 const ordinal = n => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
 const ucfirst = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 const mkGroup = (key, rank, depth, main, sub) => ({ key: String(key), rank, depth, main, sub, first: -1, last: -1, parent: null });
@@ -2902,7 +2927,7 @@ let browse = null, browseFrom = null;
 const markBrow = (el, tid, oid) => { el.dataset.brow = tid; if (oid != null) el.dataset.oid = oid; };
 document.addEventListener('click', e => { browseFrom = e.target.closest ? e.target.closest('[data-brow]') : null; setTimeout(() => { browseFrom = null; }, 0); }, true);
 function buildBrowse(from) {
-  const box = from.closest('#gal, #results');
+  const box = from.closest('.galv, #results');
   if (!box) return null;
   const items = [...box.querySelectorAll('[data-brow]')].filter(n => n.offsetParent || n === from)
     .map(n => ({ tid: +n.dataset.brow, oid: n.dataset.oid || '', node: n }));
@@ -3409,7 +3434,7 @@ function renderExplore() {
     renderWelcome(); layoutStage();
   };
   const para = text => { $('summary').textContent = text; return null; }; // Common's note is written on the cover with the other totals
-  $('expmore').hidden = true; $('exprefresh').hidden = true;
+  pg.more.hidden = true; pg.refresh.hidden = true;
   if (!area && geoBusy) { draw([para('Finding your location…')]); return; }
   if (!area) {
     const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Choose a location'; b.style.margin = '0 14px'; b.onclick = () => $('areabtn').click();
@@ -3438,9 +3463,9 @@ function renderExplore() {
     draw([para(''), ...oneFolder(grid)]); // the welcome page already says this
   }
   if (!explore.loading && !geoBusy) finishBm();
-  $('exprefresh').hidden = !explore.cachedAt || explore.loading;
-  $('expmore').hidden = explore.loading || explore.items.length >= explore.total;
-  $('expmore').textContent = `Show more (${explore.total - explore.items.length} left)`;
+  pg.refresh.hidden = !explore.cachedAt || explore.loading;
+  pg.more.hidden = explore.loading || explore.items.length >= explore.total;
+  pg.more.textContent = `Show more (${explore.total - explore.items.length} left)`;
 }
 // One Polaroid for a species in Common: my own favourite photo if I have one, otherwise iNaturalist's; a green tick when I have seen it.
 function commonTile(it, mine, myPhoto, act = []) {
@@ -3475,15 +3500,18 @@ function commonTile(it, mine, myPhoto, act = []) {
   tile.append(b, cap);
   return tile;
 }
-pg.el.addEventListener('click', e => {
+function bindExplore(page) {
+  page.more.onclick = () => { if (!explore.loading) loadExplore(true); };
+  autoMore(page.more);
+  page.refresh.onclick = () => { explore.cachedAt = null; loadExplore(); };
+  page.wchart.addEventListener('click', e => { const h = e.target.closest('.hit'); const f = h && page.welcomeGo[+h.dataset.i]; if (f) f(); });
+  page.el.addEventListener('click', e => {
   if (e.target.closest('.dvs')) { if ($('unshuffle').hidden) $('shuffle').click(); else $('unshuffle').click(); return; }
   if (!e.target.closest('.dvx2')) return;
   exploreHideSeen = !exploreHideSeen; try { localStorage.setItem('inat_common_hide', exploreHideSeen ? '1' : '0'); } catch {}
   renderExplore();
-});
-$('expmore').onclick = () => { if (!explore.loading) loadExplore(true); };
-autoMore($('expmore'));
-$('exprefresh').onclick = () => { explore.cachedAt = null; loadExplore(); };
+  });
+}
 // Taxonomic group chips: select any number; none selected means all groups.
 const EXP_CLASSES = [['Aves', 'Birds'], ['Mammalia', 'Mammals'], ['Reptilia', 'Reptiles'], ['Amphibia', 'Amphibians'], ['Actinopterygii', 'Fish'],
   ['Insecta', 'Insects'], ['Arachnida', 'Arachnids'], ['Mollusca', 'Molluscs'], ['Plantae', 'Plants'], ['Fungi', 'Fungi']];
@@ -3755,12 +3783,13 @@ function setView(v) {
   if (isGal(v)) lastGal = v;
   if (v !== 'recent' && raritySort) { raritySort = ''; try { localStorage.removeItem('inat_rsort'); } catch {} }
   try { localStorage.setItem(VIEW_KEY, v); } catch {}
+  pg = pageFor(sortId()); syncPages();
   const g = isGal(v);
   pg.pathEl.hidden = true;
-  if (!g) { Object.assign(pg.gal, { items: [], groups: [], cells: [], drawnSort: '' }); } else $('expmore').hidden = true;
+  if (!g) { Object.assign(pg.gal, { items: [], groups: [], cells: [], drawnSort: '' }); } else pg.more.hidden = true;
   document.body.classList.toggle('stkview', true); // the dot-grid desk behind the Polaroids
   document.body.classList.toggle('vexplore', v === 'explore'); // Common keeps only the date and group filters
-  $('locTools').hidden = v !== 'place';
+  pg.locTools.hidden = v !== 'place';
   syncRecentTools(); updateSortUi();
   if (!$('psort').hidden) drawSortChips(); // the Sort sheet stays open; its highlighted chip follows the change
   // Common always works from the map's circle (Only here is on and locked there). Leaving it, the circle is kept only if Only here was on before.
@@ -3775,54 +3804,43 @@ function setView(v) {
   // each sort keeps its own scroll position (re-applied once more next frame in case layout settles late)
   // switching views never moves the scroll position (each page is at least a screen tall, so it is still there)
 }
-// A page slide: the page you are on is copied into an overlay; the view underneath is switched at once, and the copy (or, going back, a copy of the earlier page) slides over it.
-function pageCopy() {
-  const c = $('content'), r = c.getBoundingClientRect(), copy = c.cloneNode(true), rs = $('results').style;
-  // ids stay: the page's styles are keyed on #gal and friends (the real element comes first in the document, so lookups still find it)
-  copy.querySelectorAll('.leaflet-container').forEach(e => e.replaceChildren());
-  // sticky folder headers would re-stick inside the copy: pin each one where it is now instead
-  const src = [...c.querySelectorAll('.dvh, #pathbar')], dst = [...copy.querySelectorAll('.dvh, #pathbar')], cur = src.map(e => e.getBoundingClientRect().top);
-  src.forEach(e => { e.style.position = 'relative'; });
-  const nat = src.map(e => e.getBoundingClientRect().top);
-  src.forEach(e => { e.style.position = ''; });
-  dst.forEach((e, i) => { e.style.position = 'relative'; e.style.top = (cur[i] - nat[i]) + 'px'; });
-  Object.assign(copy.style, { position: 'absolute', left: '0', top: r.top + 'px', width: r.width + 'px', margin: '0' });
-  for (const v of ['--gap', '--s0', '--stage-top']) copy.style.setProperty(v, rs.getPropertyValue(v)); // the copy lives outside #results
-  const leaf = document.createElement('div'); leaf.className = 'leaf'; leaf.append(copy); return leaf;
-}
+// A page slide: the views are separate pages, so a swipe slides the real pages. The one that is moving lies over the other, and the status block travels with the page that is arriving.
 let slide = null;
 function slideStart(dir, k) {
-  if (slide) slideFinish(true);
-  const ov = document.createElement('div'), old = pageCopy(); ov.id = 'turn';
-  old.style.zIndex = 1; ov.append(old); document.body.append(ov);
-  const from = sortId();
-  chooseSort(k);
-  let leaf = old;
-  if (dir < 0) { leaf = pageCopy(); leaf.style.zIndex = 2; leaf.style.transform = 'translateX(-100%)'; ov.append(leaf); }
-  slide = { ov, leaf, dir, from, W: innerWidth };
+  if (slide) slideFinish(true, 0, true);
+  const op = pg, tp = pageFor(k);
+  if (op === tp) { chooseSort(k); return; }
+  const from = sortId(), moving = dir > 0 ? op : tp, base = dir > 0 ? tp : op;
+  slideBusy = true;
+  for (const p of galPages) p.root.classList.remove('cur', 'out');
+  base.root.classList.add('cur'); moving.root.classList.add('out');
+  const still = cnote.cloneNode(true); still.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+  op.welcome.append(still); tp.welcome.append(cnote);
+  chooseSort(k); // draws the arriving page, which is already in place
+  if (dir < 0) moving.root.style.transform = 'translateX(-100%)';
+  slide = { dir, op, tp, moving, still, from, W: innerWidth };
 }
-const slideX = (dx) => { // where the moving page sits for a finger offset of dx
+const slideX = dx => { // where the moving page sits for a finger offset of dx
   const { dir, W } = slide;
   return dir > 0 ? Math.max(-W, Math.min(0, dx)) : -W + Math.max(0, Math.min(W, dx));
 };
-function slideMove(dx) {
-  if (!slide) return;
-  const x = slideX(dx); slide.leaf.style.transform = `translateX(${x}px)`;
-  slide.leaf.style.boxShadow = `${slide.dir > 0 ? 12 : 12}px 0 30px rgba(0,0,0,.45)`;
-}
+function slideMove(dx) { if (slide) slide.moving.root.style.transform = `translateX(${slideX(dx)}px)`; }
 // commit: let it finish sliding; otherwise slide it back and restore the page that was open
 function slideFinish(commit, dx = 0, instant) {
   const sl = slide; if (!sl) return; slide = null;
-  const { leaf, ov, dir, W } = sl, x0 = (() => { const m = /translateX\((-?[\d.]+)px\)/.exec(leaf.style.transform); return m ? +m[1] : (dir > 0 ? 0 : -W); })();
-  const x1 = commit ? (dir > 0 ? -W : 0) : (dir > 0 ? 0 : -W);
-  const done = () => { if (!commit) chooseSort(sl.from); requestAnimationFrame(() => ov.remove()); };
-  if (instant || !leaf.animate) { done(); return; }
-  const a = leaf.animate([{ transform: `translateX(${x0}px)` }, { transform: `translateX(${x1}px)` }], { duration: 260 * Math.max(.25, Math.abs(x1 - x0) / W), easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' });
-  a.onfinish = done;
+  const { moving, dir, W } = sl, el = moving.root, m = /translateX\((-?[\d.]+)px\)/.exec(el.style.transform);
+  const x0 = m ? +m[1] : (/translateX\(-100%\)/.test(el.style.transform) ? -W : 0), x1 = commit ? (dir > 0 ? -W : 0) : (dir > 0 ? 0 : -W);
+  const done = () => {
+    slideBusy = false; sl.still.remove();
+    if (commit) syncPages(); else chooseSort(sl.from); // cancelled: the page that was open is drawn again and shown
+  };
+  if (instant || !el.animate) { done(); return; }
+  const a = el.animate([{ transform: `translateX(${x0}px)` }, { transform: `translateX(${x1}px)` }], { duration: 260 * Math.max(.25, Math.abs(x1 - x0) / W), easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' });
+  a.onfinish = () => { a.cancel(); done(); };
 }
 function pageTurn(dir, k) { // a tap on a bookmark: the same slide, played by itself
   if ($('results').hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) { chooseSort(k); return; }
-  slideStart(dir, k); slide.leaf.style.transform = dir > 0 ? 'translateX(0)' : 'translateX(-100%)'; slideFinish(true);
+  slideStart(dir, k); if (slide) slideFinish(true);
 }
 function turnTo(k, dir) {
   const order = SORTS.map(x => x[0]), cur = order.indexOf(sortId()), nxt = order.indexOf(k);
@@ -3865,12 +3883,14 @@ function turnTo(k, dir) {
 function chooseSort(k) {
   if (k === 'rare') {
     raritySort = 'rare'; shuffleSeed = recentSeed = null; try { localStorage.setItem('inat_rsort', 'rare'); } catch {}
+    pg = pageFor('rare'); syncPages();
     if (view !== 'recent') setView('recent'); else { syncRecentTools(); updateSortUi(); drawChips(); show(true); }
     if (rarityMissing().length) loadRarityData();
     if (!$('psort').hidden) drawSortChips();
     return;
   }
   if (raritySort) { raritySort = ''; try { localStorage.removeItem('inat_rsort'); } catch {} }
+  pg = pageFor(k); syncPages();
   if (view === k) { updateSortUi(); show(true); } else setView(k);
   if (!$('psort').hidden) drawSortChips();
 }
@@ -3965,23 +3985,21 @@ function vbars(rows, col, seed = 5) {
   });
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart">${o}</svg>`;
 }
-let welcomeGo = [];
-$('wchart').addEventListener('click', e => { const h = e.target.closest('.hit'); const f = h && welcomeGo[+h.dataset.i]; if (f) f(); });
 // Scroll position that puts an element at `want` px from the top, allowing for the content being pinned while the cover scrolls away.
 function pinY(topNow, want) {
   const s0 = parseFloat($('results').style.getPropertyValue('--s0')) || 0, y = scrollY;
   return Math.max(0, s0 + (y <= s0 ? topNow : topNow + (y - s0)) - want);
 }
 function renderWelcome() {
-  const el = $('whead'), ch = $('wchart'); if (!el) return;
+  const el = pg.whead, ch = pg.wchart;
   const id = sortId(), col = MARK_COLORS[id] || '#c8453b', label = (SORTS.find(x => x[0] === id) || ['', ''])[1];
-  let sub = '', chart = ''; welcomeGo = [];
+  let sub = '', chart = ''; pg.welcomeGo = [];
   try {
     if (view === 'explore') {
       if (!explore.items.length) { el.replaceChildren(); ch.replaceChildren(); return; }
       const mine = mySpeciesCounts(), seen = explore.items.filter(it => mine.has(it.taxon.id)).length;
       sub = area ? `${explore.total.toLocaleString()} species around here, ${seen} of the top ${explore.items.length} already in your notebook` : '';
-      const top6 = explore.items.slice(0, 6); welcomeGo = top6.map(it => () => openSpecies(it.taxon.id));
+      const top6 = explore.items.slice(0, 6); pg.welcomeGo = top6.map(it => () => openSpecies(it.taxon.id));
       chart = hbars(top6.map(it => ({ label: it.taxon.preferred_common_name || it.taxon.name, value: it.count, hi: mine.has(it.taxon.id), text: fmtCount(it.count), go: 1 })), col, 7);
     } else {
       const obs = filteredObs(); if (!obs.length) { el.replaceChildren(); ch.replaceChildren(); return; }
@@ -3998,28 +4016,28 @@ function renderWelcome() {
         else if (span <= 1100) for (let d = new Date(pd(a).getFullYear(), pd(a).getMonth(), 1); ymd(d) <= z; d.setMonth(d.getMonth() + 1)) { const k = ymd(d).slice(0, 7); months.push({ from: k + '-01', to: k + '-31', label: 'JFMAMJJASOND'[d.getMonth()], value: 0 }); }
         else for (let y = +a.slice(0, 4); y <= +z.slice(0, 4); y++) months.push({ from: y + '-01-01', to: y + '-12-31', label: String(y).slice(2), value: 0 });
         for (const o of obs) { const dt = o.date || ''; const m = months.find(m => dt >= m.from && dt <= m.to); if (m) m.value++; }
-        welcomeGo = months.map(m => () => { const i = pg.gal.items.findIndex(it => { const dt = it.o.date || ''; return dt >= m.from && dt <= m.to; }); if (i >= 0) jumpTo({ i, label: m.from }); });
+        pg.welcomeGo = months.map(m => () => { const i = pg.gal.items.findIndex(it => { const dt = it.o.date || ''; return dt >= m.from && dt <= m.to; }); if (i >= 0) jumpTo({ i, label: m.from }); });
         months.forEach(m => m.go = 1);
         const tot = months.reduce((a, m) => a + m.value, 0);
         sub = `${obs.length.toLocaleString()} observations of ${sp.toLocaleString()} species${rng ? '' : `, ${tot.toLocaleString()} in the last year`}`;
         chart = vbars(months, col, 5);
       } else if (id === 'rare') {
         const rr = pg.gal.items.slice(0, 6).map((it, i) => ({ it, i, r: rarityOf(it.o) })).filter(x => x.r), rows = rr.map(x => ({ label: x.it.o.common || x.it.o.name, value: Math.log10(1 + x.r.n), text: fmtCount(x.r.n), go: 1 }));
-        welcomeGo = rr.map(x => () => jumpTo({ i: x.i, label: x.it.o.common || x.it.o.name }));
+        pg.welcomeGo = rr.map(x => () => jumpTo({ i: x.i, label: x.it.o.common || x.it.o.name }));
         sub = 'The species with the fewest observations on iNaturalist worldwide';
         chart = rows.length >= 2 ? hbars(rows, col, 9) : '';
       } else {
         const want = id === 'place' ? 'country' : 'class', byRank = pg.gal.groups.filter(g => g.rank === want);
         let top = byRank.map(g => ({ label: g.main, value: g.last - g.first + 1, g, go: 1 })).sort((a, b) => b.value - a.value).slice(0, 6);
         if (top.length < 2) { const dmin = [...new Set(pg.gal.groups.map(g => g.depth))].sort((x, y) => x - y).find(d => pg.gal.groups.filter(g => g.depth === d).length > 1); top = pg.gal.groups.filter(g => g.depth === dmin).map(g => ({ label: g.main, value: g.last - g.first + 1, g, go: 1 })).sort((a, b) => b.value - a.value).slice(0, 6); }
-        welcomeGo = [];
+        pg.welcomeGo = [];
         sub = `${sp.toLocaleString()} species from ${obs.length.toLocaleString()} observations`;
-        welcomeGo = top.map(d => () => jumpTo({ group: true, g: d.g, label: d.label }));
+        pg.welcomeGo = top.map(d => () => jumpTo({ group: true, g: d.g, label: d.label }));
         chart = top.length > 1 ? hbars(top, col, id === 'tree' ? 11 : 13) : '';
       }
     }
   } catch (e) { log('welcome: ' + e.message, 'w'); }
-  $('welcome').style.setProperty('--wc', col);
+  pg.welcome.style.setProperty('--wc', col);
   el.innerHTML = `<h2>${escTxt(label)}</h2>${sub ? `<p>${escTxt(sub)}</p>` : ''}`; ch.innerHTML = chart;
 }
 function show(keepStatus) {
@@ -4044,7 +4062,7 @@ function show(keepStatus) {
   }
   if (view === 'place') {
     const without = obs.filter(o => !(o.pids && o.pids.length)).length;
-    $('locnote').textContent = without
+    pg.locnote.textContent = without
       ? `${without} observation${without > 1 ? 's' : ''} without place data (private, or cached before location support — use "Re-download observations")`
       : '';
     if (!keepStatus) ensurePlaces();
@@ -4185,8 +4203,8 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('show'), 1800);
 }
 // Tap a label (or a stack) to collapse or expand every group of its level; the group you tapped stays where it is on screen.
-(() => {
-  pg.el.addEventListener('click', e => {
+function bindTags(page) {
+  page.el.addEventListener('click', e => {
     const x = e.target.closest('.dvx');
     if (!x) return;
     e.stopPropagation();
@@ -4196,8 +4214,8 @@ function toast(msg) {
     else pg.gal.groups.forEach(g => { if (g.depth > at.depth) col.add(g.key); else col.delete(g.key); }); // collapse to this tab's level
     pg.gal.byKey.has(x.dataset.key) ? redrawKeep(x.dataset.key, false) : drawGallery();
   }, true);
-  for (const host of [pg.el, pg.pathEl]) {
-    const fromBar = host.id === 'pathbar';
+  for (const host of [page.el, page.pathEl]) {
+    const fromBar = host === page.pathEl;
     host.addEventListener('click', e => {
       const tag = e.target.closest('.tag, .dvt');
       if (!tag) return;
@@ -4206,14 +4224,15 @@ function toast(msg) {
     }, true);
     host.addEventListener('contextmenu', e => { if (e.target.closest('.tag, .dvt')) e.preventDefault(); });
   }
-})();
+}
 
 let galStyle = 'polaroid', galSize = 'l';
 try { if (localStorage.getItem('inat_gal_style') === 'simple') galStyle = 'simple'; const z = localStorage.getItem('inat_gal_size'); if (['xl', 'l', 'm', 's'].includes(z)) galSize = z; } catch {}
 function applyGalLook() {
-  const g = pg.el;
-  g.classList.remove('sz-xl', 'sz-l', 'sz-m', 'sz-s', 'st-polaroid', 'st-simple');
-  g.classList.add('sz-' + galSize, 'st-' + galStyle);
+  for (const p of galPages) {
+    p.el.classList.remove('sz-xl', 'sz-l', 'sz-m', 'sz-s', 'st-polaroid', 'st-simple');
+    p.el.classList.add('sz-' + galSize, 'st-' + galStyle);
+  }
   requestAnimationFrame(() => { if (typeof spanTags === 'function') spanTags(); document.querySelectorAll('.pgrid .tile .cap').forEach(fitCaption); schedulePath(); });
 }
 function drawLookChips() {
@@ -4235,8 +4254,8 @@ function drawLookChips() {
 $('sizebtn').onclick = e => { e.stopPropagation(); const m = $('sizemenu'); m.hidden = !m.hidden; $('sizebtn').setAttribute('aria-expanded', String(!m.hidden)); };
 document.addEventListener('click', e => { if (!e.target.closest('.vdrop')) { $('sizemenu').hidden = true; $('sizebtn').setAttribute('aria-expanded', 'false'); } });
 // Pinch on the list changes the photo size between XL, L, M and S: spread the fingers for bigger photos, pinch for smaller.
-(() => {
-  const ORDER = ['xl', 'l', 'm', 's'], el = pg.el;
+function bindPinch(page) {
+  const ORDER = ['xl', 'l', 'm', 's'], el = page.el;
   const step = d => { // d = +1 smaller photos (more columns), -1 bigger
     const i = Math.max(0, Math.min(3, ORDER.indexOf(galSize) + d)); if (ORDER[i] === galSize) return false;
     galSize = ORDER[i]; try { localStorage.setItem('inat_gal_size', galSize); } catch {}
@@ -4258,7 +4277,8 @@ document.addEventListener('click', e => { if (!e.target.closest('.vdrop')) { $('
     e.preventDefault(); acc += e.deltaY; clearTimeout(wt); wt = setTimeout(() => { acc = 0; }, 250);
     if (acc < -40) { step(-1); acc = 0; } else if (acc > 40) { step(1); acc = 0; }
   }, { passive: false });
-})();
+}
+
 $('themebtn').onclick = () => { const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark'; try { localStorage.setItem('inat_theme', next); } catch {} applyTheme(next); drawLookChips(); };
 $('stylebtn').onclick = () => { galStyle = galStyle === 'simple' ? 'polaroid' : 'simple'; try { localStorage.setItem('inat_gal_style', galStyle); } catch {} applyGalLook(); drawLookChips(); };
 function syncRecentTools() {
@@ -4338,13 +4358,14 @@ document.addEventListener('click', e => { if (!e.target.closest('#jumpwrap')) $(
 
 
 
+galPages.forEach(p => { bindExplore(p); bindTags(p); bindPinch(p); });
 applyGalLook();
 drawMarks();
 setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-177 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-178 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
