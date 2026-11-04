@@ -3762,7 +3762,7 @@ function setView(v) {
 // A page slide: the page you are on is copied into an overlay; the view underneath is switched at once, and the copy (or, going back, a copy of the earlier page) slides over it.
 function pageCopy() {
   const c = $('content'), r = c.getBoundingClientRect(), copy = c.cloneNode(true), rs = $('results').style;
-  copy.querySelectorAll('[id]').forEach(e => e.removeAttribute('id')); copy.removeAttribute('id');
+  // ids stay: the page's styles are keyed on #gal and friends (the real element comes first in the document, so lookups still find it)
   copy.querySelectorAll('.leaflet-container').forEach(e => e.replaceChildren());
   // sticky folder headers would re-stick inside the copy: pin each one where it is now instead
   const src = [...c.querySelectorAll('.dvh, #pathbar')], dst = [...copy.querySelectorAll('.dvh, #pathbar')], cur = src.map(e => e.getBoundingClientRect().top);
@@ -4328,7 +4328,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-171 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-172 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
