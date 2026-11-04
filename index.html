@@ -769,7 +769,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #wchart .wrow.go { cursor:pointer; } #wchart .wrow.go:active { opacity:.6; } #wchart svg { display:block; width:100%; height:auto; overflow:visible; }
   #welcome .chip { font-size:13px; } #welcome .chip svg { width:15px; height:15px; flex:none; } #welcome .chip > button:last-child { padding:2px 6px; border-radius:50%; background:rgba(0,0,0,.12); } #welcome .chip > button:last-child svg { width:13px; height:13px; stroke-width:3; }
   #welcome text { font-family:var(--hw); fill:#2a2418; }
-  @media (max-width: 899px) { .coverwrap { margin:6px 12px 84px; } }
+  @media (max-width: 899px) { .coverwrap { margin:0 0 84px; } main { padding-top:0 !important; padding-left:0 !important; padding-right:0 !important; } header.cover { border-radius:0 !important; margin-left:0 !important; margin-right:0 !important; padding-top:calc(22dvh + env(safe-area-inset-top)) !important; padding-left:calc(34px + env(safe-area-inset-left)); } header.cover .ibgroup { top:calc(6px + env(safe-area-inset-top)); } }
   header.cover { margin:0 !important; z-index:1; }
   .marks { z-index:0 !important; }
   .pmap { cursor:pointer; }
@@ -4221,7 +4221,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-163 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-164 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
