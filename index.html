@@ -1765,7 +1765,16 @@ const isGal = v => GAL.includes(v);
 const GAL_PAGE = 150;
 const TAG_COLORS = ['#faf6e8', '#d9d2bd', '#a6d3a0']; // graph paper, linen and denim in turn by level
 const collapsed = { recent: new Set(), tree: new Set(), place: new Set() }; // keys of the collapsed groups, per sort
-const gal = { sort: 'recent', items: [], groups: [], byKey: new Map(), cells: [], limit: GAL_PAGE, shownTo: 0, drawnSort: '' };
+// A gallery page: its own element, path bar and gallery state (items, groups, how many are drawn). The drawing functions work on the current page `pg`;
+// renderGalleryOn / drawGalleryOn / withPage run them on any page, and pageOf finds the page an element belongs to.
+const galPages = [];
+function makePage(el, pathEl) {
+  const p = { el, pathEl, gal: { sort: 'recent', items: [], groups: [], byKey: new Map(), cells: [], limit: GAL_PAGE, shownTo: 0, drawnSort: '' } };
+  galPages.push(p); return p;
+}
+let pg = makePage(document.getElementById('gal'), document.getElementById('pathbar'));
+function withPage(page, fn) { const prev = pg; pg = page; try { return fn(); } finally { pg = prev; } }
+const pageOf = node => galPages.find(p => p.el.contains(node) || p.pathEl.contains(node)) || pg;
 const ordinal = n => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
 const ucfirst = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 const mkGroup = (key, rank, depth, main, sub) => ({ key: String(key), rank, depth, main, sub, first: -1, last: -1, parent: null });
@@ -1924,7 +1933,7 @@ function polTile(o, tag) {
   if (tag) { // a group too small for its own folder: a sticker on the photo says which group it belongs to
     const st = document.createElement('span'); st.className = 'gsticker'; st.style.background = stickerColor(tag); st.title = `${tag.rank}: ${tag.main}${tag.sub ? ' (' + tag.sub + ')' : ''}`;
     st.append(tag.main);
-    if (tag.sub) { const sm = document.createElement('small'); sm.textContent = tag.sub; if (gal.sort === 'tree') sm.className = 'sci'; st.append(sm); }
+    if (tag.sub) { const sm = document.createElement('small'); sm.textContent = tag.sub; if (pg.gal.sort === 'tree') sm.className = 'sci'; st.append(sm); }
     t.append(st);
   }
   return t;
@@ -1932,13 +1941,13 @@ function polTile(o, tag) {
 
 // ---- group labels: coloured typewriter stickers ----
 function tagEl(g, compact) {
-  const isCol = collapsed[gal.sort].has(g.key);
+  const isCol = collapsed[pg.gal.sort].has(g.key);
   const b = document.createElement('button'); b.type = 'button';
   b.className = 'tag m' + (g.depth % TAG_COLORS.length) + (isCol ? ' col' : '');
   b.dataset.key = g.key; b.dataset.rank = g.rank;
   b.title = `${g.rank}: ${g.main}${g.sub ? ' (' + g.sub + ')' : ''} · tap to ${isCol ? 'expand' : 'collapse'} every ${g.rank}`;
   const m = document.createElement('b'); m.textContent = g.main; b.append(m);
-  if (g.sub) { const s = document.createElement('small'); s.textContent = g.sub; if (gal.sort === 'tree') s.className = 'sci'; b.append(s); }
+  if (g.sub) { const s = document.createElement('small'); s.textContent = g.sub; if (pg.gal.sort === 'tree') s.className = 'sci'; b.append(s); }
   const w = document.createElement('span'); w.className = 'tw'; w.style.zIndex = 20 - g.depth; // each chevron lies over the point of the one before
   w.append(b);
   return w;
@@ -1950,7 +1959,7 @@ function stackEl(g) {
   const n = g.last - g.first + 1, m = Math.min(n, 4); // four photos (2 x 2) sampled evenly across the group
   const picks = [...new Set(Array.from({ length: m }, (_, j) => g.first + Math.round(j * (n - 1) / Math.max(1, m - 1))))];
   picks.forEach((idx, j) => {
-    const ph = photosOf(gal.items[idx].o), mini = document.createElement('span');
+    const ph = photosOf(pg.gal.items[idx].o), mini = document.createElement('span');
     mini.className = 'mini'; mini.style.setProperty('--cx', j % 2); mini.style.setProperty('--cy', j >> 1); mini.style.setProperty('--r', ((shuffleKey(String(idx), 'stk') % 9) - 4) + 'deg');
     const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
     im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
@@ -1962,31 +1971,33 @@ function stackEl(g) {
 }
 
 function renderGallery(obs) {
-  const el = $('gal');
-  gal.sort = view;
-  gal.items = view === 'recent' ? recentItems(obs)
+  const el = pg.el;
+  pg.gal.sort = view;
+  pg.gal.items = view === 'recent' ? recentItems(obs)
     : view === 'place' ? treeItems(buildTree(obs, placeChain), PLACE_META)
     : treeItems(buildTree(obs), TAXON_META(state.names));
   // small groups don't get a folder of their own: their photos join the folder above, each with a sticker naming the group
   if (galMerge > 1) {
     const cnt = new Map();
-    for (const it of gal.items) for (const g of it.path) cnt.set(g, (cnt.get(g) || 0) + 1);
-    for (const it of gal.items) { const k = it.path.findIndex((g, j) => j > 0 && cnt.get(g) < galMerge); if (k >= 0) { it.tag = it.path[k]; it.path = it.path.slice(0, k); } }
+    for (const it of pg.gal.items) for (const g of it.path) cnt.set(g, (cnt.get(g) || 0) + 1);
+    for (const it of pg.gal.items) { const k = it.path.findIndex((g, j) => j > 0 && cnt.get(g) < galMerge); if (k >= 0) { it.tag = it.path[k]; it.path = it.path.slice(0, k); } }
   }
-  gal.groups = []; gal.byKey = new Map();
-  gal.items.forEach((it, i) => {
+  pg.gal.groups = []; pg.gal.byKey = new Map();
+  pg.gal.items.forEach((it, i) => {
     it.starts = [];
     it.path.forEach((g, j) => {
-      if (g.first < 0) { g.first = i; g.parent = it.path[j - 1] || null; it.starts.push(g); gal.groups.push(g); gal.byKey.set(g.key, g); }
+      if (g.first < 0) { g.first = i; g.parent = it.path[j - 1] || null; it.starts.push(g); pg.gal.groups.push(g); pg.gal.byKey.set(g.key, g); }
       g.last = i;
     });
   });
-  if (gal.drawnSort !== view) gal.limit = GAL_PAGE;
-  gal.drawnSort = view;
+  if (pg.gal.drawnSort !== view) pg.gal.limit = GAL_PAGE;
+  pg.gal.drawnSort = view;
   jumpIndex = null; // rebuilt on next use
-  if (!gal.items.length) { gal.cells = []; el.replaceChildren(); $('pathbar').hidden = true; return; }
+  if (!pg.gal.items.length) { pg.gal.cells = []; el.replaceChildren(); pg.pathEl.hidden = true; return; }
   drawGallery();
 }
+const renderGalleryOn = (page, obs) => withPage(page, () => renderGallery(obs));
+const drawGalleryOn = page => withPage(page, () => drawGallery());
 const galMerge = 3; // a group with fewer photos than this has no folder: its photos join the folder above, each with a sticker
 const galGroups = 'dividers'; // groups are always folder dividers (the old chevron-tab layout is still in the code but unused)
 // A divider section: a card with a folder tab on its top edge; sections nest, and their tabs step across the page by level.
@@ -2000,13 +2011,13 @@ function stripEl(g) {
   return st;
 }
 function fillStrip(st) {
-  const g = gal.byKey.get(st.dataset.key), W = st.clientWidth;
+  const page = pageOf(st), g = page.gal.byKey.get(st.dataset.key), W = st.clientWidth;
   if (!g || !W || st.dataset.w === String(W)) return;
   st.dataset.w = W;
   const total = g.last - g.first + 1, room = Math.max(1, Math.floor((W - 12 - 44) / (STRIP_PX + 6))), n = Math.min(room, total);
   const frag = document.createDocumentFragment();
   for (let j = 0; j < n; j++) {
-    const idx = g.first + Math.round(j * (total - 1) / Math.max(1, n - 1)), ph = photosOf(gal.items[idx].o);
+    const idx = g.first + Math.round(j * (total - 1) / Math.max(1, n - 1)), ph = photosOf(page.gal.items[idx].o);
     if (!ph.length) continue;
     const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.src = sized(ph[0], 'medium');
     im.onerror = () => { if (im.src !== ph[0]) im.src = ph[0]; };
@@ -2018,18 +2029,18 @@ function fillStrip(st) {
 const stripObserver = new ResizeObserver(es => es.forEach(e => fillStrip(e.target)));
 // The view is already collapsed to a level when every group down to that level is open and every deeper group is collapsed.
 function levelShown(depth) {
-  const col = collapsed[gal.sort];
-  return gal.groups.every(g => g.depth > depth ? col.has(g.key) : !col.has(g.key)) && gal.groups.some(g => g.depth > depth);
+  const col = collapsed[pg.gal.sort];
+  return pg.gal.groups.every(g => g.depth > depth ? col.has(g.key) : !col.has(g.key)) && pg.gal.groups.some(g => g.depth > depth);
 }
 function dvSection(g) {
   const sec = document.createElement('section'); sec.className = 'dv d' + (g.depth % 3); sec.dataset.key = g.key; sec.style.setProperty('--dd', g.depth);
   const t = document.createElement('button'); t.type = 'button'; t.className = 'dvt'; t.dataset.key = g.key; t.dataset.rank = g.rank;
-  t.title = `${g.rank}: ${g.main}${g.sub ? ' (' + g.sub + ')' : ''} · tap to ${collapsed[gal.sort].has(g.key) ? 'expand' : 'collapse'} every ${g.rank}`;
+  t.title = `${g.rank}: ${g.main}${g.sub ? ' (' + g.sub + ')' : ''} · tap to ${collapsed[pg.gal.sort].has(g.key) ? 'expand' : 'collapse'} every ${g.rank}`;
   const b = document.createElement('b'); b.textContent = g.main; t.append(b);
-  if (g.sub) { const sm = document.createElement('small'); sm.textContent = g.sub; if (gal.sort === 'tree') sm.className = 'sci'; t.append(sm); }
+  if (g.sub) { const sm = document.createElement('small'); sm.textContent = g.sub; if (pg.gal.sort === 'tree') sm.className = 'sci'; t.append(sm); }
   const body = document.createElement('div'); body.className = 'dvb';
   const head = document.createElement('div'); head.className = 'dvh'; head.append(t);
-  if (gal.groups.length) { // top right of the tab row: expand every group (or, when everything is open, collapse them all)
+  if (pg.gal.groups.length) { // top right of the tab row: expand every group (or, when everything is open, collapse them all)
     const done = levelShown(g.depth), x = document.createElement('button'); x.type = 'button'; x.className = 'dvx'; x.dataset.key = g.key;
     x.innerHTML = ic(done ? 'chevrons-up-down' : 'chevrons-down-up', 18); x.title = x.ariaLabel = done ? 'Expand all groups' : `Collapse to the ${g.rank} level`;
     head.append(x);
@@ -2057,7 +2068,7 @@ function placeMap(g) {
 // Tapping a folder's map opens the Location map focused on that place (it does not change the Only here filter).
 async function openPlaceOnMap(g) {
   const pts = [];
-  for (let i = g.first; i <= g.last; i++) for (const o of (gal.items[i].all || [gal.items[i].o])) { const ll = parseLoc(o); if (ll) pts.push(ll); }
+  for (let i = g.first; i <= g.last; i++) for (const o of (pg.gal.items[i].all || [pg.gal.items[i].o])) { const ll = parseLoc(o); if (ll) pts.push(ll); }
   if (!pts.length) return toast('No locations for this place');
   if ($('areapanel').hidden) $('areabtn').click();
   await initAreaMap(); if (!areaMap) return;
@@ -2066,11 +2077,11 @@ async function openPlaceOnMap(g) {
   areaFitted = true; updatePhotoMarkers();
 }
 function fillPlaceMap(el) {
-  const g = gal.byKey.get(el.dataset.key), W = el.clientWidth;
+  const g = pg.gal.byKey.get(el.dataset.key), W = el.clientWidth;
   if (!g || !W || el.dataset.w === String(W)) return;
   el.dataset.w = W;
   let pts = [];
-  for (let i = g.first; i <= g.last; i++) for (const o of (gal.items[i].all || [gal.items[i].o])) { const ll = parseLoc(o); if (ll) pts.push(ll); }
+  for (let i = g.first; i <= g.last; i++) for (const o of (pg.gal.items[i].all || [pg.gal.items[i].o])) { const ll = parseLoc(o); if (ll) pts.push(ll); }
   if (!pts.length) { el.hidden = true; return; }
   const step = Math.ceil(pts.length / 150); if (step > 1) pts = pts.filter((_, i) => i % step === 0);
   const lats = pts.map(p => p[0]), lngs = pts.map(p => p[1]);
@@ -2094,42 +2105,42 @@ function fillPlaceMap(el) {
 const pmapObserver = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) fillPlaceMap(e.target); }, { rootMargin: '500px 0px' });
 function drawDividers() {
   stripObserver.disconnect(); moreObserver.disconnect(); pmapObserver.disconnect();
-  const el = $('gal'), items = gal.items, col = collapsed[gal.sort];
+  const el = pg.el, items = pg.gal.items, col = collapsed[pg.gal.sort];
   const root = document.createElement('div'); root.className = 'dvroot';
   const open = [{ g: null, body: root }]; // the sections the current photo is inside, outermost first
   const trailing = new Map();             // section body -> the grid its photos are currently going into
   const gridIn = body => { let g = trailing.get(body); if (!g || g !== body.lastElementChild) { g = document.createElement('div'); g.className = 'pgrid'; body.append(g); trailing.set(body, g); } return g; };
-  gal.cells = []; let n = 0, i = 0;
+  pg.gal.cells = []; let n = 0, i = 0;
   for (; i < items.length; i++) {
     const it = items[i], k = it.path.findIndex(g => col.has(g.key));
     if (k >= 0 && it.path[k].first !== i) continue;
-    if (n >= gal.limit) break;
+    if (n >= pg.gal.limit) break;
     const vis = k < 0 ? it.path : it.path.slice(0, k + 1);
     let m = 1; while (m < open.length && m - 1 < vis.length && open[m].g === vis[m - 1]) m++;
     open.length = m;
-    for (let j = m - 1; j < vis.length; j++) { const sec = dvSection(vis[j]); if (gal.sort === 'place') sec.body.append(placeMap(vis[j])); open[open.length - 1].body.append(sec.el); open.push({ g: vis[j], body: sec.body }); }
+    for (let j = m - 1; j < vis.length; j++) { const sec = dvSection(vis[j]); if (pg.gal.sort === 'place') sec.body.append(placeMap(vis[j])); open[open.length - 1].body.append(sec.el); open.push({ g: vis[j], body: sec.body }); }
     if (k >= 0) { // a collapsed group: a row of small photos across the whole width of its folder
       const st = stripEl(it.path[k]);
       open[open.length - 1].body.append(st); n++;
-      gal.cells.push({ el: st, tagGroups: [], path: vis });
+      pg.gal.cells.push({ el: st, tagGroups: [], path: vis });
       continue;
     }
     const cell = document.createElement('div'); cell.className = 'cell'; cell.dataset.i = i;
     cell.append(polTile(it.o, it.tag));
     gridIn(open[open.length - 1].body).append(cell); n++;
-    gal.cells.push({ el: cell, tagGroups: [], path: vis });
+    pg.gal.cells.push({ el: cell, tagGroups: [], path: vis });
   }
-  gal.shownTo = i;
+  pg.gal.shownTo = i;
   { const first = root.querySelector('.dvh'); if (first) first.append(shuffleTab()); } // the topmost root folder
   el.replaceChildren(root);
-  if (gal.sort === 'place') { const cr = document.createElement('p'); cr.className = 'mapcredit'; cr.innerHTML = 'Maps ' + TILE_ATTR; el.append(cr); }
+  if (pg.gal.sort === 'place') { const cr = document.createElement('p'); cr.className = 'mapcredit'; cr.innerHTML = 'Maps ' + TILE_ATTR; el.append(cr); }
   if (i < items.length) {
     const more = document.createElement('button'); more.className = 'secondary'; more.style.margin = '12px 0 0';
     more.textContent = `Show more (${items.length - i} left)`;
-    more.onclick = () => { gal.limit += GAL_PAGE; drawGallery(); };
+    more.onclick = () => { pg.gal.limit += GAL_PAGE; drawGallery(); };
     el.append(more); autoMore(more);
   }
-  $('pathbar').dataset.sig = '';
+  pg.pathEl.dataset.sig = '';
   schedulePath();
 }
 // A flat list (Rarest, a shuffle, Common) sits in one folder with no tab, so the background matches the grouped sorts.
@@ -2160,44 +2171,44 @@ function shuffleTab() {
   return x;
 }
 function drawGallery() {
-  if (galGroups === 'dividers' && gal.groups.length) return drawDividers();
-  const el = $('gal'), items = gal.items, col = collapsed[gal.sort];
+  if (galGroups === 'dividers' && pg.gal.groups.length) return drawDividers();
+  const el = pg.el, items = pg.gal.items, col = collapsed[pg.gal.sort];
   const grid = document.createElement('div'); grid.className = 'pgrid';
-  gal.cells = []; let n = 0, i = 0;
+  pg.gal.cells = []; let n = 0, i = 0;
   for (; i < items.length; i++) {
     const it = items[i];
     const k = it.path.findIndex(g => col.has(g.key)); // outermost collapsed group this photo is in
     if (k >= 0 && it.path[k].first !== i) continue; // inside a collapsed group: only its first photo stands in for the stack
-    if (n >= gal.limit) break;
+    if (n >= pg.gal.limit) break;
     const cell = document.createElement('div'); cell.className = 'cell'; cell.dataset.i = i;
     const tags = it.starts.filter(g => k < 0 || it.path.indexOf(g) <= k);
     if (tags.length) { const box = document.createElement('div'); box.className = 'tags'; tags.forEach(g => box.append(tagEl(g, true))); cell.append(box); }
     cell.append(k < 0 ? polTile(it.o, it.tag) : stackEl(it.path[k]));
     grid.append(cell); n++;
-    gal.cells.push({ el: cell, tagGroups: tags, path: k < 0 ? it.path : it.path.slice(0, k + 1) });
+    pg.gal.cells.push({ el: cell, tagGroups: tags, path: k < 0 ? it.path : it.path.slice(0, k + 1) });
   }
-  gal.shownTo = i;
+  pg.gal.shownTo = i;
   moreObserver.disconnect();
   el.replaceChildren(...oneFolder(grid));
   if (i < items.length) {
     const more = document.createElement('button'); more.className = 'secondary'; more.style.margin = '12px 0 0';
     const left = items.length - i;
     more.textContent = `Show more (${left} left)`;
-    more.onclick = () => { gal.limit += GAL_PAGE; drawGallery(); };
+    more.onclick = () => { pg.gal.limit += GAL_PAGE; drawGallery(); };
     el.append(more); autoMore(more);
   }
   spanTags();
-  $('pathbar').dataset.sig = '';
+  pg.pathEl.dataset.sig = '';
   schedulePath();
 }
 
 // A row of tabs may run on over the neighbouring cells to its right, as long as their photos are in the same group (and have no tabs of their own).
 function spanTags() {
-  const grid = $('gal').firstElementChild;
+  const grid = pg.el.firstElementChild;
   if (!grid || !grid.classList.contains('pgrid')) return;
   const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
   if (!(cols > 1)) return;
-  const cs = gal.cells;
+  const cs = pg.gal.cells;
   cs.forEach((c, i) => {
     const tags = c.el.firstElementChild;
     if (!tags || !tags.classList.contains('tags')) return;
@@ -2214,13 +2225,13 @@ const barHeight = () => parseFloat(getComputedStyle(document.documentElement).ge
 // Redraw after a collapse/expand keeping the group's label where it was (or, from the sticky header, bringing the group's first cell under it).
 function redrawKeep(key, fromBar) {
   drawGallery();
-  const g = gal.byKey.get(key);
+  const g = pg.gal.byKey.get(key);
   if (!g) return;
   // expanding can push the group beyond the photos drawn so far: draw further pages until its first cell exists
-  for (let guard = 0; gal.shownTo <= g.first && gal.shownTo < gal.items.length && guard < 200; guard++) { gal.limit += GAL_PAGE; drawGallery(); }
+  for (let guard = 0; pg.gal.shownTo <= g.first && pg.gal.shownTo < pg.gal.items.length && guard < 200; guard++) { pg.gal.limit += GAL_PAGE; drawGallery(); }
   // bring the group's first cell (tabs and all) to the top of the viewport, just under the bar
   const fix = () => {
-    const cell = $('gal').querySelector(`.dv[data-key="${CSS.escape(key)}"]`) || $('gal').querySelector(`.cell[data-i="${g.first}"]`);
+    const cell = pg.el.querySelector(`.dv[data-key="${CSS.escape(key)}"]`) || pg.el.querySelector(`.cell[data-i="${g.first}"]`);
     if (!cell) return;
     const d = cell.getBoundingClientRect().top - (barHeight() + (cell.classList.contains('dv') ? g.depth * 28 + 6 : 6));
     if (Math.abs(d) > 1) scrollTo(0, pinY(cell.getBoundingClientRect().top, barHeight() + (cell.classList.contains('dv') ? g.depth * 28 + 6 : 6)));
@@ -2234,17 +2245,17 @@ function redrawKeep(key, fromBar) {
   requestAnimationFrame(again);
 }
 function toggleGroup(key, fromBar) {
-  const col = collapsed[gal.sort];
+  const col = collapsed[pg.gal.sort];
   if (col.has(key)) col.delete(key); else col.add(key);
   redrawKeep(key, fromBar);
 }
 function toggleRank(key, fromBar) { // hold: collapse every group of this rank (or expand them all if this one was collapsed)
-  const col = collapsed[gal.sort], g = gal.byKey.get(key);
+  const col = collapsed[pg.gal.sort], g = pg.gal.byKey.get(key);
   if (!g) return;
-  const same = gal.groups.filter(x => x.rank === g.rank), collapse = !col.has(key);
+  const same = pg.gal.groups.filter(x => x.rank === g.rank), collapse = !col.has(key);
   const under = (y, x) => { for (let p = y.parent; p; p = p.parent) if (p === x) return true; return false; };
   // collapsing a group collapses everything inside it too, so expanding it later opens just one level
-  same.forEach(x => { if (collapse) { col.add(x.key); gal.groups.forEach(y => { if (under(y, x)) col.add(y.key); }); } else col.delete(x.key); });
+  same.forEach(x => { if (collapse) { col.add(x.key); pg.gal.groups.forEach(y => { if (under(y, x)) col.add(y.key); }); } else col.delete(x.key); });
   log(`hold: ${collapse ? 'collapsed' : 'expanded'} ${same.length} ${g.rank} groups`);
   toast(`${collapse ? 'Collapsed' : 'Expanded'} all ${same.length} ${PLURAL[g.rank] || g.rank}`);
   if (navigator.vibrate) navigator.vibrate(15);
@@ -2256,14 +2267,14 @@ let pathFrame = 0;
 const schedulePath = () => { if (!pathFrame) pathFrame = requestAnimationFrame(updatePath); };
 function updatePath() {
   pathFrame = 0;
-  const pb = $('pathbar'), cells = gal.cells;
+  const pb = pg.pathEl, cells = pg.gal.cells;
   if (!isGal(view) || !cells.length || galGroups === 'dividers') { pb.hidden = true; return; }
   const ref = barHeight() + 2;
   let lo = 0, hi = cells.length - 1, best = -1; // the last cell whose top has scrolled up under the bar
   while (lo <= hi) { const mid = (lo + hi) >> 1; if (cells[mid].el.getBoundingClientRect().top <= ref) { best = mid; lo = mid + 1; } else hi = mid - 1; }
   const path = best < 0 ? [] : cells[best].path;
   if (!path.length) { pb.hidden = true; return; }
-  const col = collapsed[gal.sort], sig = gal.sort + '|' + path.map(g => g.key + (col.has(g.key) ? '-' : '+')).join(',');
+  const col = collapsed[pg.gal.sort], sig = pg.gal.sort + '|' + path.map(g => g.key + (col.has(g.key) ? '-' : '+')).join(',');
   if (pb.dataset.sig !== sig) {
     pb.dataset.sig = sig;
     const inner = pb.firstElementChild;
@@ -3390,10 +3401,10 @@ async function loadExplore(more = false) {
 }
 
 function renderExplore() {
-  const host = $('gal');
+  const host = pg.el;
   const draw = nodes => { // Common draws into the gallery
     if (view !== 'explore') return;
-    Object.assign(gal, { items: [], groups: [], cells: [], drawnSort: '' }); $('pathbar').hidden = true;
+    Object.assign(pg.gal, { items: [], groups: [], cells: [], drawnSort: '' }); pg.pathEl.hidden = true;
     host.replaceChildren(...nodes.filter(Boolean));
     renderWelcome(); layoutStage();
   };
@@ -3464,7 +3475,7 @@ function commonTile(it, mine, myPhoto, act = []) {
   tile.append(b, cap);
   return tile;
 }
-$('gal').addEventListener('click', e => {
+pg.el.addEventListener('click', e => {
   if (e.target.closest('.dvs')) { if ($('unshuffle').hidden) $('shuffle').click(); else $('unshuffle').click(); return; }
   if (!e.target.closest('.dvx2')) return;
   exploreHideSeen = !exploreHideSeen; try { localStorage.setItem('inat_common_hide', exploreHideSeen ? '1' : '0'); } catch {}
@@ -3745,8 +3756,8 @@ function setView(v) {
   if (v !== 'recent' && raritySort) { raritySort = ''; try { localStorage.removeItem('inat_rsort'); } catch {} }
   try { localStorage.setItem(VIEW_KEY, v); } catch {}
   const g = isGal(v);
-  $('pathbar').hidden = true;
-  if (!g) { Object.assign(gal, { items: [], groups: [], cells: [], drawnSort: '' }); } else $('expmore').hidden = true;
+  pg.pathEl.hidden = true;
+  if (!g) { Object.assign(pg.gal, { items: [], groups: [], cells: [], drawnSort: '' }); } else $('expmore').hidden = true;
   document.body.classList.toggle('stkview', true); // the dot-grid desk behind the Polaroids
   document.body.classList.toggle('vexplore', v === 'explore'); // Common keeps only the date and group filters
   $('locTools').hidden = v !== 'place';
@@ -3987,20 +3998,20 @@ function renderWelcome() {
         else if (span <= 1100) for (let d = new Date(pd(a).getFullYear(), pd(a).getMonth(), 1); ymd(d) <= z; d.setMonth(d.getMonth() + 1)) { const k = ymd(d).slice(0, 7); months.push({ from: k + '-01', to: k + '-31', label: 'JFMAMJJASOND'[d.getMonth()], value: 0 }); }
         else for (let y = +a.slice(0, 4); y <= +z.slice(0, 4); y++) months.push({ from: y + '-01-01', to: y + '-12-31', label: String(y).slice(2), value: 0 });
         for (const o of obs) { const dt = o.date || ''; const m = months.find(m => dt >= m.from && dt <= m.to); if (m) m.value++; }
-        welcomeGo = months.map(m => () => { const i = gal.items.findIndex(it => { const dt = it.o.date || ''; return dt >= m.from && dt <= m.to; }); if (i >= 0) jumpTo({ i, label: m.from }); });
+        welcomeGo = months.map(m => () => { const i = pg.gal.items.findIndex(it => { const dt = it.o.date || ''; return dt >= m.from && dt <= m.to; }); if (i >= 0) jumpTo({ i, label: m.from }); });
         months.forEach(m => m.go = 1);
         const tot = months.reduce((a, m) => a + m.value, 0);
         sub = `${obs.length.toLocaleString()} observations of ${sp.toLocaleString()} species${rng ? '' : `, ${tot.toLocaleString()} in the last year`}`;
         chart = vbars(months, col, 5);
       } else if (id === 'rare') {
-        const rr = gal.items.slice(0, 6).map((it, i) => ({ it, i, r: rarityOf(it.o) })).filter(x => x.r), rows = rr.map(x => ({ label: x.it.o.common || x.it.o.name, value: Math.log10(1 + x.r.n), text: fmtCount(x.r.n), go: 1 }));
+        const rr = pg.gal.items.slice(0, 6).map((it, i) => ({ it, i, r: rarityOf(it.o) })).filter(x => x.r), rows = rr.map(x => ({ label: x.it.o.common || x.it.o.name, value: Math.log10(1 + x.r.n), text: fmtCount(x.r.n), go: 1 }));
         welcomeGo = rr.map(x => () => jumpTo({ i: x.i, label: x.it.o.common || x.it.o.name }));
         sub = 'The species with the fewest observations on iNaturalist worldwide';
         chart = rows.length >= 2 ? hbars(rows, col, 9) : '';
       } else {
-        const want = id === 'place' ? 'country' : 'class', byRank = gal.groups.filter(g => g.rank === want);
+        const want = id === 'place' ? 'country' : 'class', byRank = pg.gal.groups.filter(g => g.rank === want);
         let top = byRank.map(g => ({ label: g.main, value: g.last - g.first + 1, g, go: 1 })).sort((a, b) => b.value - a.value).slice(0, 6);
-        if (top.length < 2) { const dmin = [...new Set(gal.groups.map(g => g.depth))].sort((x, y) => x - y).find(d => gal.groups.filter(g => g.depth === d).length > 1); top = gal.groups.filter(g => g.depth === dmin).map(g => ({ label: g.main, value: g.last - g.first + 1, g, go: 1 })).sort((a, b) => b.value - a.value).slice(0, 6); }
+        if (top.length < 2) { const dmin = [...new Set(pg.gal.groups.map(g => g.depth))].sort((x, y) => x - y).find(d => pg.gal.groups.filter(g => g.depth === d).length > 1); top = pg.gal.groups.filter(g => g.depth === dmin).map(g => ({ label: g.main, value: g.last - g.first + 1, g, go: 1 })).sort((a, b) => b.value - a.value).slice(0, 6); }
         welcomeGo = [];
         sub = `${sp.toLocaleString()} species from ${obs.length.toLocaleString()} observations`;
         welcomeGo = top.map(d => () => jumpTo({ group: true, g: d.g, label: d.label }));
@@ -4041,7 +4052,7 @@ function show(keepStatus) {
   if (!obs.length) {
     const empty = document.createElement('p');
     empty.className = 'status'; empty.textContent = 'No observations match the current search / date / group / area.';
-    $('gal').replaceChildren(empty); $('pathbar').hidden = true;
+    pg.el.replaceChildren(empty); pg.pathEl.hidden = true;
   }
   $('results').hidden = false;
   renderWelcome(); layoutStage();
@@ -4175,17 +4186,17 @@ function toast(msg) {
 }
 // Tap a label (or a stack) to collapse or expand every group of its level; the group you tapped stays where it is on screen.
 (() => {
-  $('gal').addEventListener('click', e => {
+  pg.el.addEventListener('click', e => {
     const x = e.target.closest('.dvx');
     if (!x) return;
     e.stopPropagation();
-    const col = collapsed[gal.sort];
-    const at = gal.byKey.get(x.dataset.key);
-    if (!at || levelShown(at.depth) || !gal.groups.some(g => g.depth > at.depth)) col.clear(); // tapping again (or nothing deeper to fold) opens everything
-    else gal.groups.forEach(g => { if (g.depth > at.depth) col.add(g.key); else col.delete(g.key); }); // collapse to this tab's level
-    gal.byKey.has(x.dataset.key) ? redrawKeep(x.dataset.key, false) : drawGallery();
+    const col = collapsed[pg.gal.sort];
+    const at = pg.gal.byKey.get(x.dataset.key);
+    if (!at || levelShown(at.depth) || !pg.gal.groups.some(g => g.depth > at.depth)) col.clear(); // tapping again (or nothing deeper to fold) opens everything
+    else pg.gal.groups.forEach(g => { if (g.depth > at.depth) col.add(g.key); else col.delete(g.key); }); // collapse to this tab's level
+    pg.gal.byKey.has(x.dataset.key) ? redrawKeep(x.dataset.key, false) : drawGallery();
   }, true);
-  for (const host of [$('gal'), $('pathbar')]) {
+  for (const host of [pg.el, pg.pathEl]) {
     const fromBar = host.id === 'pathbar';
     host.addEventListener('click', e => {
       const tag = e.target.closest('.tag, .dvt');
@@ -4200,7 +4211,7 @@ function toast(msg) {
 let galStyle = 'polaroid', galSize = 'l';
 try { if (localStorage.getItem('inat_gal_style') === 'simple') galStyle = 'simple'; const z = localStorage.getItem('inat_gal_size'); if (['xl', 'l', 'm', 's'].includes(z)) galSize = z; } catch {}
 function applyGalLook() {
-  const g = $('gal');
+  const g = pg.el;
   g.classList.remove('sz-xl', 'sz-l', 'sz-m', 'sz-s', 'st-polaroid', 'st-simple');
   g.classList.add('sz-' + galSize, 'st-' + galStyle);
   requestAnimationFrame(() => { if (typeof spanTags === 'function') spanTags(); document.querySelectorAll('.pgrid .tile .cap').forEach(fitCaption); schedulePath(); });
@@ -4225,7 +4236,7 @@ $('sizebtn').onclick = e => { e.stopPropagation(); const m = $('sizemenu'); m.hi
 document.addEventListener('click', e => { if (!e.target.closest('.vdrop')) { $('sizemenu').hidden = true; $('sizebtn').setAttribute('aria-expanded', 'false'); } });
 // Pinch on the list changes the photo size between XL, L, M and S: spread the fingers for bigger photos, pinch for smaller.
 (() => {
-  const ORDER = ['xl', 'l', 'm', 's'], el = $('gal');
+  const ORDER = ['xl', 'l', 'm', 's'], el = pg.el;
   const step = d => { // d = +1 smaller photos (more columns), -1 bigger
     const i = Math.max(0, Math.min(3, ORDER.indexOf(galSize) + d)); if (ORDER[i] === galSize) return false;
     galSize = ORDER[i]; try { localStorage.setItem('inat_gal_size', galSize); } catch {}
@@ -4263,8 +4274,8 @@ $('unshuffle').onclick = () => { shuffleSeed = recentSeed = null; syncRecentTool
 let jumpIndex = null;
 function buildJumpIndex() {
   const out = [], seen = new Set();
-  for (const g of gal.groups) out.push({ group: true, g, label: g.main + (g.sub ? ` (${g.sub})` : ''), sub: g.rank, hay: fold(g.main + ' ' + g.sub), rank: g.rank });
-  gal.items.forEach((it, i) => {
+  for (const g of pg.gal.groups) out.push({ group: true, g, label: g.main + (g.sub ? ` (${g.sub})` : ''), sub: g.rank, hay: fold(g.main + ' ' + g.sub), rank: g.rank });
+  pg.gal.items.forEach((it, i) => {
     const name = it.o.common || it.o.name, k = name + '|' + (it.path.length ? it.path[it.path.length - 1].key : '');
     if (seen.has(k)) return; seen.add(k); // one suggestion per species and group
     const p = it.path[it.path.length - 1];
@@ -4299,13 +4310,13 @@ function drawJump() {
 function jumpTo(it) {
   $('jumpsug').hidden = true;
   closePanels('');
-  const col = collapsed[gal.sort];
+  const col = collapsed[pg.gal.sort];
   // open the target's groups, and draw further pages if it is beyond the ones shown
-  const idx = it.group ? it.g.first : it.i, path = it.group ? [...(function up(g) { return g.parent ? [...up(g.parent), g.parent] : []; })(it.g), it.g] : gal.items[it.i].path;
+  const idx = it.group ? it.g.first : it.i, path = it.group ? [...(function up(g) { return g.parent ? [...up(g.parent), g.parent] : []; })(it.g), it.g] : pg.gal.items[it.i].path;
   path.forEach(g => col.delete(g.key));
   drawGallery();
-  for (let guard = 0; gal.shownTo <= idx && gal.shownTo < gal.items.length && guard < 200; guard++) { gal.limit += GAL_PAGE; drawGallery(); }
-  const cell = $('gal').querySelector(`.cell[data-i="${idx}"]`);
+  for (let guard = 0; pg.gal.shownTo <= idx && pg.gal.shownTo < pg.gal.items.length && guard < 200; guard++) { pg.gal.limit += GAL_PAGE; drawGallery(); }
+  const cell = pg.el.querySelector(`.cell[data-i="${idx}"]`);
   if (!cell) return;
   setTimeout(() => {
     scrollTo({ top: pinY(cell.getBoundingClientRect().top, barHeight() + 8 + (it.group ? it.g.depth * 28 : 0)), behavior: 'smooth' });
@@ -4333,7 +4344,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-176 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-177 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
