@@ -711,8 +711,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .signin:active { transform:rotate(-1deg) scale(.98); }
   .signin[hidden] { display:none; }
   /* sort options: ribbon bookmarks sticking out of the bottom edge of the cover */
-  header.cover { margin-bottom:84px !important; min-height:calc(100vh - 116px) !important; min-height:calc(100dvh - 116px) !important; }
-  @media (max-width: 899px) { header.cover { min-height:calc(100vh - 102px) !important; min-height:calc(100dvh - 102px) !important; } }
+  header.cover { margin-bottom:84px !important; min-height:calc(100vh - 6px) !important; min-height:calc(100dvh - 6px) !important; }
+  @media (max-width: 899px) { header.cover { min-height:100vh !important; min-height:100dvh !important; } }
   .marks { position:absolute; left:0; right:0; top:calc(100% - 22px); z-index:-1; display:flex; justify-content:center; gap:8px; padding:0 8px; pointer-events:none; }
   .marks button { pointer-events:auto; flex:0 0 58px; height:86px; padding:28px 2px 14px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:2px; border:0; border-radius:0; color:#fff; cursor:pointer; transform:translateY(0); transition:height .2s;
                   background:var(--grain), linear-gradient(rgba(255,255,255,.1), rgba(0,0,0,.07)), var(--mc); clip-path:polygon(0 0, 100% 0, 100% 90%, 50% 100%, 0 90%); filter:drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
@@ -4328,7 +4328,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-172 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-173 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
