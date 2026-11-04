@@ -797,7 +797,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .dark #login .usearch, .dark #login .uactions { border-color:#a9bdf2; } .dark #login .usearch i, .dark #login .pname, .dark #login .person .ib, .dark #login .uactions .ib { color:#a9bdf2; } .dark #login .person { border-top-color:rgba(169,189,242,.25); } .dark #login .person.cur { background:rgba(250,225,60,.15); }
   /* the observer's profile picture, stuck on the cover as a round sticker above the title */
   .clabel { position:relative; }
-  .coverava { position:absolute; right:-6px; top:calc(100% - 30px); margin:0; padding:0; border:0; background:none; cursor:pointer; transform:rotate(-7deg); filter:drop-shadow(0 3px 5px rgba(0,0,0,.6)); z-index:2; }
+  .coverava { position:absolute; right:-34px; top:calc(100% - 30px); margin:0; padding:0; border:0; background:none; cursor:pointer; transform:rotate(-7deg); filter:drop-shadow(0 3px 5px rgba(0,0,0,.6)); z-index:2; }
   .coverava[hidden] { display:none; }
   .coverava .ava { position:static; display:block; width:64px; height:64px; border:4px solid #fbf6e2; font-size:30px; line-height:56px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); }
   /* a person being compared: a paper chip on the cover with their picture, a three-state eye and an x */
@@ -4045,7 +4045,7 @@ function show(keepStatus) {
   }
   $('results').hidden = false;
   renderWelcome(); layoutStage();
-  $('summary').textContent = `${species} species · ${obs.length}${filtered ? ` of ${state.obs.length}` : ''} identified observations${state.complete === false ? ` · newest ${state.obs.length}${state.total ? ' of ' + state.total.toLocaleString() : ''}` : ''}`;
+  $('summary').textContent = state.complete === false ? `Newest ${state.obs.length}${state.total ? ' of ' + state.total.toLocaleString() : ''} observations loaded` : ''; // everything else the welcome page already says
   $('summary').title = state.updated ? `Updated ${new Date(state.updated).toLocaleString()}` : ''; // kept out of the sticky bar's text to save height
   log(`rendered in ${Math.round(performance.now() - t0)}ms (${species} species)`);
 }
@@ -4333,7 +4333,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-175 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-176 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
