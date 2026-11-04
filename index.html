@@ -763,7 +763,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   .coverwrap { z-index:5; }
   #welcome h2 { margin:0; font:700 34px/1 var(--hw); color:var(--wc, #c8453b); }
   #welcome p { margin:2px 0 6px; font:22px/1.05 var(--hw); opacity:.8; }
-  #welcome svg { display:block; width:100%; height:auto; overflow:visible; }
+  #wchart svg { display:block; width:100%; height:auto; overflow:visible; }
+  #welcome .chip { font-size:13px; } #welcome .chip svg { width:15px; height:15px; flex:none; } #welcome .chip > button:last-child { padding:2px 6px; border-radius:50%; background:rgba(0,0,0,.12); } #welcome .chip > button:last-child svg { width:13px; height:13px; stroke-width:3; }
   #welcome text { font-family:var(--hw); fill:#2a2418; }
   @media (max-width: 899px) { .coverwrap { margin:6px 12px 84px; } }
   header.cover { margin:0 !important; z-index:1; }
@@ -3809,11 +3810,11 @@ function inkBar(x, y, w, h, col, r) { // a hatched, slightly crooked box
 }
 const escTxt = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function hbars(rows, col, seed = 3) { // rows: [{label, value, text?, hi?}]
-  const r = wob(seed), W = 320, L = 108, rh = 26, H = rows.length * rh + 10, max = Math.max(1, ...rows.map(x => x.value));
+  const r = wob(seed), W = 320, L = 128, rh = 26, H = rows.length * rh + 10, max = Math.max(1, ...rows.map(x => x.value));
   let o = pencil(L, 2, L, H - 4, r, 1.8);
   rows.forEach((d, i) => {
-    const y = 6 + i * rh, w = Math.max(4, (W - L - 52) * d.value / max);
-    o += `<text x="${L - 6}" y="${y + 16}" text-anchor="end" font-size="18">${escTxt(d.label.length > 15 ? d.label.slice(0, 14) + '…' : d.label)}</text>`;
+    const y = 6 + i * rh, w = Math.max(4, (W - L - 46) * d.value / max);
+    o += `<text x="${L - 6}" y="${y + 16}" text-anchor="end" font-size="17">${escTxt(d.label.length > 17 ? d.label.slice(0, 16) + '…' : d.label)}</text>`;
     o += inkBar(L + 2, y + 2, w, rh - 8, d.hi ? '#3f8f52' : col, r);
     o += `<text x="${L + 8 + w}" y="${y + 17}" font-size="18">${escTxt(d.text ?? d.value.toLocaleString())}</text>`;
   });
@@ -4189,7 +4190,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-158 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-159 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
