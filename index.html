@@ -761,8 +761,10 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #welcome .chip { box-shadow:0 1px 3px rgba(0,0,0,.35); }
   #pinroom { height:var(--s0, 0px); } /* the room below the pinned content is how far the cover has to scroll before the content moves */
   .coverwrap { z-index:5; }
-  #welcome h2 { margin:0; font:700 34px/1 var(--hw); color:var(--wc, #c8453b); }
-  #welcome p { margin:2px 0 6px; font:22px/1.05 var(--hw); opacity:.8; }
+  #whead { text-align:center; padding:34px 10px 38px; }
+  #welcome h2 { margin:0; font:700 58px/1 var(--hw); color:var(--wc, #c8453b); }
+  #whead h2::after { content:''; display:block; width:90px; height:3px; margin:12px auto 14px; border-radius:2px; background:var(--wc, #c8453b); opacity:.55; transform:rotate(-1.5deg); }
+  #welcome p { margin:0 auto; max-width:300px; font:23px/1.1 var(--hw); opacity:.8; }
   #wchart svg { display:block; width:100%; height:auto; overflow:visible; }
   #welcome .chip { font-size:13px; } #welcome .chip svg { width:15px; height:15px; flex:none; } #welcome .chip > button:last-child { padding:2px 6px; border-radius:50%; background:rgba(0,0,0,.12); } #welcome .chip > button:last-child svg { width:13px; height:13px; stroke-width:3; }
   #welcome text { font-family:var(--hw); fill:#2a2418; }
@@ -4190,7 +4192,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-159 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-160 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
