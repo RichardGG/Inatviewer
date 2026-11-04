@@ -3761,7 +3761,7 @@ function setView(v) {
   scrollTo({ top: y });
   requestAnimationFrame(() => scrollTo({ top: y }));
 }
-// A page-turn: a copy of the current page lifts off at the spine and swings away while the new page is already in place underneath.
+// A page slide: a copy of the current page slides away (or the previous page slides back in) over the page that is already in place.
 function pageTurn(dir, change) {
   const c = $('content');
   if (!c || $('results').hidden || matchMedia('(prefers-reduced-motion: reduce)').matches || !c.animate) { change(); return; }
@@ -3771,21 +3771,22 @@ function pageTurn(dir, change) {
     copy.querySelectorAll('[id]').forEach(e => e.removeAttribute('id')); copy.removeAttribute('id');
     copy.querySelectorAll('.leaflet-container').forEach(e => e.replaceChildren());
     Object.assign(copy.style, { position: 'absolute', left: '0', top: r.top + 'px', width: r.width + 'px', margin: '0' });
+    // sticky folder headers would re-stick inside the copy: pin each one where it is now instead
+    const src = [...c.querySelectorAll('.dvh, #pathbar')], dst = [...copy.querySelectorAll('.dvh, #pathbar')], cur = src.map(e => e.getBoundingClientRect().top);
+    src.forEach(e => { e.style.position = 'relative'; });
+    const nat = src.map(e => e.getBoundingClientRect().top);
+    src.forEach(e => { e.style.position = ''; });
+    dst.forEach((e, i) => { e.style.position = 'relative'; e.style.top = (cur[i] - nat[i]) + 'px'; });
     const leaf = document.createElement('div'); leaf.className = 'leaf'; leaf.append(copy); return leaf;
   };
   const ov = document.createElement('div'); ov.id = 'turn';
   const old = copyOf(); ov.append(old); document.body.append(ov);
   change();
-  const P = 'perspective(1500px) rotateY(';
   let leaf, frames;
-  if (dir > 0) { // forward: the old page lifts off at the spine and swings away, uncovering the new page
-    leaf = old; leaf.style.transformOrigin = 'left center';
-    frames = [{ transform: P + '0deg)', filter: 'brightness(1)', boxShadow: '0 0 0 rgba(0,0,0,0)' }, { transform: P + '-100deg)', filter: 'brightness(.55)', boxShadow: '30px 0 60px rgba(0,0,0,.5)' }];
-  } else { // back: the previous page swings in from the spine and falls onto the page, the turn played in reverse
-    leaf = copyOf(); leaf.style.transformOrigin = 'left center'; ov.append(leaf);
-    frames = [{ transform: P + '-100deg)', filter: 'brightness(.55)', boxShadow: '30px 0 60px rgba(0,0,0,.5)' }, { transform: P + '0deg)', filter: 'brightness(1)', boxShadow: '0 0 0 rgba(0,0,0,0)' }];
-  }
-  const a = leaf.animate(frames, { duration: 600, easing: dir > 0 ? 'cubic-bezier(.5,0,.75,.4)' : 'cubic-bezier(.25,.6,.5,1)', fill: 'forwards' });
+  const away = { transform: 'translateX(-100%)', boxShadow: '12px 0 30px rgba(0,0,0,.45)' }, here = { transform: 'translateX(0)', boxShadow: '0 0 0 rgba(0,0,0,0)' };
+  if (dir > 0) { leaf = old; frames = [here, away]; } // next: the current page slides away, uncovering the next one
+  else { leaf = copyOf(); ov.append(leaf); frames = [away, here]; } // previous: the earlier page slides back in over the current one
+  const a = leaf.animate(frames, { duration: 380, easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' });
   a.onfinish = a.oncancel = () => ov.remove();
 }
 function turnTo(k, dir) {
@@ -4289,7 +4290,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-168 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-169 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
