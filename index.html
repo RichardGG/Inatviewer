@@ -3871,14 +3871,21 @@ function renderWelcome() {
       const obs = filteredObs(); if (!obs.length) { el.replaceChildren(); ch.replaceChildren(); return; }
       const sp = new Set(obs.map(o => o.tid)).size;
       if (id === 'recent') {
-        const now = new Date(), months = [];
-        for (let i = 11; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); months.push({ k: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'), label: 'JFMAMJJASOND'[d.getMonth()], value: 0 }); }
-        const by = new Map(months.map(m => [m.k, m]));
-        for (const o of obs) { const m = by.get((o.date || '').slice(0, 7)); if (m) m.value++; }
-        welcomeGo = months.map(m => () => { const i = gal.items.findIndex(it => (it.o.date || '').slice(0, 7) === m.k); if (i >= 0) jumpTo({ i, label: m.k }); });
+        const now = new Date(), rng = dateRange(), D = 864e5, pd = t => { const [y, m, d] = t.split('-').map(Number); return new Date(y, m - 1, d); };
+        let a, z = ymd(now);
+        if (rng) { a = rng[0] < '0001' ? ((obs.reduce((m, o) => o.date && o.date < m ? o.date : m, z)) || z) : rng[0]; z = rng[1] > z ? z : rng[1]; }
+        else a = ymd(new Date(now.getFullYear(), now.getMonth() - 11, 1));
+        if (a > z) a = z;
+        const span = Math.round((pd(z) - pd(a)) / D) + 1, months = [];
+        if (span <= 31) for (let d = pd(a); ymd(d) <= z; d.setDate(d.getDate() + 1)) { const k = ymd(d), n = d.getDate(); months.push({ from: k, to: k, label: n === 1 || n % 5 === 0 || span <= 14 ? String(n) : '', value: 0 }); }
+        else if (span <= 120) for (let d = pd(a); ymd(d) <= z; d.setDate(d.getDate() + 7)) { const e = new Date(d); e.setDate(e.getDate() + 6); months.push({ from: ymd(d), to: ymd(e), label: String(d.getDate()), value: 0 }); }
+        else if (span <= 1100) for (let d = new Date(pd(a).getFullYear(), pd(a).getMonth(), 1); ymd(d) <= z; d.setMonth(d.getMonth() + 1)) { const k = ymd(d).slice(0, 7); months.push({ from: k + '-01', to: k + '-31', label: 'JFMAMJJASOND'[d.getMonth()], value: 0 }); }
+        else for (let y = +a.slice(0, 4); y <= +z.slice(0, 4); y++) months.push({ from: y + '-01-01', to: y + '-12-31', label: String(y).slice(2), value: 0 });
+        for (const o of obs) { const dt = o.date || ''; const m = months.find(m => dt >= m.from && dt <= m.to); if (m) m.value++; }
+        welcomeGo = months.map(m => () => { const i = gal.items.findIndex(it => { const dt = it.o.date || ''; return dt >= m.from && dt <= m.to; }); if (i >= 0) jumpTo({ i, label: m.from }); });
         months.forEach(m => m.go = 1);
         const tot = months.reduce((a, m) => a + m.value, 0);
-        sub = `${obs.length.toLocaleString()} observations of ${sp.toLocaleString()} species, ${tot.toLocaleString()} in the last year`;
+        sub = `${obs.length.toLocaleString()} observations of ${sp.toLocaleString()} species${rng ? '' : `, ${tot.toLocaleString()} in the last year`}`;
         chart = vbars(months, col, 5);
       } else if (id === 'rare') {
         const rr = gal.items.slice(0, 6).map((it, i) => ({ it, i, r: rarityOf(it.o) })).filter(x => x.r), rows = rr.map(x => ({ label: x.it.o.common || x.it.o.name, value: Math.log10(1 + x.r.n), text: fmtCount(x.r.n), go: 1 }));
@@ -4221,7 +4228,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-164 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-165 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
