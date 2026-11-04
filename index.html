@@ -888,7 +888,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
           <div id="ffav" class="clsrow" role="group" aria-label="Favourite photo status"></div>
         </div>
         <h4>Date</h4>
-        <select id="datesel" aria-label="Date filter" style="width:100%">
+        <div id="datechips" class="clsrow" role="group" aria-label="Date filter"></div>
+        <select id="datesel" aria-label="Date filter" style="display:none">
           <option value="all">All dates</option><option value="week">This week</option>
           <option value="month">This month</option><option value="year">This year</option>
           <option value="custom">Custom…</option>
@@ -2528,7 +2529,19 @@ function setArea(a) {
   drawArea(); drawChips(); scheduleShow();
 }
 // Active-filter chips (each removable) plus the dot on the icon of every filter that is in use.
+function drawDateChips() {
+  const box = $('datechips'), sel = $('datesel'); if (!box) return;
+  box.replaceChildren();
+  for (const o of sel.options) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'cls' + (sel.value === o.value ? ' on' : '');
+    b.setAttribute('aria-pressed', String(sel.value === o.value));
+    if (o.value === 'custom') b.insertAdjacentHTML('beforeend', ic('calendar', 16)); b.append(o.value === 'custom' ? 'Custom' : o.textContent.replace('…', ''));
+    b.onclick = () => { sel.value = o.value; sel.onchange(); drawChips(); };
+    box.append(b);
+  }
+}
 function drawChips() {
+  drawDateChips();
   const c = $('chips');
   c.replaceChildren();
   const add = (icon, text, clear, label) => {
@@ -4228,7 +4241,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-165 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-166 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
