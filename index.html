@@ -746,6 +746,11 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   /* the page under the cover stays put while the cover scrolls away, then scrolls once the cover is ~60% gone */
   #results { margin-top:calc(-1 * var(--stage-top, 0px)); display:flow-root; }
   #content { overflow-anchor:none; position:sticky; top:0; padding-top:var(--gap, 0px); min-height:100dvh; }
+  #coverdown { position:absolute; left:50%; bottom:calc(26px + env(safe-area-inset-bottom)); width:64px; height:64px; margin-left:-32px; padding:0; border:0; background:none; display:grid; place-items:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  #coverdown svg { filter:drop-shadow(0 -1px 0 rgba(255,240,190,.55)) drop-shadow(0 2px 1px rgba(0,0,0,.85)) drop-shadow(0 3px 3px rgba(0,0,0,.4)); animation:nudge 2.4s ease-in-out infinite; }
+  #coverdown:active svg { animation:none; transform:translateY(2px); }
+  @keyframes nudge { 0%, 70%, 100% { transform:none; } 80% { transform:translateY(5px); } 90% { transform:translateY(0); } }
+  @media (prefers-reduced-motion: reduce) { #coverdown svg { animation:none; } }
   #results, header.cover { touch-action:pan-y; }
   #turn { position:fixed; inset:0; z-index:4; overflow:hidden; pointer-events:none; } #turn .leaf { position:absolute; inset:0; isolation:isolate; overflow:hidden; will-change:transform; background:#efe9d4; } .dark #turn .leaf { background:#1c2622; }
   /* the page: grid paper that runs from under the cover to the bottom */
@@ -821,6 +826,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
       <button type="button" id="coverava" class="coverava" aria-label="Observers" title="Switch user, search or share" hidden></button></div>
     <button id="acct" aria-label="Account and sync" aria-expanded="false" hidden></button>
     <button type="button" id="signin" class="signin" hidden>Sign in</button>
+    <button type="button" id="coverdown" aria-label="Open the book" title="Open the book"><svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true"><defs><linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6e3a1"/><stop offset=".5" stop-color="#d9b45a"/><stop offset="1" stop-color="#a47e2c"/></linearGradient></defs><path d="M10 15 L24 29 L38 15 M10 27 L24 41 L38 27" fill="none" stroke="url(#gold)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </header>
   </div>
 
@@ -2805,6 +2811,7 @@ $('areabtn').onclick = () => {
 };
 $('sheetbg').onclick = () => closePanels();
 $('psort').addEventListener('click', () => { if ($('psort').hidden) $('bsort').click(); }, true);
+$('coverdown').onclick = () => scrollTo({ top: Math.round(parseFloat($('results').style.getPropertyValue('--s0')) || innerHeight * .6), behavior: 'smooth' });
 $('totop').onclick = () => { const c = document.querySelector('header.cover'); scrollTo({ top: Math.max(0, c.offsetTop + c.offsetHeight * 0.5), behavior: 'smooth' }); };
 $('areapanel').addEventListener('click', () => { if ($('areapanel').hidden) $('areabtn').click(); }, true);
 { const once = () => { if (scrollY > 120) { initAreaMap(); removeEventListener('scroll', once); } }; addEventListener('scroll', once, { passive: true }); once(); }
@@ -4328,7 +4335,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-173 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-174 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
