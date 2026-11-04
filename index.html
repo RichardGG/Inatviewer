@@ -746,7 +746,8 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   /* the page under the cover stays put while the cover scrolls away, then scrolls once the cover is ~60% gone */
   #results { margin-top:calc(-1 * var(--stage-top, 0px)); display:flow-root; }
   #content { overflow-anchor:none; position:sticky; top:0; padding-top:var(--gap, 0px); min-height:100dvh; }
-  #turn { position:fixed; inset:0; z-index:4; overflow:hidden; pointer-events:none; } #turn .leaf { position:absolute; inset:0; isolation:isolate; overflow:hidden; background:#efe9d4; } .dark #turn .leaf { background:#1c2622; }
+  #results, header.cover { touch-action:pan-y; }
+  #turn { position:fixed; inset:0; z-index:4; overflow:hidden; pointer-events:none; } #turn .leaf { position:absolute; inset:0; isolation:isolate; overflow:hidden; will-change:transform; background:#efe9d4; } .dark #turn .leaf { background:#1c2622; }
   /* the page: grid paper that runs from under the cover to the bottom */
   #content, #pinroom { background-color:#efe9d4; background-image:linear-gradient(rgba(60,100,140,.2) 1px, transparent 1px), linear-gradient(90deg, rgba(60,100,140,.2) 1px, transparent 1px); background-size:24px 24px; background-position:-1px -1px; }
   .dark #content, .dark #pinroom { background-color:#1c2622; background-image:linear-gradient(rgba(140,190,220,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(140,190,220,.12) 1px, transparent 1px); }
@@ -3758,53 +3759,93 @@ function setView(v) {
   // each sort keeps its own scroll position (re-applied once more next frame in case layout settles late)
   // switching views never moves the scroll position (each page is at least a screen tall, so it is still there)
 }
-// A page slide: a copy of the current page slides away (or the previous page slides back in) over the page that is already in place.
-function pageTurn(dir, change) {
-  const c = $('content');
-  if (!c || $('results').hidden || matchMedia('(prefers-reduced-motion: reduce)').matches || !c.animate) { change(); return; }
-  document.getElementById('turn')?.remove();
-  const copyOf = () => { // a still picture of the page as it is now
-    const r = c.getBoundingClientRect(), copy = c.cloneNode(true);
-    copy.querySelectorAll('[id]').forEach(e => e.removeAttribute('id')); copy.removeAttribute('id');
-    copy.querySelectorAll('.leaflet-container').forEach(e => e.replaceChildren());
-    Object.assign(copy.style, { position: 'absolute', left: '0', top: r.top + 'px', width: r.width + 'px', margin: '0' });
-    // sticky folder headers would re-stick inside the copy: pin each one where it is now instead
-    const src = [...c.querySelectorAll('.dvh, #pathbar')], dst = [...copy.querySelectorAll('.dvh, #pathbar')], cur = src.map(e => e.getBoundingClientRect().top);
-    src.forEach(e => { e.style.position = 'relative'; });
-    const nat = src.map(e => e.getBoundingClientRect().top);
-    src.forEach(e => { e.style.position = ''; });
-    dst.forEach((e, i) => { e.style.position = 'relative'; e.style.top = (cur[i] - nat[i]) + 'px'; });
-    const leaf = document.createElement('div'); leaf.className = 'leaf'; leaf.append(copy); return leaf;
-  };
-  const ov = document.createElement('div'); ov.id = 'turn';
-  const old = copyOf(); old.style.zIndex = 1; ov.append(old); document.body.append(ov);
-  change();
-  let leaf, frames;
-  const away = { transform: 'translateX(-100%)', boxShadow: '12px 0 30px rgba(0,0,0,.45)' }, here = { transform: 'translateX(0)', boxShadow: '0 0 0 rgba(0,0,0,0)' };
-  if (dir > 0) { leaf = old; frames = [here, away]; } // next: the current page slides away, uncovering the next one
-  else { leaf = copyOf(); leaf.style.zIndex = 2; ov.append(leaf); frames = [away, here]; } // previous: the earlier page slides back in over the current one
-  const a = leaf.animate(frames, { duration: 380, easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' });
-  a.onfinish = a.oncancel = () => ov.remove();
+// A page slide: the page you are on is copied into an overlay; the view underneath is switched at once, and the copy (or, going back, a copy of the earlier page) slides over it.
+function pageCopy() {
+  const c = $('content'), r = c.getBoundingClientRect(), copy = c.cloneNode(true), rs = $('results').style;
+  copy.querySelectorAll('[id]').forEach(e => e.removeAttribute('id')); copy.removeAttribute('id');
+  copy.querySelectorAll('.leaflet-container').forEach(e => e.replaceChildren());
+  // sticky folder headers would re-stick inside the copy: pin each one where it is now instead
+  const src = [...c.querySelectorAll('.dvh, #pathbar')], dst = [...copy.querySelectorAll('.dvh, #pathbar')], cur = src.map(e => e.getBoundingClientRect().top);
+  src.forEach(e => { e.style.position = 'relative'; });
+  const nat = src.map(e => e.getBoundingClientRect().top);
+  src.forEach(e => { e.style.position = ''; });
+  dst.forEach((e, i) => { e.style.position = 'relative'; e.style.top = (cur[i] - nat[i]) + 'px'; });
+  Object.assign(copy.style, { position: 'absolute', left: '0', top: r.top + 'px', width: r.width + 'px', margin: '0' });
+  for (const v of ['--gap', '--s0', '--stage-top']) copy.style.setProperty(v, rs.getPropertyValue(v)); // the copy lives outside #results
+  const leaf = document.createElement('div'); leaf.className = 'leaf'; leaf.append(copy); return leaf;
+}
+let slide = null;
+function slideStart(dir, k) {
+  if (slide) slideFinish(true);
+  const ov = document.createElement('div'), old = pageCopy(); ov.id = 'turn';
+  old.style.zIndex = 1; ov.append(old); document.body.append(ov);
+  const from = sortId();
+  chooseSort(k);
+  let leaf = old;
+  if (dir < 0) { leaf = pageCopy(); leaf.style.zIndex = 2; leaf.style.transform = 'translateX(-100%)'; ov.append(leaf); }
+  slide = { ov, leaf, dir, from, W: innerWidth };
+}
+const slideX = (dx) => { // where the moving page sits for a finger offset of dx
+  const { dir, W } = slide;
+  return dir > 0 ? Math.max(-W, Math.min(0, dx)) : -W + Math.max(0, Math.min(W, dx));
+};
+function slideMove(dx) {
+  if (!slide) return;
+  const x = slideX(dx); slide.leaf.style.transform = `translateX(${x}px)`;
+  slide.leaf.style.boxShadow = `${slide.dir > 0 ? 12 : 12}px 0 30px rgba(0,0,0,.45)`;
+}
+// commit: let it finish sliding; otherwise slide it back and restore the page that was open
+function slideFinish(commit, dx = 0, instant) {
+  const sl = slide; if (!sl) return; slide = null;
+  const { leaf, ov, dir, W } = sl, x0 = (() => { const m = /translateX\((-?[\d.]+)px\)/.exec(leaf.style.transform); return m ? +m[1] : (dir > 0 ? 0 : -W); })();
+  const x1 = commit ? (dir > 0 ? -W : 0) : (dir > 0 ? 0 : -W);
+  const done = () => { if (!commit) chooseSort(sl.from); requestAnimationFrame(() => ov.remove()); };
+  if (instant || !leaf.animate) { done(); return; }
+  const a = leaf.animate([{ transform: `translateX(${x0}px)` }, { transform: `translateX(${x1}px)` }], { duration: 260 * Math.max(.25, Math.abs(x1 - x0) / W), easing: 'cubic-bezier(.3,.1,.2,1)', fill: 'forwards' });
+  a.onfinish = done;
+}
+function pageTurn(dir, k) { // a tap on a bookmark: the same slide, played by itself
+  if ($('results').hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) { chooseSort(k); return; }
+  slideStart(dir, k); slide.leaf.style.transform = dir > 0 ? 'translateX(0)' : 'translateX(-100%)'; slideFinish(true);
 }
 function turnTo(k, dir) {
   const order = SORTS.map(x => x[0]), cur = order.indexOf(sortId()), nxt = order.indexOf(k);
   if (nxt < 0 || nxt === cur) { chooseSort(k); return; }
-  pageTurn(dir || (nxt > cur ? 1 : -1), () => chooseSort(k));
+  pageTurn(dir || (nxt > cur ? 1 : -1), k);
 }
-{ // swipe left / right anywhere on the page for the next / previous bookmark
-  let sx = 0, sy = 0, ok = false;
+{ // drag the page sideways: it follows the finger, and letting go part-way slides it back and cancels the change
+  let sx = 0, sy = 0, st = 0, ok = false, mode = 0, lx = 0, lt = 0, vx = 0;
+  const order = SORTS.map(x => x[0]);
   document.addEventListener('touchstart', e => {
     ok = e.touches.length === 1 && !$('results').hidden && document.body.style.overflow !== 'hidden' && !e.target.closest('.leaflet-container, input, textarea, select, #psort, #areapanel, #detail, #login, .ctrack, [data-noswipe]');
-    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    mode = 0; sx = lx = e.touches[0].clientX; sy = e.touches[0].clientY; st = lt = performance.now(); vx = 0;
+    if (slide && ok) { slideFinish(true, 0, true); }
   }, { passive: true });
-  document.addEventListener('touchend', e => {
-    if (!ok) return; ok = false;
-    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-    if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
-    const order = SORTS.map(x => x[0]), i = order.indexOf(sortId()) + (dx < 0 ? 1 : -1);
-    if (i >= 0 && i < order.length) turnTo(order[i], dx < 0 ? 1 : -1);
+  document.addEventListener('touchmove', e => {
+    if (!ok) return;
+    if (e.touches.length !== 1) { if (mode) { slideFinish(false, 0, true); mode = 0; } ok = false; return; }
+    const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy, now = performance.now();
+    vx = (t.clientX - lx) / Math.max(1, now - lt); lx = t.clientX; lt = now;
+    if (!mode) {
+      if (Math.abs(dx) < 14 || Math.abs(dy) > Math.abs(dx) * 0.7) { if (Math.abs(dy) > 14) ok = false; return; }
+      const i = order.indexOf(sortId()) + (dx < 0 ? 1 : -1);
+      if (i < 0 || i >= order.length) { ok = false; return; }
+      mode = dx < 0 ? 1 : -1; slideStart(mode, order[i]); sx = t.clientX; // measure from where the drag began
+      return;
+    }
+    slideMove(t.clientX - sx);
   }, { passive: true });
+  const end = e => {
+    if (!ok || !mode) { ok = false; return; }
+    const dx = e.changedTouches[0].clientX - sx, W = innerWidth, dir = mode, fast = Math.abs(vx) > 0.45 && Math.sign(vx) === -dir;
+    const far = dir > 0 ? -dx > W * 0.3 : dx > W * 0.3;
+    mode = 0; ok = false;
+    slideFinish(far || fast, dx);
+  };
+  document.addEventListener('touchend', end, { passive: true });
+  document.addEventListener('touchcancel', () => { if (mode) { mode = 0; ok = false; slideFinish(false); } }, { passive: true });
 }
+
 function chooseSort(k) {
   if (k === 'rare') {
     raritySort = 'rare'; shuffleSeed = recentSeed = null; try { localStorage.setItem('inat_rsort', 'rare'); } catch {}
@@ -4287,7 +4328,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-170 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-171 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
