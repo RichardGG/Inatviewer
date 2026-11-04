@@ -765,7 +765,7 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #welcome h2 { margin:0; font:700 58px/1 var(--hw); color:var(--wc, #c8453b); }
   #whead h2::after { content:''; display:block; width:90px; height:3px; margin:12px auto 14px; border-radius:2px; background:var(--wc, #c8453b); opacity:.55; transform:rotate(-1.5deg); }
   #welcome p { margin:0 auto; max-width:300px; font:23px/1.1 var(--hw); opacity:.8; }
-  #wchart svg { display:block; width:100%; height:auto; overflow:visible; }
+  #wchart .wrow.go { cursor:pointer; } #wchart .wrow.go:active { opacity:.6; } #wchart svg { display:block; width:100%; height:auto; overflow:visible; }
   #welcome .chip { font-size:13px; } #welcome .chip svg { width:15px; height:15px; flex:none; } #welcome .chip > button:last-child { padding:2px 6px; border-radius:50%; background:rgba(0,0,0,.12); } #welcome .chip > button:last-child svg { width:13px; height:13px; stroke-width:3; }
   #welcome text { font-family:var(--hw); fill:#2a2418; }
   @media (max-width: 899px) { .coverwrap { margin:6px 12px 84px; } }
@@ -2215,7 +2215,7 @@ function redrawKeep(key, fromBar) {
     const cell = $('gal').querySelector(`.dv[data-key="${CSS.escape(key)}"]`) || $('gal').querySelector(`.cell[data-i="${g.first}"]`);
     if (!cell) return;
     const d = cell.getBoundingClientRect().top - (barHeight() + (cell.classList.contains('dv') ? g.depth * 28 + 6 : 6));
-    if (Math.abs(d) > 1) scrollBy(0, d);
+    if (Math.abs(d) > 1) scrollTo(0, pinY(cell.getBoundingClientRect().top, barHeight() + (cell.classList.contains('dv') ? g.depth * 28 + 6 : 6)));
   };
   fix();
   // keep it there while photos and fonts settle (about a second), unless the user takes over by scrolling
@@ -3811,38 +3811,60 @@ function inkBar(x, y, w, h, col, r) { // a hatched, slightly crooked box
   return o;
 }
 const escTxt = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function wrapLabel(t, n = 19) { // up to two lines, broken at spaces
+  const words = String(t).split(/\s+/), lines = [''];
+  for (const w0 of words) {
+    let w = w0;
+    while (w.length > n) { if (lines.length === 2) break; if (lines[0]) { lines.push(''); continue; } lines[0] = w.slice(0, n - 1) + '-'; lines.push(''); w = w.slice(n - 1); }
+    const k = lines.length - 1;
+    if ((lines[k] + ' ' + w).trim().length <= n) lines[k] = (lines[k] + ' ' + w).trim();
+    else if (k === 0) lines.push(w); else { lines[1] = (lines[1] + ' ' + w).trim(); }
+  }
+  if (lines[1] && lines[1].length > n) lines[1] = lines[1].slice(0, n - 1) + '…';
+  return lines.filter(Boolean);
+}
+const rowHit = (i, x, y, w, h) => `<rect class="hit" data-i="${i}" x="${x}" y="${y}" width="${w}" height="${h}" fill="transparent"/>`;
 function hbars(rows, col, seed = 3) { // rows: [{label, value, text?, hi?}]
-  const r = wob(seed), W = 320, L = 128, rh = 26, H = rows.length * rh + 10, max = Math.max(1, ...rows.map(x => x.value));
-  let o = pencil(L, 2, L, H - 4, r, 1.8);
+  const r = wob(seed), W = 320, L = 120, rh = 34, H = rows.length * rh + 10, max = Math.max(1, ...rows.map(x => x.value));
+  let o = pencil(L, 2, L, H - 4, r, 1.6);
   rows.forEach((d, i) => {
-    const y = 6 + i * rh, w = Math.max(4, (W - L - 46) * d.value / max);
-    o += `<text x="${L - 6}" y="${y + 16}" text-anchor="end" font-size="17">${escTxt(d.label.length > 17 ? d.label.slice(0, 16) + '…' : d.label)}</text>`;
-    o += inkBar(L + 2, y + 2, w, rh - 8, d.hi ? '#3f8f52' : col, r);
-    o += `<text x="${L + 8 + w}" y="${y + 17}" font-size="18">${escTxt(d.text ?? d.value.toLocaleString())}</text>`;
+    const y = 6 + i * rh, w = Math.max(4, (W - L - 44) * d.value / max), ls = wrapLabel(d.label), cy = y + rh / 2 - 3;
+    o += `<g class="wrow${d.go ? ' go' : ''}">` + `<text text-anchor="end" font-size="14.5">` + ls.map((t, k) => `<tspan x="${L - 6}" y="${cy + 5 + (k - (ls.length - 1) / 2) * 14}">${escTxt(t)}</tspan>`).join('') + `</text>`;
+    o += inkBar(L + 2, y + 3, w, rh - 12, d.hi ? '#3f8f52' : col, r);
+    o += `<text x="${L + 8 + w}" y="${cy + 6}" font-size="15">${escTxt(d.text ?? d.value.toLocaleString())}</text>${rowHit(i, 0, y, W, rh)}</g>`;
   });
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart">${o}</svg>`;
 }
 function vbars(rows, col, seed = 5) {
   const r = wob(seed), W = 320, H = 140, base = H - 24, n = rows.length, bw = (W - 20) / n, max = Math.max(1, ...rows.map(x => x.value));
-  let o = pencil(8, base + 2, W - 4, base + 2, r, 1.8);
+  let o = pencil(8, base + 2, W - 4, base + 2, r, 1.6);
   rows.forEach((d, i) => {
     const h = d.value ? Math.max(5, (base - 22) * d.value / max) : 0, x = 12 + i * bw;
+    o += `<g class="wrow${d.go ? ' go' : ''}">`;
     if (h) o += inkBar(x, base - h, bw - 6, h, col, r);
-    if (d.value && (d.value === max || n <= 6)) o += `<text x="${x + (bw - 6) / 2}" y="${base - h - 4}" text-anchor="middle" font-size="16">${d.value}</text>`;
-    o += `<text x="${x + (bw - 6) / 2}" y="${H - 6}" text-anchor="middle" font-size="16">${escTxt(d.label)}</text>`;
+    if (d.value && (d.value === max || n <= 6)) o += `<text x="${x + (bw - 6) / 2}" y="${base - h - 4}" text-anchor="middle" font-size="14">${d.value}</text>`;
+    o += `<text x="${x + (bw - 6) / 2}" y="${H - 6}" text-anchor="middle" font-size="14">${escTxt(d.label)}</text>${rowHit(i, x - 2, 0, bw, H)}</g>`;
   });
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart">${o}</svg>`;
+}
+let welcomeGo = [];
+$('wchart').addEventListener('click', e => { const h = e.target.closest('.hit'); const f = h && welcomeGo[+h.dataset.i]; if (f) f(); });
+// Scroll position that puts an element at `want` px from the top, allowing for the content being pinned while the cover scrolls away.
+function pinY(topNow, want) {
+  const s0 = parseFloat($('results').style.getPropertyValue('--s0')) || 0, y = scrollY;
+  return Math.max(0, s0 + (y <= s0 ? topNow : topNow + (y - s0)) - want);
 }
 function renderWelcome() {
   const el = $('whead'), ch = $('wchart'); if (!el) return;
   const id = sortId(), col = MARK_COLORS[id] || '#c8453b', label = (SORTS.find(x => x[0] === id) || ['', ''])[1];
-  let sub = '', chart = '';
+  let sub = '', chart = ''; welcomeGo = [];
   try {
     if (view === 'explore') {
       if (!explore.items.length) { el.replaceChildren(); ch.replaceChildren(); return; }
       const mine = mySpeciesCounts(), seen = explore.items.filter(it => mine.has(it.taxon.id)).length;
       sub = area ? `${explore.total.toLocaleString()} species around here, ${seen} of the top ${explore.items.length} already in your notebook` : '';
-      chart = hbars(explore.items.slice(0, 6).map(it => ({ label: it.taxon.preferred_common_name || it.taxon.name, value: it.count, hi: mine.has(it.taxon.id), text: fmtCount(it.count) })), col, 7);
+      const top6 = explore.items.slice(0, 6); welcomeGo = top6.map(it => () => openSpecies(it.taxon.id));
+      chart = hbars(top6.map(it => ({ label: it.taxon.preferred_common_name || it.taxon.name, value: it.count, hi: mine.has(it.taxon.id), text: fmtCount(it.count), go: 1 })), col, 7);
     } else {
       const obs = filteredObs(); if (!obs.length) { el.replaceChildren(); ch.replaceChildren(); return; }
       const sp = new Set(obs.map(o => o.tid)).size;
@@ -3851,18 +3873,23 @@ function renderWelcome() {
         for (let i = 11; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); months.push({ k: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'), label: 'JFMAMJJASOND'[d.getMonth()], value: 0 }); }
         const by = new Map(months.map(m => [m.k, m]));
         for (const o of obs) { const m = by.get((o.date || '').slice(0, 7)); if (m) m.value++; }
+        welcomeGo = months.map(m => () => { const i = gal.items.findIndex(it => (it.o.date || '').slice(0, 7) === m.k); if (i >= 0) jumpTo({ i, label: m.k }); });
+        months.forEach(m => m.go = 1);
         const tot = months.reduce((a, m) => a + m.value, 0);
         sub = `${obs.length.toLocaleString()} observations of ${sp.toLocaleString()} species, ${tot.toLocaleString()} in the last year`;
         chart = vbars(months, col, 5);
       } else if (id === 'rare') {
-        const rows = gal.items.slice(0, 6).map(it => ({ it, r: rarityOf(it.o) })).filter(x => x.r).map(x => ({ label: x.it.o.common || x.it.o.name, value: Math.log10(1 + x.r.n), text: fmtCount(x.r.n) }));
+        const rr = gal.items.slice(0, 6).map((it, i) => ({ it, i, r: rarityOf(it.o) })).filter(x => x.r), rows = rr.map(x => ({ label: x.it.o.common || x.it.o.name, value: Math.log10(1 + x.r.n), text: fmtCount(x.r.n), go: 1 }));
+        welcomeGo = rr.map(x => () => jumpTo({ i: x.i, label: x.it.o.common || x.it.o.name }));
         sub = 'The species with the fewest observations on iNaturalist worldwide';
         chart = rows.length >= 2 ? hbars(rows, col, 9) : '';
       } else {
         const want = id === 'place' ? 'country' : 'class', byRank = gal.groups.filter(g => g.rank === want);
-        let top = byRank.map(g => ({ label: g.main, value: g.last - g.first + 1 })).sort((a, b) => b.value - a.value).slice(0, 6);
-        if (top.length < 2) { const dmin = [...new Set(gal.groups.map(g => g.depth))].sort((x, y) => x - y).find(d => gal.groups.filter(g => g.depth === d).length > 1); top = gal.groups.filter(g => g.depth === dmin).map(g => ({ label: g.main, value: g.last - g.first + 1 })).sort((a, b) => b.value - a.value).slice(0, 6); }
+        let top = byRank.map(g => ({ label: g.main, value: g.last - g.first + 1, g, go: 1 })).sort((a, b) => b.value - a.value).slice(0, 6);
+        if (top.length < 2) { const dmin = [...new Set(gal.groups.map(g => g.depth))].sort((x, y) => x - y).find(d => gal.groups.filter(g => g.depth === d).length > 1); top = gal.groups.filter(g => g.depth === dmin).map(g => ({ label: g.main, value: g.last - g.first + 1, g, go: 1 })).sort((a, b) => b.value - a.value).slice(0, 6); }
+        welcomeGo = [];
         sub = `${sp.toLocaleString()} species from ${obs.length.toLocaleString()} observations`;
+        welcomeGo = top.map(d => () => jumpTo({ group: true, g: d.g, label: d.label }));
         chart = top.length > 1 ? hbars(top, col, id === 'tree' ? 11 : 13) : '';
       }
     }
@@ -4167,7 +4194,7 @@ function jumpTo(it) {
   const cell = $('gal').querySelector(`.cell[data-i="${idx}"]`);
   if (!cell) return;
   setTimeout(() => {
-    cell.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    scrollTo({ top: pinY(cell.getBoundingClientRect().top, barHeight() + 8 + (it.group ? it.g.depth * 28 : 0)), behavior: 'smooth' });
     const target = (it.group && cell.querySelector(`.tag[data-key="${CSS.escape(it.g.key)}"]`)) || cell.querySelector('.tile') || cell;
     target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
     setTimeout(() => target.classList.remove('flash'), 2000);
@@ -4192,7 +4219,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-160 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-161 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
