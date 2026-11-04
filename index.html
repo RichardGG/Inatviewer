@@ -747,8 +747,9 @@ if (themeMq && themeMq.addEventListener) themeMq.addEventListener('change', func
   #results { margin-top:calc(-1 * var(--stage-top, 0px)); display:flow-root; }
   #content { position:sticky; top:0; padding-top:var(--gap, 0px); }
   /* the page: grid paper that runs from under the cover to the bottom */
-  #results { background-color:#efe9d4; background-image:linear-gradient(rgba(60,100,140,.2) 1px, transparent 1px), linear-gradient(90deg, rgba(60,100,140,.2) 1px, transparent 1px); background-size:24px 24px; background-position:-1px -1px; }
-  .dark #results { background-color:#1c2622; background-image:linear-gradient(rgba(140,190,220,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(140,190,220,.12) 1px, transparent 1px); }
+  #content, #pinroom { background-color:#efe9d4; background-image:linear-gradient(rgba(60,100,140,.2) 1px, transparent 1px), linear-gradient(90deg, rgba(60,100,140,.2) 1px, transparent 1px); background-size:24px 24px; background-position:-1px -1px; }
+  .dark #content, .dark #pinroom { background-color:#1c2622; background-image:linear-gradient(rgba(140,190,220,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(140,190,220,.12) 1px, transparent 1px); }
+  #pinroom { background-position:-1px calc(-1px - var(--ch, 0px)); } /* carries the grid on seamlessly from the pinned page */
   #welcome { display:flex; flex-direction:column; box-sizing:border-box; min-height:var(--s0, 0px); margin:0; padding:64px 18px 18px; background:none; box-shadow:none; transform:none; color:#2a2418; border-radius:0; position:relative; }
   .dark #welcome { background:none; color:#e9e5d6; }
   #welcome::before { display:none; }
@@ -3799,6 +3800,7 @@ function layoutStage() {
 }
 new ResizeObserver(layoutStage).observe(document.querySelector('header.cover'));
 addEventListener('resize', layoutStage);
+new ResizeObserver(() => $('results').style.setProperty('--ch', ($('content').offsetHeight % 24) + 'px')).observe($('content'));
 // Hand-drawn chart pieces: wobbly pencil lines from a fixed seed so redraws do not shimmer
 function wob(seed) { let x = seed * 9301 + 49297; return () => ((x = (x * 9301 + 49297) % 233280) / 233280 - .5); }
 function pencil(x1, y1, x2, y2, r, w = 1.5) {
@@ -4219,7 +4221,7 @@ setView(view);
 $('follow').checked = !!area;
 drawChips();
 (async () => {
-  log(`start: build gallery-162 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
+  log(`start: build gallery-163 · ${navigator.userAgent}${viewLogin ? ` — viewing ${viewLogin}` : ''}`);
   applyUrlState();
   setView(view);
   drawChips();
